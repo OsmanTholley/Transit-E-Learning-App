@@ -1,0 +1,546 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../frontend/node_modules/.prisma/client"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  STUDENT
+  LECTURER
+  ADMIN
+}
+
+enum DiscussionType {
+  COURSE
+  PROGRAM
+  GENERAL
+}
+
+enum AttendanceStatus {
+  PRESENT
+  PARTIAL
+  ABSENT
+  LATE
+}
+
+enum LiveClassStatus {
+  SCHEDULED
+  LIVE
+  ENDED
+  CANCELLED
+}
+
+model User {
+  id        String   @id @default(uuid()) @db.Uuid
+  fullName  String   @map("full_name") @db.VarChar(255)
+  email     String?  @unique @db.VarChar(255)
+  phone     String?  @db.VarChar(20)
+  role      Role
+  password  String
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  student       Student?
+  lecturer      Lecturer?
+  admin         Admin?
+  comments                 Comment[]
+  notifications              Notification[]
+  studentMessageBroadcasts   StudentMessageBroadcast[] @relation("StudentMessageBroadcasts")
+  lecturerMessageBroadcasts  LecturerMessageBroadcast[] @relation("LecturerMessageBroadcasts")
+  liveClassChatMessages      LiveClassChatMessage[]
+
+  @@map("users")
+}
+
+model AdmittedStudent {
+  id            String    @id @default(uuid()) @db.Uuid
+  studentId     String    @unique @map("student_id") @db.VarChar(50)
+  fullName      String    @map("full_name") @db.VarChar(255)
+  departmentId  String?   @map("department_id") @db.Uuid
+  programId     String?   @map("program_id") @db.Uuid
+  level         String?   @db.VarChar(50)
+  semester      String?   @db.VarChar(50)
+  admissionYear String?   @map("admission_year") @db.VarChar(10)
+  registeredAt  DateTime? @map("registered_at")
+  createdAt     DateTime  @default(now()) @map("created_at")
+
+  department Department? @relation(fields: [departmentId], references: [id])
+  program    Program?    @relation(fields: [programId], references: [id])
+
+  @@index([studentId], map: "idx_admitted_students_student_id")
+  @@map("admitted_students")
+}
+
+model Student {
+  id            String   @id @default(uuid()) @db.Uuid
+  userId        String   @unique @map("user_id") @db.Uuid
+  studentId     String   @unique @map("student_id") @db.VarChar(50) // Format: TCSL/001
+  departmentId  String?  @map("department_id") @db.Uuid
+  programId     String?  @map("program_id") @db.Uuid
+  level         String?  @db.VarChar(50)
+  semester      String?  @db.VarChar(50)
+  admissionYear String?  @map("admission_year") @db.VarChar(10)
+  profileImage  String?  @map("profile_image")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  user                 User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  department           Department?            @relation(fields: [departmentId], references: [id])
+  program              Program?               @relation(fields: [programId], references: [id])
+  courseStudents       CourseStudent[]
+  quizAttempts         QuizAttempt[]
+  submissions          Submission[]
+  discussions          Discussion[]
+  aiChatHistory        AiChatHistory[]
+  attendance           Attendance[]
+  liveClassAttendance  LiveClassAttendanceLog[]
+  liveClassPollVotes   LiveClassPollVote[]
+  liveClassHandRaises  LiveClassHandRaise[]
+
+  @@index([studentId], map: "idx_students_student_id")
+  @@map("students")
+}
+
+model Lecturer {
+  id             String   @id @default(uuid()) @db.Uuid
+  userId         String   @unique @map("user_id") @db.Uuid
+  staffId        String?  @unique @map("staff_id") @db.VarChar(50)
+  specialization String?  @db.VarChar(255)
+  isVerified     Boolean  @default(false) @map("is_verified")
+  profileImage   String?  @map("profile_image")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  courses      Course[]
+  lectureNotes LectureNote[]
+  videos       Video[]
+  quizzes      Quiz[]
+  assignments  Assignment[]
+  liveClasses  LiveClass[]
+
+  @@map("lecturers")
+}
+
+model Admin {
+  id         String   @id @default(uuid()) @db.Uuid
+  userId     String   @unique @map("user_id") @db.Uuid
+  adminLevel String?  @map("admin_level") @db.VarChar(50)
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("admins")
+}
+
+model Department {
+  id             String   @id @default(uuid()) @db.Uuid
+  departmentName String   @map("department_name") @db.VarChar(255)
+  description    String?
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  programs         Program[]
+  students         Student[]
+  admittedStudents AdmittedStudent[]
+  courses          Course[]
+
+  @@map("departments")
+}
+
+model Program {
+  id          String   @id @default(uuid()) @db.Uuid
+  departmentId String? @map("department_id") @db.Uuid
+  programName String   @map("program_name") @db.VarChar(255)
+  duration    String?  @db.VarChar(50)
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  department       Department?       @relation(fields: [departmentId], references: [id])
+  students         Student[]
+  admittedStudents AdmittedStudent[]
+  courses          Course[]
+
+  @@map("programs")
+}
+
+model Course {
+  id           String   @id @default(uuid()) @db.Uuid
+  lecturerId   String?  @map("lecturer_id") @db.Uuid
+  departmentId String?  @map("department_id") @db.Uuid
+  programId    String?  @map("program_id") @db.Uuid
+  courseTitle  String   @map("course_title") @db.VarChar(255)
+  courseCode   String   @unique @map("course_code") @db.VarChar(50)
+  semester     String?  @db.VarChar(50)
+  level        String?  @db.VarChar(50)
+  description  String?
+  learningOutcomes String? @map("learning_outcomes")
+  syllabusUrl String? @map("syllabus_url")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  lecturer       Lecturer?      @relation(fields: [lecturerId], references: [id])
+  department     Department?    @relation(fields: [departmentId], references: [id])
+  program        Program?       @relation(fields: [programId], references: [id])
+  courseStudents CourseStudent[]
+  lectureNotes   LectureNote[]
+  videos         Video[]
+  quizzes        Quiz[]
+  assignments    Assignment[]
+  discussions    Discussion[]
+  liveClasses    LiveClass[]
+
+  @@index([courseCode], map: "idx_courses_course_code")
+  @@map("courses")
+}
+
+model CourseStudent {
+  id         String   @id @default(uuid()) @db.Uuid
+  courseId   String   @map("course_id") @db.Uuid
+  studentId  String   @map("student_id") @db.Uuid
+  enrolledAt DateTime @default(now()) @map("enrolled_at")
+
+  course  Course  @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([courseId, studentId])
+  @@map("course_students")
+}
+
+model LectureNote {
+  id          String   @id @default(uuid()) @db.Uuid
+  courseId    String   @map("course_id") @db.Uuid
+  lecturerId  String?  @map("lecturer_id") @db.Uuid
+  title       String   @db.VarChar(255)
+  fileUrl     String   @map("file_url")
+  fileType    String?  @map("file_type") @db.VarChar(20)
+  description String?
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  course   Course    @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  lecturer Lecturer? @relation(fields: [lecturerId], references: [id])
+
+  @@map("lecture_notes")
+}
+
+model Video {
+  id           String   @id @default(uuid()) @db.Uuid
+  courseId     String   @map("course_id") @db.Uuid
+  lecturerId   String?  @map("lecturer_id") @db.Uuid
+  title        String?  @db.VarChar(255)
+  videoUrl     String   @map("video_url")
+  thumbnailUrl String?  @map("thumbnail_url")
+  duration     String?  @db.VarChar(50)
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  course   Course    @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  lecturer Lecturer? @relation(fields: [lecturerId], references: [id])
+
+  @@map("videos")
+}
+
+model Quiz {
+  id              String   @id @default(uuid()) @db.Uuid
+  courseId        String   @map("course_id") @db.Uuid
+  lecturerId      String?  @map("lecturer_id") @db.Uuid
+  title           String?  @db.VarChar(255)
+  instructions    String?
+  durationMinutes Int?     @map("duration_minutes")
+  totalMarks      Int?     @map("total_marks")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  course        Course         @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  lecturer      Lecturer?      @relation(fields: [lecturerId], references: [id])
+  questions     QuizQuestion[]
+  quizAttempts  QuizAttempt[]
+
+  @@map("quizzes")
+}
+
+model QuizQuestion {
+  id            String  @id @default(uuid()) @db.Uuid
+  quizId        String  @map("quiz_id") @db.Uuid
+  question      String
+  optionA       String? @map("option_a")
+  optionB       String? @map("option_b")
+  optionC       String? @map("option_c")
+  optionD       String? @map("option_d")
+  correctAnswer String? @map("correct_answer") @db.VarChar(10)
+  marks         Int     @default(1)
+
+  quiz Quiz @relation(fields: [quizId], references: [id], onDelete: Cascade)
+
+  @@map("quiz_questions")
+}
+
+model QuizAttempt {
+  id          String   @id @default(uuid()) @db.Uuid
+  quizId      String   @map("quiz_id") @db.Uuid
+  studentId   String   @map("student_id") @db.Uuid
+  score       Int?
+  submittedAt DateTime @default(now()) @map("submitted_at")
+
+  quiz    Quiz    @relation(fields: [quizId], references: [id])
+  student Student @relation(fields: [studentId], references: [id])
+
+  @@index([studentId], map: "idx_quiz_attempts_student")
+  @@map("quiz_attempts")
+}
+
+model Assignment {
+  id            String   @id @default(uuid()) @db.Uuid
+  courseId      String   @map("course_id") @db.Uuid
+  lecturerId    String?  @map("lecturer_id") @db.Uuid
+  title         String?  @db.VarChar(255)
+  instructions  String?
+  dueDate       DateTime? @map("due_date")
+  attachmentUrl String?  @map("attachment_url")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  course      Course       @relation(fields: [courseId], references: [id])
+  lecturer    Lecturer?    @relation(fields: [lecturerId], references: [id])
+  submissions Submission[]
+
+  @@map("assignments")
+}
+
+model Submission {
+  id           String   @id @default(uuid()) @db.Uuid
+  assignmentId String   @map("assignment_id") @db.Uuid
+  studentId    String   @map("student_id") @db.Uuid
+  fileUrl      String?  @map("file_url")
+  grade        String?  @db.VarChar(20)
+  feedback     String?
+  submittedAt  DateTime @default(now()) @map("submitted_at")
+
+  assignment Assignment @relation(fields: [assignmentId], references: [id])
+  student    Student    @relation(fields: [studentId], references: [id])
+
+  @@map("submissions")
+}
+
+model Discussion {
+  id             String         @id @default(uuid()) @db.Uuid
+  courseId       String?        @map("course_id") @db.Uuid
+  studentId      String?        @map("student_id") @db.Uuid
+  title          String?        @db.VarChar(255)
+  message        String?
+  discussionType DiscussionType @map("discussion_type")
+  createdAt      DateTime       @default(now()) @map("created_at")
+
+  course   Course?   @relation(fields: [courseId], references: [id])
+  student  Student?  @relation(fields: [studentId], references: [id])
+  comments Comment[]
+
+  @@map("discussions")
+}
+
+model Comment {
+  id           String   @id @default(uuid()) @db.Uuid
+  discussionId String   @map("discussion_id") @db.Uuid
+  userId       String?  @map("user_id") @db.Uuid
+  comment      String
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  discussion Discussion @relation(fields: [discussionId], references: [id], onDelete: Cascade)
+  user       User?      @relation(fields: [userId], references: [id])
+
+  @@map("comments")
+}
+
+model Notification {
+  id        String    @id @default(uuid()) @db.Uuid
+  userId    String?   @map("user_id") @db.Uuid
+  title     String?   @db.VarChar(255)
+  message   String?
+  isRead    Boolean   @default(false) @map("is_read")
+  readAt    DateTime? @map("read_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  user User? @relation(fields: [userId], references: [id])
+
+  @@index([userId], map: "idx_notifications_user")
+  @@index([userId, readAt], map: "idx_notifications_user_read_at")
+  @@map("notifications")
+}
+
+model StudentMessageBroadcast {
+  id             String   @id @default(uuid()) @db.Uuid
+  title          String   @db.VarChar(255)
+  message        String
+  audienceType   String   @map("audience_type") @db.VarChar(50)
+  audienceLabel  String   @map("audience_label") @db.VarChar(255)
+  recipientCount Int      @default(0) @map("recipient_count")
+  sentByUserId   String?  @map("sent_by_user_id") @db.Uuid
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  sentBy User? @relation("StudentMessageBroadcasts", fields: [sentByUserId], references: [id])
+
+  @@index([createdAt], map: "idx_student_message_broadcasts_created")
+  @@map("student_message_broadcasts")
+}
+
+model LecturerMessageBroadcast {
+  id             String   @id @default(uuid()) @db.Uuid
+  title          String   @db.VarChar(255)
+  message        String
+  audienceType   String   @map("audience_type") @db.VarChar(50)
+  audienceLabel  String   @map("audience_label") @db.VarChar(255)
+  recipientCount Int      @default(0) @map("recipient_count")
+  sentByUserId   String?  @map("sent_by_user_id") @db.Uuid
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  sentBy User? @relation("LecturerMessageBroadcasts", fields: [sentByUserId], references: [id])
+
+  @@index([createdAt], map: "idx_lecturer_message_broadcasts_created")
+  @@map("lecturer_message_broadcasts")
+}
+
+model AiChatHistory {
+  id         String   @id @default(uuid()) @db.Uuid
+  studentId  String?  @map("student_id") @db.Uuid
+  question   String?
+  aiResponse String?  @map("ai_response")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  student Student? @relation(fields: [studentId], references: [id])
+
+  @@map("ai_chat_history")
+}
+
+model LiveClass {
+  id           String          @id @default(uuid()) @db.Uuid
+  courseId     String?         @map("course_id") @db.Uuid
+  lecturerId   String?         @map("lecturer_id") @db.Uuid
+  title        String?         @db.VarChar(255)
+  description  String?
+  status       LiveClassStatus @default(SCHEDULED)
+  roomName     String?         @unique @map("room_name") @db.VarChar(120)
+  meetingLink  String?         @map("meeting_link")
+  recordingUrl String?         @map("recording_url")
+  startTime    DateTime?       @map("start_time")
+  endTime      DateTime?       @map("end_time")
+  actualStart  DateTime?       @map("actual_start")
+  actualEnd    DateTime?       @map("actual_end")
+  createdAt    DateTime        @default(now()) @map("created_at")
+
+  course         Course?                  @relation(fields: [courseId], references: [id])
+  lecturer       Lecturer?                @relation(fields: [lecturerId], references: [id])
+  attendance     Attendance[]
+  attendanceLogs LiveClassAttendanceLog[]
+  chatMessages   LiveClassChatMessage[]
+  polls          LiveClassPoll[]
+  handRaises     LiveClassHandRaise[]
+  recordings     LiveClassRecording[]
+
+  @@index([status, startTime], map: "idx_live_classes_status_start")
+  @@map("live_classes")
+}
+
+model LiveClassAttendanceLog {
+  id                String           @id @default(uuid()) @db.Uuid
+  liveClassId       String           @map("live_class_id") @db.Uuid
+  studentId         String           @map("student_id") @db.Uuid
+  studentIdCode     String           @map("student_id_code") @db.VarChar(50)
+  studentName       String           @map("student_name") @db.VarChar(255)
+  courseCode        String           @map("course_code") @db.VarChar(50)
+  courseTitle       String           @map("course_title") @db.VarChar(255)
+  joinTime          DateTime         @map("join_time")
+  exitTime          DateTime?        @map("exit_time")
+  durationSeconds   Int              @default(0) @map("duration_seconds")
+  attendancePercent Float            @default(0) @map("attendance_percent")
+  status            AttendanceStatus @default(ABSENT)
+  updatedAt         DateTime         @updatedAt @map("updated_at")
+
+  liveClass LiveClass @relation(fields: [liveClassId], references: [id], onDelete: Cascade)
+  student   Student   @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([liveClassId, studentId])
+  @@index([liveClassId], map: "idx_live_attendance_class")
+  @@map("live_class_attendance_logs")
+}
+
+model LiveClassChatMessage {
+  id          String   @id @default(uuid()) @db.Uuid
+  liveClassId String   @map("live_class_id") @db.Uuid
+  userId      String   @map("user_id") @db.Uuid
+  senderName  String   @map("sender_name") @db.VarChar(255)
+  senderRole  Role     @map("sender_role")
+  message     String
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  liveClass LiveClass @relation(fields: [liveClassId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([liveClassId, createdAt], map: "idx_live_chat_class_time")
+  @@map("live_class_chat_messages")
+}
+
+model LiveClassPoll {
+  id          String   @id @default(uuid()) @db.Uuid
+  liveClassId String   @map("live_class_id") @db.Uuid
+  question    String
+  options     String
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  liveClass LiveClass           @relation(fields: [liveClassId], references: [id], onDelete: Cascade)
+  votes     LiveClassPollVote[]
+
+  @@map("live_class_polls")
+}
+
+model LiveClassPollVote {
+  id          String   @id @default(uuid()) @db.Uuid
+  pollId      String   @map("poll_id") @db.Uuid
+  studentId   String   @map("student_id") @db.Uuid
+  optionIndex Int      @map("option_index")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  poll    LiveClassPoll @relation(fields: [pollId], references: [id], onDelete: Cascade)
+  student Student       @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([pollId, studentId])
+  @@map("live_class_poll_votes")
+}
+
+model LiveClassHandRaise {
+  id          String   @id @default(uuid()) @db.Uuid
+  liveClassId String   @map("live_class_id") @db.Uuid
+  studentId   String   @map("student_id") @db.Uuid
+  studentName String   @map("student_name") @db.VarChar(255)
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  liveClass LiveClass @relation(fields: [liveClassId], references: [id], onDelete: Cascade)
+  student   Student   @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([liveClassId, studentId])
+  @@map("live_class_hand_raises")
+}
+
+model LiveClassRecording {
+  id          String   @id @default(uuid()) @db.Uuid
+  liveClassId String   @map("live_class_id") @db.Uuid
+  title       String   @db.VarChar(255)
+  recordingUrl String  @map("recording_url")
+  durationSec Int?     @map("duration_sec")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  liveClass LiveClass @relation(fields: [liveClassId], references: [id], onDelete: Cascade)
+
+  @@map("live_class_recordings")
+}
+
+model Attendance {
+  id        String           @id @default(uuid()) @db.Uuid
+  classId   String?          @map("class_id") @db.Uuid
+  studentId String?          @map("student_id") @db.Uuid
+  status    AttendanceStatus
+  markedAt  DateTime         @default(now()) @map("marked_at")
+
+  liveClass LiveClass? @relation(fields: [classId], references: [id])
+  student   Student?   @relation(fields: [studentId], references: [id])
+
+  @@map("attendance")
+}

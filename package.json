@@ -1,0 +1,24 @@
+{
+  "scripts": {
+    "dev": "node scripts/dev.js",
+    "dev:socket": "node server/live-classroom-server.js",
+    "build": "prisma generate && npm run build --prefix frontend",
+    "start": "npm run start --prefix frontend",
+    "lint": "npm run lint --prefix frontend",
+    "db:generate": "prisma generate",
+    "db:seed": "node prisma/seed.js",
+    "db:migrate-student-ids": "node prisma/scripts/migrate-student-ids.js"
+  },
+  "prisma": {
+    "seed": "node prisma/seed.js"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.9.0",
+    "bcryptjs": "^3.0.2",
+    "socket.io": "^4.8.3"
+  },
+  "devDependencies": {
+    "dotenv": "^17.4.2",
+    "prisma": "^6.9.0"
+  }
+}

@@ -1,0 +1,54 @@
+"use client";
+
+import { AllCoursesPage } from "@/components/student/courses/all-courses-page";
+import { CourseDetailPage } from "@/components/student/courses/course-detail-page";
+import { CoursesSubnav } from "@/components/student/courses/courses-subnav";
+import { MaterialsPage } from "@/components/student/courses/materials-pages";
+import { BookmarksPage, CourseProgressPage } from "@/components/student/courses/progress-bookmarks-pages";
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function CoursesHubContent({ segment }: { segment?: string[] }) {
+  const view = segment?.[0] ?? "";
+
+  if (view && UUID_RE.test(view)) {
+    return <CourseDetailPage courseId={view} />;
+  }
+
+  switch (view) {
+    case "":
+      return <AllCoursesPage filter="all" />;
+    case "current-semester":
+      return <AllCoursesPage filter="current-semester" />;
+    case "completed":
+      return <AllCoursesPage filter="completed" />;
+    case "lecture-notes":
+      return <MaterialsPage type="lecture-notes" />;
+    case "videos":
+      return <MaterialsPage type="videos" />;
+    case "assignments":
+      return <MaterialsPage type="assignments" />;
+    case "quizzes":
+      return <MaterialsPage type="quizzes" />;
+    case "discussions":
+      return <MaterialsPage type="discussions" />;
+    case "bookmarks":
+      return <BookmarksPage />;
+    case "progress":
+      return <CourseProgressPage />;
+    default:
+      return <AllCoursesPage filter="all" />;
+  }
+}
+
+export function CoursesHub({ segment }: { segment?: string[] }) {
+  const view = segment?.[0] ?? "";
+  const isCourseDetail = view && UUID_RE.test(view);
+
+  return (
+    <div className="space-y-5">
+      {!isCourseDetail ? <CoursesSubnav /> : null}
+      <CoursesHubContent segment={segment} />
+    </div>
+  );
+}
