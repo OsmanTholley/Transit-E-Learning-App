@@ -1,6 +1,10 @@
 "use client";
 
-import { DATABASE_OFFLINE_MESSAGE } from "@/lib/db-errors";
+import {
+  DATABASE_OFFLINE_MESSAGE,
+  SCHEMA_OUT_OF_DATE_CODE,
+  SCHEMA_OUT_OF_DATE_MESSAGE,
+} from "@/lib/db-errors";
 import {
   beginDatabaseOfflineRecovery,
   isDatabaseOfflineResponse,
@@ -22,6 +26,9 @@ export type RequestApiResult<T> =
   | { ok: false; offline: false; message: string };
 
 function getErrorMessage(data: ApiErrorBody, fallback: string) {
+  if (data.code === SCHEMA_OUT_OF_DATE_CODE) {
+    return SCHEMA_OUT_OF_DATE_MESSAGE;
+  }
   return data.error ?? data.message ?? fallback;
 }
 

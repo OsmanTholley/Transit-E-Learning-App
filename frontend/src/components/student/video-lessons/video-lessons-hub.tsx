@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useStudentSession } from "@/contexts/student-session-context";
-import { VideoLesson, LiveClassSession } from "@/types/video-lessons";
+import { VideoLesson } from "@/types/video-lessons";
 import { getVideoLessonsViewTitle } from "@/components/student/video-lessons/video-lessons-nav-config";
 import { VideoCard } from "@/components/student/video-lessons/video-ui";
 
@@ -227,7 +227,6 @@ export function VideoLessonsHub({ segment }: Props) {
   const { data, loading: sessionLoading, error: sessionError } = useStudentSession();
 
   const [videos, setVideos] = useState<VideoLesson[] | null>(null);
-  const [classes, setClasses] = useState<LiveClassSession[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -272,19 +271,12 @@ export function VideoLessonsHub({ segment }: Props) {
       setLoading(true);
       setError(null);
       try {
-        const [vRes, cRes] = await Promise.all([
-          fetch("/api/student/video-lessons/videos"),
-          fetch("/api/student/video-lessons/live-classes"),
-        ]);
-
+        const vRes = await fetch("/api/student/video-lessons/videos");
         const vJson = await vRes.json();
         if (!vRes.ok) throw new Error(vJson?.error ?? "Failed to load videos.");
-        const cJson = await cRes.json();
-        if (!cRes.ok) throw new Error(cJson?.error ?? "Failed to load live classes.");
 
         if (!cancelled) {
           setVideos(vJson);
-          setClasses(cJson);
         }
       } catch (e) {
         if (!cancelled) {
@@ -359,9 +351,8 @@ export function VideoLessonsHub({ segment }: Props) {
     const completed = all.filter((x) => x.percent >= 95).length;
     const inProgress = all.filter((x) => x.percent > 0 && x.percent < 95).length;
     const avg = total > 0 ? Math.round(all.reduce((s, x) => s + x.percent, 0) / total) : 0;
-    const live = (classes ?? []).length;
-    return { total, completed, inProgress, avg, live };
-  }, [computed.all, classes]);
+    return { total, completed, inProgress, avg };
+  }, [computed.all]);
 
   function toggleBookmark(id: string) {
     setBookmarks((prev) => {
@@ -479,9 +470,9 @@ export function VideoLessonsHub({ segment }: Props) {
           }
         />
         <DashboardStat
-          label="Live Classes"
-          value={String(stats.live)}
-          sub="Upcoming sessions"
+          label="In Progress"
+          value={String(stats.inProgress)}
+          sub="Currently watching"
           tone="yellow"
           icon={
             <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="2">
@@ -521,9 +512,7 @@ export function VideoLessonsHub({ segment }: Props) {
         ) : null}
       </AnimatePresence>
 
-      {view === "live-classes" ? (
-        <LiveClassesView classes={classes ?? []} />
-      ) : view === "playlists" ? (
+      {view === "playlists" ? (
         <CoursePlaylistsView
           videos={videos ?? []}
           progressById={progressById}
@@ -602,92 +591,6 @@ export function VideoLessonsHub({ segment }: Props) {
         </>
       )}
     </div>
-  );
-}
-
-function LiveClassesView({ classes }: { classes: LiveClassSession[] }) {
-  return (
-    <section className="space-y-4">
-      <div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200/80">
-        <h2 className="text-lg font-bold text-slate-900">Live Classes</h2>
-        <p className="mt-1 text-sm text-slate-500">Join scheduled real-time lectures and track attendance.</p>
-      </div>
-
-      <div className="grid gap-4 lg:grid-cols-2">
-        {classes.length === 0 ? (
-          <div className="rounded-2xl bg-white p-8 text-center text-sm text-slate-500 ring-1 ring-slate-200/80">
-            No live classes scheduled yet.
-          </div>
-        ) : (
-          classes.map((c) => {
-            const start = c.startTime ? new Date(c.startTime) : null;
-            const now = new Date();
-            const ms = start ? start.getTime() - now.getTime() : null;
-            const mins = ms != null ? Math.max(0, Math.floor(ms / 60000)) : null;
-            const hours = mins != null ? Math.floor(mins / 60) : null;
-            const remaining = mins == null ? "TBA" : hours && hours > 0 ? `${hours}h ${mins % 60}m` : `${mins}m`;
-
-            return (
-              <div key={c.id} className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200/80">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="text-sm font-bold text-[#0B3D91]">{c.courseCode}</p>
-                    <h3 className="mt-1 truncate text-base font-semibold text-slate-900">{c.courseTitle}</h3>
-                    <p className="mt-1 text-sm text-slate-500">Lecturer: {c.lecturerName}</p>
-                  </div>
-                  <span className="rounded-full bg-[#FFC107]/15 px-3 py-1 text-xs font-bold text-[#0B3D91]">
-                    Starts in {remaining}
-                  </span>
-                </div>
-                <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                  <div className="text-sm text-slate-600">
-                    <p>
-                      <span className="font-semibold text-slate-900">Start:</span>{" "}
-                      {c.startTime ? new Date(c.startTime).toLocaleString() : "TBA"}
-                    </p>
-                    <p>
-                      <span className="font-semibold text-slate-900">End:</span>{" "}
-                      {c.endTime ? new Date(c.endTime).toLocaleString() : "TBA"}
-                    </p>
-                  </div>
-                  <a
-                    href={c.meetingLink ?? "#"}
-                    target={c.meetingLink ? "_blank" : undefined}
-                    rel={c.meetingLink ? "noreferrer" : undefined}
-                    className={[
-                      "inline-flex items-center justify-center rounded-xl px-4 py-2 text-sm font-bold shadow-sm transition-colors",
-                      c.meetingLink
-                        ? "bg-[#0B3D91] text-white hover:bg-[#0B3D91]/90"
-                        : "bg-slate-100 text-slate-400 cursor-not-allowed",
-                    ].join(" ")}
-                    aria-disabled={!c.meetingLink}
-                    onClick={(e) => {
-                      if (!c.meetingLink) e.preventDefault();
-                    }}
-                  >
-                    Join meeting
-                  </a>
-                </div>
-                <div className="mt-4 grid gap-2 sm:grid-cols-3">
-                  <div className="rounded-xl bg-slate-50 p-3 ring-1 ring-slate-200/60">
-                    <p className="text-xs font-semibold text-slate-500">Attendance</p>
-                    <p className="mt-1 text-sm font-bold text-slate-900">Auto-tracked</p>
-                  </div>
-                  <div className="rounded-xl bg-slate-50 p-3 ring-1 ring-slate-200/60">
-                    <p className="text-xs font-semibold text-slate-500">Live chat</p>
-                    <p className="mt-1 text-sm font-bold text-slate-900">In session</p>
-                  </div>
-                  <div className="rounded-xl bg-slate-50 p-3 ring-1 ring-slate-200/60">
-                    <p className="text-xs font-semibold text-slate-500">Reminder</p>
-                    <p className="mt-1 text-sm font-bold text-slate-900">Enabled</p>
-                  </div>
-                </div>
-              </div>
-            );
-          })
-        )}
-      </div>
-    </section>
   );
 }
 

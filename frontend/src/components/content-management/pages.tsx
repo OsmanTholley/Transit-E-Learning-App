@@ -53,24 +53,32 @@ function ContentLoading() {
 }
 
 export function LectureNotesPage() {
-  const { data, loading } = useAdminContent();
+  const { data, loading, reload } = useAdminContent();
   if (loading && !data) return <ContentLoading />;
 
   return (
     <StudentSection>
       {data ? <ContentOverviewCards stats={data.stats} /> : null}
-      <ContentTable title="Lecture notes" items={data?.lectureNotes ?? []} />
+      <ContentTable
+        title="Lecture notes"
+        items={data?.lectureNotes ?? []}
+        onItemDeleted={() => void reload()}
+      />
     </StudentSection>
   );
 }
 
 export function VideosPage() {
-  const { data, loading } = useAdminContent();
+  const { data, loading, reload } = useAdminContent();
   if (loading && !data) return <ContentLoading />;
 
   return (
     <StudentSection>
-      <ContentTable title="Videos" items={data?.videos ?? []} />
+      <ContentTable
+        title="Videos"
+        items={data?.videos ?? []}
+        onItemDeleted={() => void reload()}
+      />
     </StudentSection>
   );
 }

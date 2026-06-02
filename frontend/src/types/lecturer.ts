@@ -3,6 +3,7 @@ export type LecturerVerificationStatus = "Verified" | "Pending" | "Rejected";
 
 export type LecturerRecord = {
   id: string;
+  userId: string;
   fullName: string;
   email: string;
   phone: string;

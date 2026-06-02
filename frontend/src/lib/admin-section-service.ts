@@ -19,10 +19,6 @@ const sectionMeta: Record<string, { title: string; subtitle: string }> = {
     title: "Quizzes",
     subtitle: "Monitor quiz creation and attempts.",
   },
-  "live-classes": {
-    title: "Live Classes",
-    subtitle: "Monitor and manage scheduled live sessions.",
-  },
   discussions: {
     title: "Discussions",
     subtitle: "Moderate course, program, and general discussions.",
@@ -113,36 +109,6 @@ export async function buildAdminSectionContent(section: string): Promise<Section
             q.course.courseCode,
             String(q._count.quizAttempts),
             formatDate(q.createdAt),
-          ]),
-        },
-      };
-    }
-    case "live-classes": {
-      const [total, upcoming, recent] = await Promise.all([
-        prisma.liveClass.count(),
-        prisma.liveClass.count({ where: { startTime: { gte: new Date() } } }),
-        prisma.liveClass.findMany({
-          take: 10,
-          orderBy: { startTime: "desc" },
-          include: {
-            course: { select: { courseCode: true } },
-            lecturer: { select: { user: { select: { fullName: true } } } },
-          },
-        }),
-      ]);
-      return {
-        ...meta,
-        stats: [
-          { label: "Total sessions", value: String(total) },
-          { label: "Upcoming", value: String(upcoming) },
-        ],
-        table: {
-          columns: ["Course", "Lecturer", "Start", "End"],
-          rows: recent.map((c) => [
-            c.course?.courseCode ?? "—",
-            c.lecturer?.user.fullName ?? "—",
-            formatDateTime(c.startTime),
-            formatDateTime(c.endTime),
           ]),
         },
       };

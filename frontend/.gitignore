@@ -20,6 +20,9 @@
 # production
 /build
 
+# uploaded course files
+/public/uploads
+
 # misc
 .DS_Store
 *.pem

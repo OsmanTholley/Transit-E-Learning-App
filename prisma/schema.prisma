@@ -20,6 +20,11 @@ enum DiscussionType {
   GENERAL
 }
 
+enum ContentTargetType {
+  LECTURE_NOTE
+  VIDEO
+}
+
 enum AttendanceStatus {
   PRESENT
   PARTIAL
@@ -53,6 +58,8 @@ model User {
   studentMessageBroadcasts   StudentMessageBroadcast[] @relation("StudentMessageBroadcasts")
   lecturerMessageBroadcasts  LecturerMessageBroadcast[] @relation("LecturerMessageBroadcasts")
   liveClassChatMessages      LiveClassChatMessage[]
+  contentComments            ContentComment[]
+  contentLikes               ContentLike[]
 
   @@map("users")
 }
@@ -176,8 +183,9 @@ model Course {
   level        String?  @db.VarChar(50)
   description  String?
   learningOutcomes String? @map("learning_outcomes")
-  syllabusUrl String? @map("syllabus_url")
-  createdAt    DateTime @default(now()) @map("created_at")
+  syllabusUrl      String?  @map("syllabus_url")
+  syllabusText     String?  @map("syllabus_text")
+  createdAt        DateTime @default(now()) @map("created_at")
 
   lecturer       Lecturer?      @relation(fields: [lecturerId], references: [id])
   department     Department?    @relation(fields: [departmentId], references: [id])
@@ -213,9 +221,10 @@ model LectureNote {
   lecturerId  String?  @map("lecturer_id") @db.Uuid
   title       String   @db.VarChar(255)
   fileUrl     String   @map("file_url")
-  fileType    String?  @map("file_type") @db.VarChar(20)
-  description String?
-  createdAt   DateTime @default(now()) @map("created_at")
+  fileType      String?  @map("file_type") @db.VarChar(20)
+  description   String?
+  coverImageUrl String?  @map("cover_image_url")
+  createdAt     DateTime @default(now()) @map("created_at")
 
   course   Course    @relation(fields: [courseId], references: [id], onDelete: Cascade)
   lecturer Lecturer? @relation(fields: [lecturerId], references: [id])
@@ -229,9 +238,11 @@ model Video {
   lecturerId   String?  @map("lecturer_id") @db.Uuid
   title        String?  @db.VarChar(255)
   videoUrl     String   @map("video_url")
-  thumbnailUrl String?  @map("thumbnail_url")
-  duration     String?  @db.VarChar(50)
-  createdAt    DateTime @default(now()) @map("created_at")
+  thumbnailUrl    String?   @map("thumbnail_url")
+  duration        String?   @db.VarChar(50)
+  expiresAt       DateTime? @map("expires_at")
+  deletionNotice  String?   @map("deletion_notice")
+  createdAt       DateTime  @default(now()) @map("created_at")
 
   course   Course    @relation(fields: [courseId], references: [id], onDelete: Cascade)
   lecturer Lecturer? @relation(fields: [lecturerId], references: [id])
@@ -346,6 +357,33 @@ model Comment {
   user       User?      @relation(fields: [userId], references: [id])
 
   @@map("comments")
+}
+
+model ContentComment {
+  id         String            @id @default(uuid()) @db.Uuid
+  targetType ContentTargetType @map("target_type")
+  targetId   String            @map("target_id") @db.Uuid
+  userId     String            @map("user_id") @db.Uuid
+  body       String
+  createdAt  DateTime          @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([targetType, targetId], map: "idx_content_comments_target")
+  @@map("content_comments")
+}
+
+model ContentLike {
+  id         String            @id @default(uuid()) @db.Uuid
+  targetType ContentTargetType @map("target_type")
+  targetId   String            @map("target_id") @db.Uuid
+  userId     String            @map("user_id") @db.Uuid
+  createdAt  DateTime          @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([targetType, targetId, userId], map: "uq_content_likes_target_user")
+  @@map("content_likes")
 }
 
 model Notification {

@@ -53,7 +53,6 @@ export const studentNavItems = [
     icon: "videos",
     children: videoLessonsSubmenu.map((item) => ({ label: navSidebarLabel(item), href: item.href })),
   },
-  { label: "Live Classroom", href: "/student/live-classroom", icon: "live" },
   {
     label: "Quizzes",
     href: "/student/quizzes",

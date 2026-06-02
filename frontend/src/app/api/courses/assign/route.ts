@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { normalizeAcademicYear } from "@/lib/academic-years";
 import { requireAdminUser, unauthorized } from "@/lib/auth";
+import { syncCourseEnrollments } from "@/lib/course-enrollment";
 import { handleRouteDatabaseError } from "@/lib/db-errors";
 import { prisma } from "@/lib/prisma";
 
@@ -70,8 +71,10 @@ export async function POST(request: NextRequest) {
       },
     });
 
+    const enrolled = await syncCourseEnrollments(course.id);
+
     return NextResponse.json({
-      message: `${lecturer.user.fullName} assigned to ${course.courseCode} – ${course.courseTitle}.`,
+      message: `${lecturer.user.fullName} assigned to ${course.courseCode} – ${course.courseTitle}. ${enrolled} student(s) enrolled.`,
     });
   } catch (error) {
     console.error("POST /api/courses/assign:", error);

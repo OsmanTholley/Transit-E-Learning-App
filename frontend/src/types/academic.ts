@@ -32,6 +32,8 @@ export type ContentItem = {
   lecturer: string;
   uploadedAt: string;
   status: "Approved" | "Pending" | "Rejected" | "Archived";
+  /** For materials/videos with comments & likes */
+  socialTarget?: "lecture-note" | "video";
 };
 
 export type ReportedContent = {

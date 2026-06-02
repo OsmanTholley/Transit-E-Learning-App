@@ -50,6 +50,7 @@ export type LectureNoteItem = {
   fileType: string;
   fileUrl: string;
   description: string | null;
+  coverImageUrl: string | null;
   uploadedAt: string;
 };
 
@@ -62,6 +63,8 @@ export type VideoItem = {
   videoUrl: string;
   thumbnailUrl: string | null;
   duration: string | null;
+  expiresAt: string | null;
+  deletionNotice: string | null;
   progress: number;
 };
 
@@ -104,6 +107,8 @@ export type DiscussionItem = {
 };
 
 export type CourseDetail = CourseCard & {
+  syllabusText: string | null;
+  syllabusUrl: string | null;
   objectives: string[];
   announcements: { id: string; title: string; message: string; createdAt: string }[];
   lectureNotes: LectureNoteItem[];

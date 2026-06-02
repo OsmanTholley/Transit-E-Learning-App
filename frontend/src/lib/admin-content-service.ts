@@ -13,6 +13,7 @@ type ContentRow = {
   department: string;
   lecturer: string;
   uploadedAt: string;
+  socialTarget?: "lecture-note" | "video";
 };
 
 function toContentItem(row: ContentRow): ContentItem {
@@ -72,6 +73,7 @@ export async function buildAdminContentData() {
       department: n.course.department?.departmentName ?? "—",
       lecturer: n.lecturer?.user.fullName ?? "—",
       uploadedAt: formatDate(n.createdAt),
+      socialTarget: "lecture-note",
     })
   );
 
@@ -84,6 +86,7 @@ export async function buildAdminContentData() {
       department: v.course.department?.departmentName ?? "—",
       lecturer: v.lecturer?.user.fullName ?? "—",
       uploadedAt: formatDate(v.createdAt),
+      socialTarget: "video",
     })
   );
 

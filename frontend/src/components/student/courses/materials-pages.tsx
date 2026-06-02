@@ -4,6 +4,8 @@ import { motion } from "framer-motion";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useCourseBookmarks } from "@/hooks/use-course-bookmarks";
+import { ContentEngagementPanel } from "@/components/content/content-engagement-panel";
+import { AssignmentSubmitCard } from "@/components/student/courses/assignment-submit-card";
 import {
   EmptyState,
   LoadingGrid,
@@ -46,21 +48,23 @@ export function MaterialsPage({ type }: { type: MaterialType }) {
   const { toggleBookmark, isBookmarked } = useCourseBookmarks();
   const meta = pageMeta[type];
 
-  useEffect(() => {
-    async function load() {
-      setLoading(true);
-      try {
-        const res = await fetch(`/api/student/courses/materials?type=${type}`, { credentials: "include" });
-        const json = await res.json();
-        if (!res.ok) throw new Error(json.error ?? "Failed to load");
-        setItems(json.items ?? []);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to load");
-      } finally {
-        setLoading(false);
-      }
+  async function loadItems() {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/student/courses/materials?type=${type}`, { credentials: "include" });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error ?? "Failed to load");
+      setItems(json.items ?? []);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load");
+    } finally {
+      setLoading(false);
     }
-    load();
+  }
+
+  useEffect(() => {
+    void loadItems();
   }, [type]);
 
   const filtered = useMemo(() => {
@@ -95,7 +99,16 @@ export function MaterialsPage({ type }: { type: MaterialType }) {
                 className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200/80"
               >
                 <div className="flex items-start justify-between gap-3">
-                  <div>
+                  <div className="flex gap-3">
+                    {note.coverImageUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={note.coverImageUrl}
+                        alt=""
+                        className="h-20 w-14 shrink-0 rounded-lg object-cover shadow-sm"
+                      />
+                    ) : null}
+                    <div>
                     <span className="rounded-lg bg-rose-50 px-2 py-0.5 text-xs font-bold text-rose-600">
                       {note.fileType}
                     </span>
@@ -104,6 +117,7 @@ export function MaterialsPage({ type }: { type: MaterialType }) {
                     <p className="text-xs text-slate-400">
                       {note.lecturerName} · {note.uploadedAt}
                     </p>
+                    </div>
                   </div>
                   <button
                     type="button"
@@ -133,6 +147,11 @@ export function MaterialsPage({ type }: { type: MaterialType }) {
                   </a>
                   <PrimaryButton href={`/student/lecture-notes/view/${note.id}`}>Open Note</PrimaryButton>
                 </div>
+                <ContentEngagementPanel
+                  targetType="lecture-note"
+                  targetId={note.id}
+                  compact
+                />
               </motion.article>
             ))}
 
@@ -152,6 +171,23 @@ export function MaterialsPage({ type }: { type: MaterialType }) {
                 <div className="p-4">
                   <h3 className="font-semibold text-slate-900">{video.title}</h3>
                   <p className="text-sm text-slate-500">{video.courseTitle}</p>
+                  {video.deletionNotice ? (
+                    <p className="mt-2 rounded-lg bg-amber-50 px-2 py-1.5 text-xs text-amber-900 ring-1 ring-amber-200">
+                      {video.deletionNotice}
+                    </p>
+                  ) : null}
+                  {video.expiresAt ? (
+                    <p className="mt-1 text-xs text-slate-500">
+                      Available until {new Date(video.expiresAt).toLocaleString()}
+                    </p>
+                  ) : null}
+                  <a
+                    href={video.videoUrl}
+                    download
+                    className="mt-2 inline-block text-xs font-semibold text-[#0B3D91]"
+                  >
+                    Download video
+                  </a>
                   <div className="mt-3 h-1.5 rounded-full bg-slate-100">
                     <div className="h-full rounded-full bg-[#FFC107]" style={{ width: `${video.progress}%` }} />
                   </div>
@@ -173,6 +209,7 @@ export function MaterialsPage({ type }: { type: MaterialType }) {
                     </button>
                     <PrimaryButton href={`/student/video-lessons/watch/${video.id}`}>Watch</PrimaryButton>
                   </div>
+                  <ContentEngagementPanel targetType="video" targetId={video.id} compact />
                 </div>
               </motion.article>
             ))}
@@ -191,9 +228,7 @@ export function MaterialsPage({ type }: { type: MaterialType }) {
                   </span>
                 </div>
                 {a.marks ? <p className="mt-2 text-sm font-medium text-emerald-600">Marks: {a.marks}</p> : null}
-                <PrimaryButton href={`/student/courses/${a.courseId}`} className="mt-4">
-                  {a.status === "submitted" ? "View Feedback" : "View Assignment"}
-                </PrimaryButton>
+                <AssignmentSubmitCard assignment={a} onSubmitted={() => void loadItems()} />
               </article>
             ))}
 

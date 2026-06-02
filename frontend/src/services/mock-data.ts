@@ -22,10 +22,11 @@ export const navigation: Record<"student" | "lecturer", NavItem[]> = {
   lecturer: [
     { label: "Dashboard", href: "/lecturer/dashboard" },
     { label: "Courses", href: "/lecturer/courses" },
-    { label: "Live Classroom", href: "/lecturer/live-classroom" },
-    { label: "Upload Note", href: "/lecturer/upload-note" },
+    { label: "Materials", href: "/lecturer/materials" },
+    { label: "Videos", href: "/lecturer/videos" },
     { label: "Quizzes", href: "/lecturer/quizzes" },
     { label: "Assignments", href: "/lecturer/assignments" },
+    { label: "Students", href: "/lecturer/students" },
     { label: "Profile", href: "/lecturer/profile" },
   ],
 };
@@ -76,7 +77,6 @@ export const adminNavigation: AdminNavigation = {
       items: [
         { label: "Assignments", href: "/admin/assignments" },
         { label: "Quizzes", href: "/admin/quizzes" },
-        { label: "Live Classroom", href: "/admin/live-classroom" },
         { label: "Discussions", href: "/admin/discussions" },
       ],
     },
@@ -221,14 +221,26 @@ const lecturerSections: Record<string, SectionContent> = {
       ],
     },
   },
-  "upload-note": {
-    title: "Upload Lecture Note",
+  materials: {
+    title: "Course Materials",
     subtitle: "Publish PDF, DOCX, and slides for enrolled students.",
     bullets: [
       "Accepted formats: PDF, DOCX, PPT.",
-      "Maximum file size: 30MB.",
+      "Maximum file size: 25MB.",
       "Attach to a course before publishing.",
     ],
+  },
+  "upload-note": {
+    title: "Course Materials",
+    subtitle: "Publish PDF, DOCX, and slides for enrolled students.",
+  },
+  videos: {
+    title: "Video Lessons",
+    subtitle: "Upload or link lesson videos for your classes.",
+  },
+  students: {
+    title: "My Students",
+    subtitle: "View students enrolled in your assigned courses.",
   },
   quizzes: {
     title: "Quiz Management",
@@ -313,11 +325,6 @@ const adminSections: Record<string, SectionContent> = {
     title: "Quizzes",
     subtitle: "Monitor quiz creation and attempts.",
     bullets: ["Review quizzes per course.", "Track attempts and averages."],
-  },
-  "live-classes": {
-    title: "Live Classes",
-    subtitle: "Monitor and manage scheduled live sessions.",
-    bullets: ["Review schedules.", "Manage meeting links and attendance."],
   },
   discussions: {
     title: "Discussions",

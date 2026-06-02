@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { syncCourseEnrollments } from "@/lib/course-enrollment";
 import { getAdminCreatedDepartments } from "@/lib/admin-academic-options";
 import { normalizeAcademicYear } from "@/lib/academic-years";
 import { requireAdminUser, unauthorized } from "@/lib/auth";
@@ -171,7 +172,7 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      await prisma.course.create({
+      const newCourse = await prisma.course.create({
         data: {
           courseCode: code,
           courseTitle,
@@ -182,7 +183,10 @@ export async function POST(request: NextRequest) {
           semester,
           description,
         },
+        select: { id: true },
       });
+
+      await syncCourseEnrollments(newCourse.id);
 
       created.push({ code, department: department.departmentName });
     }

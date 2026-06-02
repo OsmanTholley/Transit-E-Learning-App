@@ -11,13 +11,3 @@ export type VideoLesson = {
   createdAt: string;
 };
 
-export type LiveClassSession = {
-  id: string;
-  courseCode: string;
-  courseTitle: string;
-  lecturerName: string;
-  meetingLink: string | null;
-  startTime: string | null;
-  endTime: string | null;
-};
-

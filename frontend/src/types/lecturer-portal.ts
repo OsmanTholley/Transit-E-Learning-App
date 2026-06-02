@@ -4,6 +4,7 @@ export type LecturerDashboardData = {
     coursesManaged: number;
     pendingGrading: number;
     notesUploaded: number;
+    videosUploaded: number;
     quizzesCreated: number;
     assignmentsCount: number;
   };
@@ -28,6 +29,7 @@ export type LecturerCourseRow = {
   description: string | null;
   learningOutcomes: string[];
   syllabusUrl: string | null;
+  syllabusText: string | null;
   updatedAt: string;
 };
 

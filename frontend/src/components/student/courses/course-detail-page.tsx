@@ -174,6 +174,26 @@ export function CourseDetailPage({ courseId }: { courseId: string }) {
                     <li key={o}>{o}</li>
                   ))}
                 </ul>
+                {(course.syllabusText || course.syllabusUrl) && (
+                  <div className="mt-6">
+                    <h3 className="font-bold text-slate-900">Syllabus</h3>
+                    {course.syllabusText ? (
+                      <p className="mt-2 whitespace-pre-wrap text-sm text-slate-600">
+                        {course.syllabusText}
+                      </p>
+                    ) : null}
+                    {course.syllabusUrl ? (
+                      <a
+                        href={course.syllabusUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="mt-2 inline-block text-sm font-semibold text-[#0B3D91] hover:underline"
+                      >
+                        Open syllabus document →
+                      </a>
+                    ) : null}
+                  </div>
+                )}
               </div>
               <div className="rounded-xl bg-[#0B3D91]/5 p-5">
                 <h3 className="font-bold text-[#0B3D91]">Lecturer</h3>

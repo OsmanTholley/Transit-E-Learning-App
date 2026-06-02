@@ -23,6 +23,7 @@ export async function buildLecturerDashboardData(
       _count: {
         select: {
           lectureNotes: true,
+          videos: true,
           quizzes: true,
           assignments: true,
         },
@@ -50,6 +51,7 @@ export async function buildLecturerDashboardData(
       coursesManaged: lecturer.courses.length,
       pendingGrading,
       notesUploaded: lecturer._count.lectureNotes,
+      videosUploaded: lecturer._count.videos,
       quizzesCreated: lecturer._count.quizzes,
       assignmentsCount: lecturer._count.assignments,
     },
@@ -93,6 +95,7 @@ export async function buildLecturerCoursesData(
           .map((item) => item.trim())
           .filter(Boolean) ?? [],
       syllabusUrl: course.syllabusUrl,
+      syllabusText: course.syllabusText,
       updatedAt: course.createdAt.toISOString().slice(0, 10),
     })),
   };

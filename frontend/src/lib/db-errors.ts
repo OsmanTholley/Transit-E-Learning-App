@@ -4,11 +4,31 @@ import { Prisma } from "@prisma/client";
 export const DATABASE_OFFLINE_CODE = "DATABASE_OFFLINE";
 export const DATABASE_OFFLINE_MESSAGE = "Check your internet and try again";
 
+export const SCHEMA_OUT_OF_DATE_CODE = "SCHEMA_OUT_OF_DATE";
+export const SCHEMA_OUT_OF_DATE_MESSAGE =
+  "Database schema is out of date. From the project root run: npx prisma migrate deploy";
+
 export class DatabaseUnavailableError extends Error {
   constructor(message = DATABASE_OFFLINE_MESSAGE) {
     super(message);
     this.name = "DatabaseUnavailableError";
   }
+}
+
+export function isSchemaOutOfDateError(error: unknown): boolean {
+  if (error instanceof Prisma.PrismaClientKnownRequestError) {
+    return error.code === "P2021" || error.code === "P2022";
+  }
+  if (error instanceof Error) {
+    const message = error.message.toLowerCase();
+    return (
+      (message.includes("column") && message.includes("does not exist")) ||
+      (message.includes("table") && message.includes("does not exist")) ||
+      message.includes("invalid input value for enum") ||
+      message.includes('type "liveclassstatus" does not exist')
+    );
+  }
+  return false;
 }
 
 export function isDatabaseConnectionError(error: unknown): boolean {
@@ -58,7 +78,17 @@ export function databaseUnavailableResponse() {
   );
 }
 
+export function schemaOutOfDateResponse() {
+  return NextResponse.json(
+    { error: SCHEMA_OUT_OF_DATE_MESSAGE, code: SCHEMA_OUT_OF_DATE_CODE },
+    { status: 503 }
+  );
+}
+
 export function handleRouteDatabaseError(error: unknown) {
+  if (isSchemaOutOfDateError(error)) {
+    return schemaOutOfDateResponse();
+  }
   if (toDatabaseError(error)) {
     return databaseUnavailableResponse();
   }

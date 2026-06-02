@@ -5,8 +5,11 @@ import { SectionContentView } from "@/components/section-content";
 import { LecturerAssignmentsPage } from "@/components/lecturer/lecturer-assignments-page";
 import { LecturerCoursesPage } from "@/components/lecturer/lecturer-courses-page";
 import { LecturerDashboard } from "@/components/lecturer/lecturer-dashboard";
+import { LecturerMaterialsPage } from "@/components/lecturer/lecturer-materials-page";
 import { LecturerProfilePage } from "@/components/lecturer/lecturer-profile-page";
 import { LecturerQuizzesPage } from "@/components/lecturer/lecturer-quizzes-page";
+import { LecturerStudentsPage } from "@/components/lecturer/lecturer-students-page";
+import { LecturerVideosPage } from "@/components/lecturer/lecturer-videos-page";
 import { StudentDashboard } from "@/components/student/student-dashboard";
 import { CoursesHub } from "@/components/student/courses/courses-hub";
 import { AiTutorHub } from "@/components/student/ai-tutor/ai-tutor-hub";
@@ -21,7 +24,6 @@ import { AppRole } from "@/types/app";
 const adminDbSections = new Set([
   "assignments",
   "quizzes",
-  "live-classes",
   "discussions",
   "announcements",
   "notifications",
@@ -140,19 +142,24 @@ export function PortalPage({ role, section }: Props) {
         </AppShell>
       );
     }
-    if (section === "upload-note") {
+    if (section === "materials" || section === "upload-note") {
       return (
         <AppShell role={role} pageTitle={content.title} subtitle={content.subtitle}>
-          <div className="rounded-xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
-            <p className="text-sm text-slate-600">
-              Upload lecture notes from your assigned courses. Use the course materials section after
-              selecting a course from{" "}
-              <a href="/lecturer/courses" className="font-semibold text-[#0B3D91] hover:underline">
-                My Courses
-              </a>
-              .
-            </p>
-          </div>
+          <LecturerMaterialsPage />
+        </AppShell>
+      );
+    }
+    if (section === "videos") {
+      return (
+        <AppShell role={role} pageTitle={content.title} subtitle={content.subtitle}>
+          <LecturerVideosPage />
+        </AppShell>
+      );
+    }
+    if (section === "students") {
+      return (
+        <AppShell role={role} pageTitle={content.title} subtitle={content.subtitle}>
+          <LecturerStudentsPage />
         </AppShell>
       );
     }

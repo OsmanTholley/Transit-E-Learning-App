@@ -12,6 +12,9 @@ const nextConfig: NextConfig = {
   },
   outputFileTracingRoot: configDir,
   serverExternalPackages: ["@prisma/client", "bcryptjs"],
+  experimental: {
+    proxyClientMaxBodySize: 500 * 1024 * 1024,
+  },
 };
 
 export default nextConfig;

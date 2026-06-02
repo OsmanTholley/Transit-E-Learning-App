@@ -2,6 +2,7 @@ import { LecturerRecord, LecturerAccountStatus, LecturerVerificationStatus } fro
 
 type LecturerWithRelations = {
   id: string;
+  userId: string;
   specialization: string | null;
   isVerified: boolean;
   createdAt: Date;
@@ -43,6 +44,7 @@ export function mapLecturerToRecord(lecturer: LecturerWithRelations): LecturerRe
 
   return {
     id: lecturer.id,
+    userId: lecturer.userId,
     fullName: lecturer.user.fullName,
     email: lecturer.user.email ?? "",
     phone: lecturer.user.phone ?? "",

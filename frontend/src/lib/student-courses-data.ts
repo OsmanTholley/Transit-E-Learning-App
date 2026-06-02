@@ -6,6 +6,7 @@ import {
   computeCourseStats,
 } from "@/lib/student-courses-service";
 import { semestersMatch } from "@/lib/academic-semesters";
+import { purgeExpiredVideos } from "@/lib/video-expiry";
 import type {
   AssignmentItem,
   CourseDetail,
@@ -28,6 +29,7 @@ const courseInclude = {
       fileUrl: true,
       fileType: true,
       description: true,
+      coverImageUrl: true,
       createdAt: true,
       lecturer: { include: { user: { select: { fullName: true } } } },
     },
@@ -39,6 +41,8 @@ const courseInclude = {
       videoUrl: true,
       thumbnailUrl: true,
       duration: true,
+      expiresAt: true,
+      deletionNotice: true,
     },
   },
   discussions: {
@@ -176,20 +180,26 @@ export function buildCourseDetail(
     fileType: (n.fileType ?? "PDF").toUpperCase(),
     fileUrl: n.fileUrl,
     description: n.description,
+    coverImageUrl: n.coverImageUrl,
     uploadedAt: formatDisplayDate(n.createdAt),
   }));
 
-  const videos: VideoItem[] = course.videos.map((v, i) => ({
-    id: v.id,
-    title: v.title ?? `Lesson ${i + 1}`,
-    courseId: course.id,
-    courseTitle: course.courseTitle,
-    courseCode: course.courseCode,
-    videoUrl: v.videoUrl,
-    thumbnailUrl: v.thumbnailUrl,
-    duration: v.duration,
-    progress: i === 0 ? 45 : 0,
-  }));
+  const now = new Date();
+  const videos: VideoItem[] = course.videos
+    .filter((v) => !v.expiresAt || v.expiresAt > now)
+    .map((v, i) => ({
+      id: v.id,
+      title: v.title ?? `Lesson ${i + 1}`,
+      courseId: course.id,
+      courseTitle: course.courseTitle,
+      courseCode: course.courseCode,
+      videoUrl: v.videoUrl,
+      thumbnailUrl: v.thumbnailUrl,
+      duration: v.duration,
+      expiresAt: v.expiresAt?.toISOString() ?? null,
+      deletionNotice: v.deletionNotice,
+      progress: i === 0 ? 45 : 0,
+    }));
 
   const assignments: AssignmentItem[] = course.assignments.map((a) => {
     const sub = student.submissions.find((s) => s.assignmentId === a.id);
@@ -239,6 +249,8 @@ export function buildCourseDetail(
 
   return {
     ...card,
+    syllabusText: course.syllabusText,
+    syllabusUrl: course.syllabusUrl,
     objectives: [
       `Master core concepts in ${course.courseTitle}`,
       "Apply knowledge through assignments and quizzes",
@@ -272,6 +284,9 @@ export async function getMaterialsForStudent(
   student: NonNullable<Awaited<ReturnType<typeof import("@/lib/student-auth").requireStudent>>>,
   type: string
 ) {
+  if (type === "videos") {
+    await purgeExpiredVideos();
+  }
   const courses = (await getAccessibleCoursesForStudent(student.id, student)).filter((c) =>
     courseMatchesStudentProfile(c, student)
   );
@@ -288,24 +303,30 @@ export async function getMaterialsForStudent(
         fileType: (n.fileType ?? "PDF").toUpperCase(),
         fileUrl: n.fileUrl,
         description: n.description,
+        coverImageUrl: n.coverImageUrl,
         uploadedAt: formatDisplayDate(n.createdAt),
       }))
     );
   }
 
   if (type === "videos") {
+    const now = new Date();
     return courses.flatMap((course, courseIndex) =>
-      course.videos.map((v, i) => ({
-        id: v.id,
-        title: v.title ?? `Lesson ${i + 1}`,
-        courseId: course.id,
-        courseTitle: course.courseTitle,
-        courseCode: course.courseCode,
-        videoUrl: v.videoUrl,
-        thumbnailUrl: v.thumbnailUrl,
-        duration: v.duration,
-        progress: courseIndex === 0 && i === 0 ? 45 : 0,
-      }))
+      course.videos
+        .filter((v) => !v.expiresAt || v.expiresAt > now)
+        .map((v, i) => ({
+          id: v.id,
+          title: v.title ?? `Lesson ${i + 1}`,
+          courseId: course.id,
+          courseTitle: course.courseTitle,
+          courseCode: course.courseCode,
+          videoUrl: v.videoUrl,
+          thumbnailUrl: v.thumbnailUrl,
+          duration: v.duration,
+          expiresAt: v.expiresAt?.toISOString() ?? null,
+          deletionNotice: v.deletionNotice,
+          progress: courseIndex === 0 && i === 0 ? 45 : 0,
+        }))
     );
   }
 

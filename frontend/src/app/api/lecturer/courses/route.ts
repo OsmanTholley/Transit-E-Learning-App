@@ -3,6 +3,7 @@ import { requireLecturer, unauthorized } from "@/lib/auth";
 import { handleRouteDatabaseError } from "@/lib/db-errors";
 import { buildLecturerCoursesData } from "@/lib/lecturer-portal-service";
 import { prisma } from "@/lib/prisma";
+import { isValidSyllabusRef } from "@/lib/syllabus-url";
 
 export async function GET() {
   try {
@@ -29,6 +30,7 @@ export async function PATCH(request: NextRequest) {
       description?: string;
       learningOutcomes?: string[];
       syllabusUrl?: string;
+      syllabusText?: string;
     };
 
     if (!body.courseId?.trim()) {
@@ -49,12 +51,14 @@ export async function PATCH(request: NextRequest) {
       .filter(Boolean);
 
     const syllabusUrl = body.syllabusUrl?.trim() ?? "";
-    if (syllabusUrl && !/^https?:\/\//i.test(syllabusUrl)) {
+    if (!isValidSyllabusRef(syllabusUrl)) {
       return NextResponse.json(
-        { error: "Syllabus URL must start with http:// or https://." },
+        { error: "Syllabus file must be a valid URL or an uploaded /uploads/ path." },
         { status: 400 }
       );
     }
+
+    const syllabusText = body.syllabusText?.trim() || null;
 
     await prisma.course.update({
       where: { id: course.id },
@@ -62,6 +66,7 @@ export async function PATCH(request: NextRequest) {
         description: body.description?.trim() || null,
         learningOutcomes: sanitizedOutcomes.length > 0 ? sanitizedOutcomes.join("\n") : null,
         syllabusUrl: syllabusUrl || null,
+        syllabusText,
       },
     });
 

@@ -3,7 +3,6 @@ export const videoLessonsSubmenu = [
   { label: "Continue Watching", href: "/student/video-lessons/continue", slug: "continue" },
   { label: "Downloaded Videos", sidebarLabel: "Downloaded", href: "/student/video-lessons/downloaded", slug: "downloaded" },
   { label: "Course Playlists", sidebarLabel: "Playlists", href: "/student/video-lessons/playlists", slug: "playlists" },
-  { label: "Live Classes", href: "/student/video-lessons/live-classes", slug: "live-classes" },
   { label: "Recommended Videos", sidebarLabel: "Recommended", href: "/student/video-lessons/recommended", slug: "recommended" },
   { label: "Bookmarked Videos", sidebarLabel: "Bookmarked", href: "/student/video-lessons/bookmarked", slug: "bookmarked" },
   { label: "Watch History", sidebarLabel: "History", href: "/student/video-lessons/history", slug: "history" },

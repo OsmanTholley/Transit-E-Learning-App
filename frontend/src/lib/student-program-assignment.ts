@@ -1,4 +1,5 @@
 import { normalizeAcademicYear } from "@/lib/academic-years";
+import { syncEnrollmentsForStudents } from "@/lib/course-enrollment";
 import { prisma } from "@/lib/prisma";
 import { mapStudentToRecord } from "@/lib/student-mapper";
 
@@ -108,6 +109,8 @@ export async function assignProgramToStudents(
     }
     return results;
   });
+
+  await syncEnrollmentsForStudents(updated.map((s) => s.id));
 
   return {
     students: updated.map(mapStudentToRecord),

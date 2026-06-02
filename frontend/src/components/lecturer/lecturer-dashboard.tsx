@@ -21,8 +21,17 @@ export function LecturerDashboard() {
     { label: "Courses Managed", value: String(data.stats.coursesManaged) },
     { label: "Pending Grading", value: String(data.stats.pendingGrading) },
     { label: "Notes Uploaded", value: String(data.stats.notesUploaded) },
+    { label: "Videos Published", value: String(data.stats.videosUploaded) },
     { label: "Quizzes Created", value: String(data.stats.quizzesCreated) },
     { label: "Assignments", value: String(data.stats.assignmentsCount) },
+  ];
+
+  const quickLinks = [
+    { href: "/lecturer/materials", label: "Upload materials" },
+    { href: "/lecturer/videos", label: "Add videos" },
+    { href: "/lecturer/quizzes", label: "Create quiz" },
+    { href: "/lecturer/assignments", label: "Grade work" },
+    { href: "/lecturer/students", label: "View students" },
   ];
 
   return (
@@ -33,15 +42,26 @@ export function LecturerDashboard() {
         <p className="mt-2 text-sm text-blue-100">
           Monitor your classes, content, and grading from one place.
         </p>
-        <Link
-          href="/lecturer/courses"
-          className="mt-4 inline-block rounded-lg bg-white px-4 py-2 text-sm font-semibold text-[#0B3D91] hover:bg-blue-50"
-        >
-          View my courses
-        </Link>
+        <div className="mt-4 flex flex-wrap gap-2">
+          <Link
+            href="/lecturer/courses"
+            className="inline-block rounded-lg bg-white px-4 py-2 text-sm font-semibold text-[#0B3D91] hover:bg-blue-50"
+          >
+            View my courses
+          </Link>
+          {quickLinks.map((link) => (
+            <Link
+              key={link.href}
+              href={link.href}
+              className="inline-block rounded-lg border border-white/30 px-4 py-2 text-sm font-semibold text-white hover:bg-white/10"
+            >
+              {link.label}
+            </Link>
+          ))}
+        </div>
       </section>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
         {stats.map((stat) => (
           <article
             key={stat.label}
