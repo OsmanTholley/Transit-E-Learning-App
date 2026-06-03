@@ -55,7 +55,7 @@ function ActionButtons({ student, mode }: { student: StudentRecord; mode: "view"
     <div className="flex items-center justify-end gap-1">
       <Link
         href={`/admin/students/${student.id}`}
-        className="rounded-lg bg-emerald-600 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-emerald-500"
+        className="rounded-lg bg-yellow-500 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-yellow-400"
       >
         View
       </Link>
@@ -77,7 +77,7 @@ function ActionButtons({ student, mode }: { student: StudentRecord; mode: "view"
           ) : (
             <button
               type="button"
-              className="hidden rounded-lg px-2 py-1.5 text-xs font-medium text-emerald-700 hover:bg-emerald-50 sm:inline-flex"
+              className="hidden rounded-lg px-2 py-1.5 text-xs font-medium text-yellow-700 hover:bg-yellow-50 sm:inline-flex"
             >
               Activate
             </button>
@@ -130,7 +130,7 @@ function DirectoryTable({
         ) : (
           students.map((s) => (
             <tr key={s.id} className="bg-white transition-colors hover:bg-slate-50/80">
-              <td className="px-3 py-3 font-mono text-xs font-semibold text-emerald-800 sm:px-4">{s.studentId}</td>
+              <td className="px-3 py-3 font-mono text-xs font-semibold text-yellow-800 sm:px-4">{s.studentId}</td>
               <td className="px-3 py-3 sm:px-4">
                 <StudentCell student={s} />
                 <p className="mt-1 truncate text-xs text-slate-500 md:hidden" title={s.program}>
@@ -203,7 +203,7 @@ function DetailedTable({
         ) : (
           students.map((s) => (
             <tr key={s.id} className="bg-white transition-colors hover:bg-slate-50/80">
-              <td className="whitespace-nowrap px-3 py-3 font-mono text-xs font-semibold text-emerald-800">
+              <td className="whitespace-nowrap px-3 py-3 font-mono text-xs font-semibold text-yellow-800">
                 {s.studentId}
               </td>
               <td className="whitespace-nowrap px-3 py-3">
@@ -279,7 +279,7 @@ export function StudentsTable({
           >
             Previous
           </button>
-          <button type="button" className="rounded-lg bg-emerald-600 px-3 py-1.5 font-semibold text-white">
+          <button type="button" className="rounded-lg bg-yellow-500 px-3 py-1.5 font-semibold text-white">
             1
           </button>
           <button

@@ -34,7 +34,7 @@ export function ProgramReportsPage() {
     <StudentSection>
       {stats ? (
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          <StatCard label="Total Programs" value={stats.totalPrograms} tone="emerald" />
+          <StatCard label="Total Programs" value={stats.totalPrograms} tone="amber" />
           <StatCard label="Active Programs" value={stats.activePrograms} tone="blue" />
           <StatCard label="Enrolled Students" value={stats.totalStudents} tone="amber" />
           <StatCard label="Linked Courses" value={stats.totalCourses} tone="slate" />

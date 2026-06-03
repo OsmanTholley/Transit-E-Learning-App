@@ -119,23 +119,36 @@ export function PrimaryButton({
   children,
   href,
   onClick,
+  disabled = false,
   className = "",
 }: {
   children: ReactNode;
   href?: string;
   onClick?: () => void;
+  disabled?: boolean;
   className?: string;
 }) {
-  const cls = `inline-flex items-center justify-center rounded-xl bg-[#0B3D91] px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-[#092d6b] ${className}`;
+  const cls = `inline-flex items-center justify-center rounded-xl bg-[#0B3D91] px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition ${
+    disabled ? "cursor-not-allowed opacity-60 hover:bg-[#0B3D91]" : "hover:bg-[#092d6b]"
+  } ${className}`;
   if (href) {
     return (
-      <Link href={href} className={cls}>
+      <Link
+        href={href}
+        className={cls}
+        aria-disabled={disabled}
+        onClick={(e) => {
+          if (!disabled) return;
+          e.preventDefault();
+          e.stopPropagation();
+        }}
+      >
         {children}
       </Link>
     );
   }
   return (
-    <button type="button" onClick={onClick} className={cls}>
+    <button type="button" onClick={disabled ? undefined : onClick} disabled={disabled} className={cls}>
       {children}
     </button>
   );

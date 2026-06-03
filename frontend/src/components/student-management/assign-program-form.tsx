@@ -245,7 +245,7 @@ export function AssignProgramForm() {
           required
           value={fields.departmentId}
           onChange={(e) => updateField("departmentId", e.target.value)}
-          className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none transition focus:border-emerald-500/50 focus:ring-2 focus:ring-emerald-500/15"
+          className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none transition focus:border-yellow-500/50 focus:ring-2 focus:ring-yellow-500/15"
         >
           <option value="">Select department…</option>
           {options.departments.map((d) => (
@@ -262,7 +262,7 @@ export function AssignProgramForm() {
           value={fields.programId}
           onChange={(e) => updateField("programId", e.target.value)}
           disabled={!fields.departmentId}
-          className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none transition focus:border-emerald-500/50 focus:ring-2 focus:ring-emerald-500/15 disabled:bg-slate-50"
+          className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none transition focus:border-yellow-500/50 focus:ring-2 focus:ring-yellow-500/15 disabled:bg-slate-50"
         >
           <option value="">{fields.departmentId ? "Select program…" : "Choose department first"}</option>
           {programChoices.map((p) => (
@@ -308,7 +308,7 @@ export function AssignProgramForm() {
   return (
     <StudentSection>
       <div className="grid gap-4 sm:grid-cols-3">
-        <article className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm border-l-4 border-l-emerald-600">
+        <article className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm border-l-4 border-l-yellow-500">
           <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Registered students</p>
           <p className="mt-2 text-2xl font-bold text-slate-900">{students.length}</p>
         </article>
@@ -329,7 +329,7 @@ export function AssignProgramForm() {
           className={[
             "rounded-xl px-4 py-2 text-sm font-semibold transition",
             mode === "single"
-              ? "bg-emerald-600 text-white shadow-sm"
+              ? "bg-yellow-500 text-white shadow-sm"
               : "border border-slate-200 bg-white text-slate-700 hover:bg-slate-50",
           ].join(" ")}
         >
@@ -341,7 +341,7 @@ export function AssignProgramForm() {
           className={[
             "rounded-xl px-4 py-2 text-sm font-semibold transition",
             mode === "bulk"
-              ? "bg-emerald-600 text-white shadow-sm"
+              ? "bg-yellow-500 text-white shadow-sm"
               : "border border-slate-200 bg-white text-slate-700 hover:bg-slate-50",
           ].join(" ")}
         >
@@ -358,7 +358,7 @@ export function AssignProgramForm() {
                 required
                 value={singleStudentId}
                 onChange={(e) => handleSingleStudentChange(e.target.value)}
-                className="w-full max-w-xl rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none transition focus:border-emerald-500/50 focus:ring-2 focus:ring-emerald-500/15"
+                className="w-full max-w-xl rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none transition focus:border-yellow-500/50 focus:ring-2 focus:ring-yellow-500/15"
               >
                 <option value="">Select student…</option>
                 {students.map((s) => (
@@ -392,7 +392,7 @@ export function AssignProgramForm() {
                     onClick={() => setListFilter("all")}
                     className={[
                       "rounded-lg px-3 py-1.5 text-xs font-semibold",
-                      listFilter === "all" ? "bg-emerald-600 text-white" : "bg-slate-100 text-slate-700",
+                      listFilter === "all" ? "bg-yellow-500 text-white" : "bg-slate-100 text-slate-700",
                     ].join(" ")}
                   >
                     All ({students.length})
@@ -402,7 +402,7 @@ export function AssignProgramForm() {
                     onClick={() => setListFilter("unassigned")}
                     className={[
                       "rounded-lg px-3 py-1.5 text-xs font-semibold",
-                      listFilter === "unassigned" ? "bg-emerald-600 text-white" : "bg-slate-100 text-slate-700",
+                      listFilter === "unassigned" ? "bg-yellow-500 text-white" : "bg-slate-100 text-slate-700",
                     ].join(" ")}
                   >
                     Unassigned ({unassignedCount})
@@ -430,12 +430,12 @@ export function AssignProgramForm() {
                         type="checkbox"
                         checked={selectedIds.has(s.id)}
                         onChange={() => toggleStudent(s.id)}
-                        className="mt-1 h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                        className="mt-1 h-4 w-4 rounded border-slate-300 text-yellow-600 focus:ring-yellow-500"
                       />
                       <span className="min-w-0 flex-1">
                         <span className="block text-sm font-medium text-slate-900">
                           {s.fullName}{" "}
-                          <span className="font-mono text-xs text-emerald-800">{s.studentId}</span>
+                          <span className="font-mono text-xs text-yellow-800">{s.studentId}</span>
                         </span>
                         <span className="block truncate text-xs text-slate-500">
                           {isUnassigned(s) ? "No program assigned" : `${s.department} · ${s.program}`}

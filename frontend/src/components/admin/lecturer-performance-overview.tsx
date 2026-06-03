@@ -31,7 +31,7 @@ export function LecturerPerformanceOverview({
         </div>
         <Link
           href="/admin/lecturers/all"
-          className="text-xs font-semibold text-emerald-700 hover:underline"
+          className="text-xs font-semibold text-yellow-700 hover:underline"
         >
           Manage lecturers
         </Link>
@@ -46,7 +46,7 @@ export function LecturerPerformanceOverview({
         ].map((stat) => (
           <article
             key={stat.label}
-            className="rounded-xl border border-slate-200/80 border-l-4 border-l-emerald-500 bg-white p-4 shadow-sm"
+            className="rounded-xl border border-slate-200/80 border-l-4 border-l-yellow-500 bg-white p-4 shadow-sm"
           >
             <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{stat.label}</p>
             <p className="mt-2 text-2xl font-bold text-slate-900">{stat.value.toLocaleString()}</p>
@@ -70,7 +70,7 @@ export function LecturerPerformanceOverview({
                   </div>
                   <div className="h-2 rounded-full bg-slate-100">
                     <div
-                      className="h-2 rounded-full bg-emerald-600"
+                      className="h-2 rounded-full bg-yellow-500"
                       style={{ width: `${(row.courseCount / maxCourses) * 100}%` }}
                     />
                   </div>

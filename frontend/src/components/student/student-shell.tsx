@@ -2,7 +2,9 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { ReactNode, useState } from "react";
+import { ReactNode, useEffect, useState } from "react";
+import { TransitLogo } from "@/components/brand/transit-logo";
+import { MobileNavOverlay, MobileTopBar } from "@/components/layout/mobile-top-bar";
 import { useStudentSession } from "@/contexts/student-session-context";
 import { logout } from "@/services/auth";
 import { studentNavItems } from "@/services/student-dashboard-data";
@@ -99,102 +101,43 @@ export function StudentShell({ children }: { children: ReactNode }) {
   const { data, loading } = useStudentSession();
   const profile = data?.profile;
   const notificationCount = data?.stats.newNotifications ?? 0;
-  const [openMenus, setOpenMenus] = useState<Record<string, boolean>>(() => ({
-    "/student/courses": pathname.startsWith("/student/courses"),
-    "/student/lecture-notes": pathname.startsWith("/student/lecture-notes"),
-    "/student/video-lessons": pathname.startsWith("/student/video-lessons"),
-    "/student/quizzes": pathname.startsWith("/student/quizzes"),
-    "/student/discussions": pathname.startsWith("/student/discussions"),
-    "/student/ai-tutor": pathname.startsWith("/student/ai-tutor"),
-  }));
-
-  const toggleMenu = (href: string) => {
-    setOpenMenus((prev) => ({ ...prev, [href]: !prev[href] }));
-  };
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   const onLogout = async () => {
     await logout();
     router.push("/login");
   };
 
+  useEffect(() => {
+    setMobileNavOpen(false);
+  }, [pathname]);
+
   return (
     <div className="flex min-h-screen bg-[#f4f6f9]">
-      <aside className="fixed inset-y-0 left-0 z-30 flex w-64 flex-col bg-[#0B3D91] text-white">
-        <div className="flex items-center gap-3 px-5 py-6">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#FFC107]">
-            <svg viewBox="0 0 24 24" className="h-6 w-6 text-[#0B3D91]" fill="currentColor">
-              <path d="M12 2 2 7l10 5 10-5-10-5zm0 8.5L4.5 7.5 12 4l7.5 3.5L12 10.5zm0 2.5 10 5v2l-10 5L2 20v-2l10-5z" />
+      <MobileNavOverlay open={mobileNavOpen} onClose={() => setMobileNavOpen(false)} />
+      <aside
+        className={[
+          "fixed inset-y-0 left-0 z-50 flex w-[min(100vw,18rem)] flex-col bg-[#0B3D91] text-white shadow-xl transition-transform duration-200 lg:z-30 lg:w-64 lg:translate-x-0 lg:shadow-none",
+          mobileNavOpen ? "translate-x-0" : "-translate-x-full",
+        ].join(" ")}
+      >
+        <div className="flex items-center justify-between gap-2 px-5 py-6">
+          <TransitLogo size="md" variant="light" subtitle="Student" />
+          <button
+            type="button"
+            className="rounded-lg p-2 text-white/80 hover:bg-white/10 lg:hidden"
+            aria-label="Close menu"
+            onClick={() => setMobileNavOpen(false)}
+          >
+            <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M6 6l12 12M6 18L18 6" />
             </svg>
-          </div>
-          <div className="leading-tight">
-            <p className="text-sm font-bold tracking-wide">TRANSIT</p>
-            <p className="text-[11px] font-semibold tracking-widest text-white/90">E-LEARNING</p>
-          </div>
+          </button>
         </div>
 
         <nav className="flex-1 space-y-1 overflow-y-auto px-3">
           {studentNavItems.map((item) => {
-            const hasChildren = "children" in item && item.children;
-            const menuOpen = openMenus[item.href] ?? false;
-            const active =
-              pathname === item.href || pathname.startsWith(`${item.href}/`);
-
-            if (hasChildren && item.children) {
-              return (
-                <div key={item.href} className="space-y-0.5">
-                  <button
-                    type="button"
-                    onClick={() => toggleMenu(item.href)}
-                    className={[
-                      "flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors",
-                      active ? "bg-[#FFC107] text-[#0B3D91] shadow-sm" : "text-white/90 hover:bg-white/10",
-                    ].join(" ")}
-                  >
-                    <NavIcon name={item.icon} />
-                    <span className="flex-1 text-left">{item.label}</span>
-                    <svg
-                      viewBox="0 0 24 24"
-                      className={`h-4 w-4 transition-transform ${menuOpen ? "rotate-180" : ""}`}
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                    >
-                      <path d="M6 9l6 6 6-6" />
-                    </svg>
-                  </button>
-                  {menuOpen ? (
-                    <div className="ml-3 space-y-0.5 border-l border-white/20 pl-2">
-                      {item.children.map((child) => {
-                        const isRoot =
-                          child.href === "/student/courses" ||
-                          child.href === "/student/lecture-notes" ||
-                          child.href === "/student/video-lessons" ||
-                          child.href === "/student/quizzes" ||
-                          child.href === "/student/discussions" ||
-                          child.href === "/student/ai-tutor";
-                        const childActive = isRoot
-                          ? pathname === child.href
-                          : pathname === child.href || pathname.startsWith(`${child.href}/`);
-                        return (
-                          <Link
-                            key={child.href}
-                            href={child.href}
-                            className={[
-                              "block rounded-lg px-3 py-2 text-xs font-medium transition-colors",
-                              childActive
-                                ? "bg-white/15 text-[#FFC107]"
-                                : "text-white/75 hover:bg-white/10 hover:text-white",
-                            ].join(" ")}
-                          >
-                            {child.label}
-                          </Link>
-                        );
-                      })}
-                    </div>
-                  ) : null}
-                </div>
-              );
-            }
+            const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
 
             return (
               <Link
@@ -236,8 +179,9 @@ export function StudentShell({ children }: { children: ReactNode }) {
         </div>
       </aside>
 
-      <div className="ml-64 flex min-h-screen flex-1 flex-col">
-        <header className="sticky top-0 z-20 border-b border-slate-200/80 bg-[#f4f6f9]/95 px-6 py-4 backdrop-blur-sm">
+      <div className="flex min-h-screen w-full flex-1 flex-col lg:ml-64">
+        <MobileTopBar onMenuClick={() => setMobileNavOpen(true)} />
+        <header className="sticky top-0 z-20 hidden border-b border-slate-200/80 bg-[#f4f6f9]/95 px-4 py-4 backdrop-blur-sm sm:px-6 lg:block">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div className="relative flex-1 max-w-2xl">
               <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
@@ -295,7 +239,7 @@ export function StudentShell({ children }: { children: ReactNode }) {
           </div>
         </header>
 
-        <main className="flex-1 px-6 py-6">{children}</main>
+        <main className="safe-pb flex-1 px-4 py-4 sm:px-6 sm:py-6">{children}</main>
       </div>
     </div>
   );

@@ -3,6 +3,11 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { LecturerPerformanceOverview } from "@/components/admin/lecturer-performance-overview";
+import {
+  DashboardStatCard,
+  DashboardStatsGrid,
+} from "@/components/ui/dashboard-stat-card";
+import type { StatIconName } from "@/components/ui/stat-icon";
 import { useApiLoad } from "@/hooks/use-api-load";
 import type { AdminDashboardData } from "@/types/admin-dashboard";
 
@@ -10,39 +15,24 @@ type StatCard = {
   label: string;
   value: string;
   deltaLabel?: string;
-  tone?: "emerald" | "blue" | "amber" | "violet" | "slate";
+  tone?: "amber" | "blue" | "indigo" | "violet" | "slate";
 };
 
 const toneStyles: Record<NonNullable<StatCard["tone"]>, { icon: string; dot: string }> = {
-  emerald: { icon: "bg-emerald-50 text-emerald-700", dot: "bg-emerald-500" },
+  amber: { icon: "bg-yellow-50 text-yellow-700", dot: "bg-yellow-500" },
   blue: { icon: "bg-blue-50 text-blue-700", dot: "bg-blue-500" },
-  amber: { icon: "bg-amber-50 text-amber-700", dot: "bg-amber-500" },
+  indigo: { icon: "bg-indigo-50 text-indigo-700", dot: "bg-indigo-500" },
   violet: { icon: "bg-violet-50 text-violet-700", dot: "bg-violet-500" },
   slate: { icon: "bg-slate-100 text-slate-700", dot: "bg-slate-500" },
 };
 
-function StatTile({ stat }: { stat: StatCard }) {
-  const tone = stat.tone ?? "emerald";
-  const t = toneStyles[tone];
-  return (
-    <article className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm transition-shadow hover:shadow-md">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{stat.label}</p>
-          <p className="mt-2 text-2xl font-bold tracking-tight text-slate-900">{stat.value}</p>
-          {stat.deltaLabel ? (
-            <p className="mt-1.5 text-xs font-medium text-emerald-600">{stat.deltaLabel}</p>
-          ) : null}
-        </div>
-        <span className={`inline-flex h-11 w-11 items-center justify-center rounded-xl ${t.icon}`}>
-          <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M12 3v18M3 12h18" />
-          </svg>
-        </span>
-      </div>
-    </article>
-  );
-}
+const adminStatIcons: Record<NonNullable<StatCard["tone"]>, StatIconName> = {
+  amber: "lecturers",
+  blue: "students",
+  indigo: "courses",
+  violet: "users",
+  slate: "notifications",
+};
 
 function Panel({
   title,
@@ -96,12 +86,12 @@ export function AdminDashboard({ adminName }: AdminDashboardProps) {
     {
       label: "Total Lecturers",
       value: data.stats.totalLecturers.toLocaleString(),
-      tone: "emerald",
+      tone: "amber",
     },
     {
       label: "Active Courses",
       value: data.stats.activeCourses.toLocaleString(),
-      tone: "amber",
+      tone: "indigo",
     },
     {
       label: "Active Users",
@@ -125,18 +115,18 @@ export function AdminDashboard({ adminName }: AdminDashboardProps) {
   return (
     <div className="space-y-6">
       <section className="relative overflow-hidden rounded-2xl border border-slate-200/80 bg-gradient-to-br from-slate-900 via-[#0c1222] to-slate-900 p-6 text-white shadow-lg md:p-8">
-        <div className="absolute -right-8 -top-8 h-40 w-40 rounded-full bg-emerald-500/20 blur-3xl" />
-        <div className="absolute bottom-0 right-16 h-32 w-32 rounded-full bg-teal-400/10 blur-2xl" />
+        <div className="absolute -right-8 -top-8 h-40 w-40 rounded-full bg-yellow-500/20 blur-3xl" />
+        <div className="absolute bottom-0 right-16 h-32 w-32 rounded-full bg-yellow-400/15 blur-2xl" />
         <div className="relative z-10 max-w-2xl">
-          <p className="text-xs font-bold uppercase tracking-widest text-emerald-400">Administration Overview</p>
+          <p className="text-xs font-bold uppercase tracking-widest text-yellow-400">Administration Overview</p>
           <h1 className="mt-2 text-2xl font-bold md:text-3xl">Good day, {firstName}</h1>
           <p className="mt-2 text-sm text-slate-300 md:text-base">
-            Monitor platform health, manage academic operations, and keep Transit E-Learning running smoothly.
+            Monitor platform health, manage academic operations, and keep Transit College S/L E-Learning running smoothly.
           </p>
           <div className="mt-5 flex flex-wrap gap-2">
             <Link
               href="/admin/students/all"
-              className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-emerald-900/30 hover:bg-emerald-500"
+              className="rounded-lg border-2 border-yellow-600 bg-yellow-500 px-4 py-2 text-sm font-semibold text-[#003B8E] shadow-lg shadow-yellow-800/30 hover:bg-yellow-400"
             >
               Manage students
             </Link>
@@ -150,16 +140,23 @@ export function AdminDashboard({ adminName }: AdminDashboardProps) {
         </div>
       </section>
 
-      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+      <DashboardStatsGrid columns={5}>
         {stats.map((stat) => (
-          <StatTile key={stat.label} stat={stat} />
+          <DashboardStatCard
+            key={stat.label}
+            label={stat.label}
+            value={stat.value}
+            subtitle={stat.deltaLabel}
+            tone={stat.tone ?? "amber"}
+            icon={adminStatIcons[stat.tone ?? "amber"]}
+          />
         ))}
-      </section>
+      </DashboardStatsGrid>
 
       <Panel
         title="Course years overview"
         right={
-          <Link href="/admin/courses/all" className="text-xs font-semibold text-emerald-700 hover:underline">
+          <Link href="/admin/courses/all" className="text-xs font-semibold text-yellow-700 hover:underline">
             Manage courses
           </Link>
         }
@@ -186,9 +183,9 @@ export function AdminDashboard({ adminName }: AdminDashboardProps) {
           <Link
             key={action.href}
             href={action.href}
-            className="group rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm transition hover:border-emerald-200 hover:shadow-md"
+            className="group rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm transition hover:border-yellow-300 hover:shadow-md"
           >
-            <p className="text-sm font-bold text-slate-900 group-hover:text-emerald-800">{action.label}</p>
+            <p className="text-sm font-bold text-slate-900 group-hover:text-yellow-800">{action.label}</p>
             <p className="mt-1 text-xs text-slate-500">{action.desc}</p>
           </Link>
         ))}
@@ -198,7 +195,7 @@ export function AdminDashboard({ adminName }: AdminDashboardProps) {
         <Panel
           title="Recent activity"
           right={
-            <Link href="/admin/activity-logs" className="text-xs font-semibold text-emerald-700 hover:underline">
+            <Link href="/admin/activity-logs" className="text-xs font-semibold text-yellow-700 hover:underline">
               View all
             </Link>
           }
@@ -208,7 +205,9 @@ export function AdminDashboard({ adminName }: AdminDashboardProps) {
           ) : (
             <ul className="space-y-4">
               {data.activities.map((a) => {
-                const t = toneStyles[a.tone ?? "emerald"];
+                const activityTone =
+                  a.tone === "emerald" ? "amber" : (a.tone as StatCard["tone"] | undefined);
+                const t = toneStyles[activityTone ?? "amber"] ?? toneStyles.amber;
                 return (
                   <li key={`${a.title}-${a.subtitle}-${a.when}`} className="flex items-start justify-between gap-3">
                     <div className="flex gap-3">
@@ -242,7 +241,7 @@ export function AdminDashboard({ adminName }: AdminDashboardProps) {
                       row.label === "Students"
                         ? "bg-blue-600"
                         : row.label === "Lecturers"
-                          ? "bg-emerald-600"
+                          ? "bg-yellow-500"
                           : "bg-slate-600"
                     }`}
                     style={{ width: `${row.pct}%` }}
@@ -257,7 +256,7 @@ export function AdminDashboard({ adminName }: AdminDashboardProps) {
       <Panel
         title="Recent students"
         right={
-          <Link href="/admin/students/all" className="text-xs font-semibold text-emerald-700 hover:underline">
+          <Link href="/admin/students/all" className="text-xs font-semibold text-yellow-700 hover:underline">
             View all
           </Link>
         }
@@ -285,7 +284,7 @@ export function AdminDashboard({ adminName }: AdminDashboardProps) {
                       <span
                         className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${
                           s.status === "Active"
-                            ? "bg-emerald-50 text-emerald-800 ring-1 ring-emerald-200"
+                            ? "bg-yellow-50 text-yellow-800 ring-1 ring-yellow-200"
                             : "bg-amber-50 text-amber-800 ring-1 ring-amber-200"
                         }`}
                       >

@@ -66,7 +66,7 @@ export function AllLecturersList() {
   return (
     <StudentSection>
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard label="Total Lecturers" value={lecturers.length} tone="emerald" />
+        <StatCard label="Total Lecturers" value={lecturers.length} tone="amber" />
         <StatCard label="Active" value={active} tone="blue" />
         <StatCard label="Suspended" value={suspended} tone="rose" />
         <StatCard label="Pending" value={pending} tone="amber" />

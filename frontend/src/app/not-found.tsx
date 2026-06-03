@@ -6,7 +6,7 @@ export default function NotFound() {
       <div className="rounded-xl bg-white p-6 text-center shadow-sm ring-1 ring-slate-200">
         <h1 className="text-2xl font-semibold text-slate-900">Page not found</h1>
         <p className="mt-2 text-sm text-slate-600">The page you requested does not exist.</p>
-        <Link href="/login" className="mt-4 inline-block text-sm text-blue-800 hover:underline">
+        <Link href="/" className="mt-4 inline-block text-sm text-blue-800 hover:underline">
           Return to login
         </Link>
       </div>

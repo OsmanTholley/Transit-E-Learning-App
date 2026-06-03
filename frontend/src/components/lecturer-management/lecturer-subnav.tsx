@@ -26,7 +26,7 @@ export function LecturerSubnav() {
                 className={[
                   "block rounded-lg px-3 py-2 text-xs font-semibold transition-colors sm:text-sm",
                   active
-                    ? "bg-emerald-600 text-white shadow-sm"
+                    ? "bg-yellow-500 text-white shadow-sm"
                     : "text-slate-600 hover:bg-slate-100 hover:text-slate-900",
                 ].join(" ")}
               >

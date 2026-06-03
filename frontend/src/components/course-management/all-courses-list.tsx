@@ -86,7 +86,7 @@ export function AllCoursesList({
   return (
     <StudentSection>
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard label="Total Courses" value={courses.length} tone="emerald" />
+        <StatCard label="Total Courses" value={courses.length} tone="amber" />
         <StatCard label="Active" value={active} tone="blue" />
         <StatCard label="Pending" value={pending} tone="amber" />
         <StatCard label="Archived" value={archived} tone="slate" />

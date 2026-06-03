@@ -92,7 +92,7 @@ export function AddProgramForm() {
       {departments.length === 0 ? (
         <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
           No admin-created departments found.{" "}
-          <Link href="/admin/departments/add" className="font-semibold text-emerald-700 hover:underline">
+          <Link href="/admin/departments/add" className="font-semibold text-yellow-700 hover:underline">
             Add a department
           </Link>{" "}
           before creating a program.
@@ -114,7 +114,7 @@ export function AddProgramForm() {
               required
               value={form.departmentId}
               onChange={(e) => updateField("departmentId", e.target.value)}
-              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none transition focus:border-emerald-500/50 focus:ring-2 focus:ring-emerald-500/15"
+              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none transition focus:border-yellow-500/50 focus:ring-2 focus:ring-yellow-500/15"
             >
               <option value="">Select department…</option>
               {departments.map((d) => (

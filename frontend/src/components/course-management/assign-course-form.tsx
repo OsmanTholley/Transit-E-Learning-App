@@ -184,7 +184,7 @@ export function AssignCourseForm() {
       {options.departments.length === 0 ? (
         <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
           No departments found.{" "}
-          <Link href="/admin/departments/add" className="font-semibold text-emerald-700 hover:underline">
+          <Link href="/admin/departments/add" className="font-semibold text-yellow-700 hover:underline">
             Add a department
           </Link>{" "}
           before assigning courses.
@@ -198,7 +198,7 @@ export function AssignCourseForm() {
             required
             value={form.departmentId}
             onChange={(e) => updateField("departmentId", e.target.value)}
-            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none transition focus:border-emerald-500/50 focus:ring-2 focus:ring-emerald-500/15"
+            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none transition focus:border-yellow-500/50 focus:ring-2 focus:ring-yellow-500/15"
           >
             <option value="">Select department…</option>
             {options.departments.map((d) => (
@@ -216,7 +216,7 @@ export function AssignCourseForm() {
             disabled={!form.departmentId}
             value={form.courseId}
             onChange={(e) => updateField("courseId", e.target.value)}
-            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none transition focus:border-emerald-500/50 focus:ring-2 focus:ring-emerald-500/15 disabled:opacity-60"
+            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none transition focus:border-yellow-500/50 focus:ring-2 focus:ring-yellow-500/15 disabled:opacity-60"
           >
             <option value="">
               {form.departmentId ? "Select course…" : "Select department first…"}
@@ -236,7 +236,7 @@ export function AssignCourseForm() {
             required
             value={form.lecturerId}
             onChange={(e) => updateField("lecturerId", e.target.value)}
-            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none transition focus:border-emerald-500/50 focus:ring-2 focus:ring-emerald-500/15"
+            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none transition focus:border-yellow-500/50 focus:ring-2 focus:ring-yellow-500/15"
           >
             <option value="">Select lecturer…</option>
             {options.lecturers.map((l) => (
@@ -254,7 +254,7 @@ export function AssignCourseForm() {
             disabled={!form.departmentId}
             value={form.programId}
             onChange={(e) => updateField("programId", e.target.value)}
-            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none transition focus:border-emerald-500/50 focus:ring-2 focus:ring-emerald-500/15 disabled:opacity-60"
+            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none transition focus:border-yellow-500/50 focus:ring-2 focus:ring-yellow-500/15 disabled:opacity-60"
           >
             <option value="">
               {form.departmentId ? "Select program…" : "Select department first…"}
@@ -273,7 +273,7 @@ export function AssignCourseForm() {
             required
             value={form.level}
             onChange={(e) => updateField("level", e.target.value)}
-            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none transition focus:border-emerald-500/50 focus:ring-2 focus:ring-emerald-500/15"
+            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none transition focus:border-yellow-500/50 focus:ring-2 focus:ring-yellow-500/15"
           >
             <option value="">Select year…</option>
             {options.years.map((y) => (
@@ -290,7 +290,7 @@ export function AssignCourseForm() {
             required
             value={form.semester}
             onChange={(e) => updateField("semester", e.target.value)}
-            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none transition focus:border-emerald-500/50 focus:ring-2 focus:ring-emerald-500/15"
+            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none transition focus:border-yellow-500/50 focus:ring-2 focus:ring-yellow-500/15"
           >
             <option value="">Select semester…</option>
             {options.semesters.map((s) => (
@@ -331,7 +331,7 @@ export function AssignCourseForm() {
       {courseOptions.length === 0 && form.departmentId ? (
         <p className="mt-4 text-sm text-amber-800">
           No courses in this department yet.{" "}
-          <Link href="/admin/courses/add" className="font-semibold text-emerald-700 hover:underline">
+          <Link href="/admin/courses/add" className="font-semibold text-yellow-700 hover:underline">
             Add a course
           </Link>{" "}
           first.

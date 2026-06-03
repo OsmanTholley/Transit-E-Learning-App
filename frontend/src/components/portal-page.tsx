@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { AdminDashboard } from "@/components/admin/admin-dashboard";
 import { AppShell } from "@/components/app-shell";
 import { SectionContentView } from "@/components/section-content";
+import { LecturerAiPage } from "@/components/lecturer/lecturer-ai-page";
 import { LecturerAssignmentsPage } from "@/components/lecturer/lecturer-assignments-page";
 import { LecturerCoursesPage } from "@/components/lecturer/lecturer-courses-page";
 import { LecturerDashboard } from "@/components/lecturer/lecturer-dashboard";
@@ -160,6 +161,13 @@ export function PortalPage({ role, section }: Props) {
       return (
         <AppShell role={role} pageTitle={content.title} subtitle={content.subtitle}>
           <LecturerStudentsPage />
+        </AppShell>
+      );
+    }
+    if (section === "ai") {
+      return (
+        <AppShell role={role} pageTitle="AI Assistant" subtitle="Local Ollama-powered academic AI">
+          <LecturerAiPage />
         </AppShell>
       );
     }

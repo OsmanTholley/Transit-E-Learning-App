@@ -23,7 +23,7 @@ export function AddStudentPage() {
           type="button"
           onClick={() => setMode("admit")}
           className={`rounded-xl px-4 py-2.5 text-sm font-semibold transition-colors ${
-            mode === "admit" ? "bg-emerald-600 text-white shadow-sm" : "text-slate-600 hover:bg-slate-50"
+            mode === "admit" ? "bg-yellow-500 text-white shadow-sm" : "text-slate-600 hover:bg-slate-50"
           }`}
         >
           Admit for registration
@@ -32,7 +32,7 @@ export function AddStudentPage() {
           type="button"
           onClick={() => setMode("create")}
           className={`rounded-xl px-4 py-2.5 text-sm font-semibold transition-colors ${
-            mode === "create" ? "bg-emerald-600 text-white shadow-sm" : "text-slate-600 hover:bg-slate-50"
+            mode === "create" ? "bg-yellow-500 text-white shadow-sm" : "text-slate-600 hover:bg-slate-50"
           }`}
         >
           Create account now
@@ -135,7 +135,7 @@ export function StudentReportsPage() {
   return (
     <StudentSection>
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard label="Total Students" value={students.length} tone="emerald" />
+        <StatCard label="Total Students" value={students.length} tone="amber" />
         <StatCard label="Active Students" value={activeCount} tone="blue" />
         <StatCard label="Suspended" value={suspendedCount} tone="amber" />
         <StatCard label="Quiz Attempts" value={overview?.quizAttempts ?? 0} tone="slate" />
@@ -158,7 +158,7 @@ export function StudentReportsPage() {
                       </span>
                     </div>
                     <div className="h-2 rounded-full bg-slate-100">
-                      <div className="h-2 rounded-full bg-emerald-600" style={{ width: `${pct}%` }} />
+                      <div className="h-2 rounded-full bg-yellow-500" style={{ width: `${pct}%` }} />
                     </div>
                   </div>
                 );
@@ -182,7 +182,7 @@ export function StudentReportsPage() {
             {students.slice(0, 8).map((s, i) => (
               <li key={s.id} className="flex items-center justify-between py-3 text-sm">
                 <span>
-                  <span className="mr-2 font-bold text-emerald-600">#{i + 1}</span>
+                  <span className="mr-2 font-bold text-yellow-600">#{i + 1}</span>
                   {s.fullName} ({s.studentId})
                 </span>
                 <span className="text-slate-500">{s.program} · {s.department}</span>
@@ -203,7 +203,7 @@ export function StudentReportsPage() {
                   <button
                     key={f}
                     type="button"
-                    className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-500"
+                    className="rounded-lg bg-yellow-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-yellow-400"
                   >
                     {f}
                   </button>

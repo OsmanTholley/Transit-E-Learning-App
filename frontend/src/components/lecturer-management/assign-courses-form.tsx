@@ -150,7 +150,7 @@ export function AssignCoursesForm() {
             required
             value={form.lecturerId}
             onChange={(e) => updateField("lecturerId", e.target.value)}
-            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none transition focus:border-emerald-500/50 focus:ring-2 focus:ring-emerald-500/15"
+            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none transition focus:border-yellow-500/50 focus:ring-2 focus:ring-yellow-500/15"
           >
             <option value="">Select lecturer…</option>
             {options.lecturers.map((l) => (
@@ -166,7 +166,7 @@ export function AssignCoursesForm() {
             required
             value={form.departmentId}
             onChange={(e) => updateField("departmentId", e.target.value)}
-            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none transition focus:border-emerald-500/50 focus:ring-2 focus:ring-emerald-500/15"
+            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none transition focus:border-yellow-500/50 focus:ring-2 focus:ring-yellow-500/15"
           >
             <option value="">Select department…</option>
             {options.departments.map((d) => (
@@ -183,7 +183,7 @@ export function AssignCoursesForm() {
             disabled={!form.departmentId}
             value={form.courseId}
             onChange={(e) => updateField("courseId", e.target.value)}
-            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none transition focus:border-emerald-500/50 focus:ring-2 focus:ring-emerald-500/15 disabled:opacity-60"
+            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none transition focus:border-yellow-500/50 focus:ring-2 focus:ring-yellow-500/15 disabled:opacity-60"
           >
             <option value="">
               {form.departmentId ? "Select course…" : "Select department first…"}

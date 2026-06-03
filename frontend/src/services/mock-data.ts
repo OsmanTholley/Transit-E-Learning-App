@@ -27,6 +27,7 @@ export const navigation: Record<"student" | "lecturer", NavItem[]> = {
     { label: "Quizzes", href: "/lecturer/quizzes" },
     { label: "Assignments", href: "/lecturer/assignments" },
     { label: "Students", href: "/lecturer/students" },
+    { label: "AI Assistant", href: "/lecturer/ai" },
     { label: "Profile", href: "/lecturer/profile" },
   ],
 };
@@ -78,6 +79,7 @@ export const adminNavigation: AdminNavigation = {
         { label: "Assignments", href: "/admin/assignments" },
         { label: "Quizzes", href: "/admin/quizzes" },
         { label: "Discussions", href: "/admin/discussions" },
+        { label: "AI Assistant", href: "/admin/ai" },
       ],
     },
     {
@@ -267,6 +269,10 @@ const lecturerSections: Record<string, SectionContent> = {
   profile: {
     title: "My Profile",
     subtitle: "Update your contact details and specialization.",
+  },
+  ai: {
+    title: "AI Assistant",
+    subtitle: "Local Ollama-powered academic AI for lesson planning and grading help.",
   },
 };
 

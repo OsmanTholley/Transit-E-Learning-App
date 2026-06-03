@@ -54,7 +54,7 @@ export function LecturerManagementShell({ children }: { children: React.ReactNod
           !isProfile ? (
             <Link
               href="/admin/lecturers/add"
-              className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-emerald-500"
+              className="rounded-xl bg-yellow-500 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-yellow-400"
             >
               Add lecturer
             </Link>

@@ -218,7 +218,7 @@ export function StudentProfilePage({ id }: { id: string }) {
     return (
       <Panel title="Student Not Found">
         <p className="text-sm text-slate-600">
-          <Link href="/admin/students/all" className="font-semibold text-emerald-700 hover:underline">
+          <Link href="/admin/students/all" className="font-semibold text-yellow-700 hover:underline">
             ← Back to all students
           </Link>
         </p>
@@ -267,7 +267,7 @@ export function StudentProfilePage({ id }: { id: string }) {
                 onClick={handleToggleSuspend}
                 className={[
                   "rounded-xl px-4 py-2 text-sm font-semibold text-white disabled:opacity-60",
-                  isSuspended ? "bg-emerald-600 hover:bg-emerald-500" : "bg-rose-600 hover:bg-rose-500",
+                  isSuspended ? "bg-yellow-500 hover:bg-yellow-400" : "bg-rose-600 hover:bg-rose-500",
                 ].join(" ")}
               >
                 {isSuspended ? "Activate" : "Suspend"}
@@ -313,7 +313,7 @@ export function StudentProfilePage({ id }: { id: string }) {
               <select
                 value={form.departmentId}
                 onChange={(e) => updateField("departmentId", e.target.value)}
-                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-emerald-500/50 focus:ring-2 focus:ring-emerald-500/15"
+                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-yellow-500/50 focus:ring-2 focus:ring-yellow-500/15"
               >
                 <option value="">Select department…</option>
                 {options?.departments.map((d) => (
@@ -329,7 +329,7 @@ export function StudentProfilePage({ id }: { id: string }) {
                 value={form.programId}
                 onChange={(e) => updateField("programId", e.target.value)}
                 disabled={!form.departmentId}
-                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-emerald-500/50 focus:ring-2 focus:ring-emerald-500/15 disabled:bg-slate-50"
+                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-yellow-500/50 focus:ring-2 focus:ring-yellow-500/15 disabled:bg-slate-50"
               >
                 <option value="">{form.departmentId ? "Select program…" : "Choose department first"}</option>
                 {programChoices.map((p) => (
@@ -397,16 +397,16 @@ export function StudentProfilePage({ id }: { id: string }) {
           <ul className="space-y-2 text-sm">
             <li className="flex justify-between rounded-lg bg-slate-50 px-3 py-2">
               <span>CSC101 – Intro to Programming</span>
-              <span className="text-emerald-600">65%</span>
+              <span className="text-yellow-600">65%</span>
             </li>
             <li className="flex justify-between rounded-lg bg-slate-50 px-3 py-2">
               <span>CSC102 – Database Systems</span>
-              <span className="text-emerald-600">48%</span>
+              <span className="text-yellow-600">48%</span>
             </li>
           </ul>
         </Panel>
         <Panel title="Quiz Performance">
-          <p className="text-2xl font-bold text-emerald-700">78%</p>
+          <p className="text-2xl font-bold text-yellow-700">78%</p>
           <p className="text-xs text-slate-500">Average across 12 quizzes</p>
         </Panel>
         <Panel title="Assignment Submissions">

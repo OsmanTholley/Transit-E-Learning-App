@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { FormEvent, useState } from "react";
+import { TransitLogo } from "@/components/brand/transit-logo";
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
@@ -15,6 +16,10 @@ export default function ForgotPasswordPage() {
   return (
     <main className="flex min-h-screen items-center justify-center bg-slate-100 px-4">
       <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
+        <div className="flex items-center justify-center">
+          <TransitLogo size="md" variant="dark" subtitle="E-Learning" />
+        </div>
+
         <h1 className="text-2xl font-semibold text-slate-900">Reset Password</h1>
         <p className="mt-1 text-sm text-slate-600">
           Enter your email and we will send reset instructions.
@@ -42,7 +47,7 @@ export default function ForgotPasswordPage() {
 
         {sent ? <p className="mt-4 text-sm text-emerald-700">Reset instructions sent to {email}.</p> : null}
 
-        <Link href="/login" className="mt-4 inline-block text-sm text-blue-800 hover:underline">
+        <Link href="/" className="mt-4 inline-block text-sm text-blue-800 hover:underline">
           Back to login
         </Link>
       </div>

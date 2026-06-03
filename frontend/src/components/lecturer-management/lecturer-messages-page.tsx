@@ -190,7 +190,7 @@ export function LecturerMessagesPage() {
               required
               value={message}
               onChange={(e) => setMessage(e.target.value)}
-              className="min-h-[100px] w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:border-emerald-500/50 focus:ring-2 focus:ring-emerald-500/15"
+              className="min-h-[100px] w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:border-yellow-500/50 focus:ring-2 focus:ring-yellow-500/15"
               placeholder="Write your message to lecturers…"
             />
           </div>
@@ -199,7 +199,7 @@ export function LecturerMessagesPage() {
             <select
               value={audienceType}
               onChange={(e) => handleAudienceChange(e.target.value)}
-              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none transition focus:border-emerald-500/50 focus:ring-2 focus:ring-emerald-500/15"
+              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none transition focus:border-yellow-500/50 focus:ring-2 focus:ring-yellow-500/15"
             >
               {AUDIENCE_OPTIONS.map((opt) => (
                 <option key={opt.value} value={opt.value}>
@@ -215,7 +215,7 @@ export function LecturerMessagesPage() {
                 required
                 value={targetId}
                 onChange={(e) => setTargetId(e.target.value)}
-                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none transition focus:border-emerald-500/50 focus:ring-2 focus:ring-emerald-500/15"
+                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none transition focus:border-yellow-500/50 focus:ring-2 focus:ring-yellow-500/15"
               >
                 <option value="">Select {specificLabel.toLowerCase()}…</option>
                 {specificOptions.map((opt) => (

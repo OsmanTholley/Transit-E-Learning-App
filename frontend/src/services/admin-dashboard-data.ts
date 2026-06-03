@@ -67,6 +67,7 @@ const sectionIcons: Record<string, string> = {
   Quizzes: "quizzes",
   "Live Classes": "live",
   Discussions: "discussions",
+  "AI Assistant": "ai",
   Announcements: "announcements",
   Notifications: "notifications",
   "Reports & Analytics": "reports",

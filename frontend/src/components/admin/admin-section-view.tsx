@@ -13,7 +13,7 @@ type Props = {
 export function AdminSectionView({ section, fallbackTitle, fallbackSubtitle }: Props) {
   const { data, loading, error } = useApiLoad<{ content: SectionContent }>(
     `/api/admin/sections/${section}`,
-    { errorTitle: "Could not load section" }
+    { errorTitle: "Check your Internet connection" }
   );
 
   if (loading && !data) {
@@ -32,7 +32,7 @@ export function AdminSectionView({ section, fallbackTitle, fallbackSubtitle }: P
   return (
     <div className="space-y-6">
       <div>
-        <p className="text-xs font-semibold uppercase tracking-wider text-emerald-700">Administration</p>
+        <p className="text-xs font-semibold uppercase tracking-wider text-yellow-700">Administration</p>
         <h1 className="mt-1 text-2xl font-bold text-slate-900">{content.title}</h1>
         <p className="mt-1 text-sm text-slate-500">{content.subtitle}</p>
       </div>

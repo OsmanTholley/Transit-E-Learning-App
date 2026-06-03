@@ -384,7 +384,7 @@ export function DepartmentReportsPage() {
       ) : (
         <>
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            <StatCard label="Total Students" value={totalStudents.toLocaleString()} tone="emerald" />
+            <StatCard label="Total Students" value={totalStudents.toLocaleString()} tone="amber" />
             <StatCard label="Total Lecturers" value={totalLecturers} tone="blue" />
             <StatCard label="Active Programs" value={totalPrograms} tone="amber" />
             <StatCard label="Total Courses" value={totalCourses} tone="slate" />
@@ -405,7 +405,7 @@ export function DepartmentReportsPage() {
                           <span className="font-semibold">{d.totalStudents.toLocaleString()}</span>
                         </div>
                         <div className="h-2 rounded-full bg-slate-100">
-                          <div className="h-2 rounded-full bg-emerald-600" style={{ width: `${pct}%` }} />
+                          <div className="h-2 rounded-full bg-yellow-500" style={{ width: `${pct}%` }} />
                         </div>
                       </div>
                     );
@@ -464,7 +464,7 @@ export function DepartmentReportsPage() {
                       <button
                         key={f}
                         type="button"
-                        className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-500"
+                        className="rounded-lg bg-yellow-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-yellow-400"
                       >
                         {f}
                       </button>

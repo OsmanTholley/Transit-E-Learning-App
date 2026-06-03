@@ -2,7 +2,9 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { ReactNode, useState } from "react";
+import { ReactNode, useEffect, useState } from "react";
+import { TransitLogo } from "@/components/brand/transit-logo";
+import { MobileNavOverlay, MobileTopBar } from "@/components/layout/mobile-top-bar";
 
 function sectionBaseHref(href: string) {
   if (href.includes("/content/")) return "/admin/content";
@@ -79,6 +81,13 @@ function NavIcon({ name }: { name: string }) {
           <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2" />
         </svg>
       );
+    case "ai":
+      return (
+        <svg viewBox="0 0 24 24" className={cls} fill="none" stroke="currentColor" strokeWidth="2">
+          <path d="M12 2a4 4 0 0 1 4 4v1h1a3 3 0 0 1 3 3v8a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3V10a3 3 0 0 1 3-3h1V6a4 4 0 0 1 4-4z" />
+          <path d="M9 14h6M10 18h4" />
+        </svg>
+      );
     default:
       return (
         <svg viewBox="0 0 24 24" className={cls} fill="none" stroke="currentColor" strokeWidth="2">
@@ -99,6 +108,7 @@ export function AdminShell({ adminName, adminEmail, children }: Props) {
   const pathname = usePathname();
   const router = useRouter();
 
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [openMenus, setOpenMenus] = useState<Record<string, boolean>>(() => {
     const initial: Record<string, boolean> = {};
     for (const section of adminNavSections) {
@@ -125,6 +135,10 @@ export function AdminShell({ adminName, adminEmail, children }: Props) {
     router.push("/login");
   };
 
+  useEffect(() => {
+    setMobileNavOpen(false);
+  }, [pathname]);
+
   const isItemActive = (href: string, hasChildren: boolean) => {
     if (pathname === href) return true;
     if (hasChildren) {
@@ -136,21 +150,25 @@ export function AdminShell({ adminName, adminEmail, children }: Props) {
 
   return (
     <div className="flex min-h-screen bg-slate-100">
-      <aside className="fixed inset-y-0 left-0 z-30 flex w-[17.5rem] flex-col border-r border-white/5 bg-[#003B8E] text-white">
-        <div className="border-b border-white/10 px-5 py-5">
-          <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-yellow-400 to-yellow-600 shadow-lg shadow-yellow-900/30">
-              <svg viewBox="0 0 24 24" className="h-5 w-5 text-white" fill="currentColor">
-                <path d="M12 2 2 7l10 5 10-5-10-5zm0 8.5L4.5 7.5 12 4l7.5 3.5L12 10.5z" />
-              </svg>
-            </div>
-             <div className="leading-tight">
-            <p className="text-sm font-bold tracking-wide">TRANSIT</p>
-            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-yellow-500">
-              Admin Dashboard
-            </p>
-          </div>
-          </div>
+      <MobileNavOverlay open={mobileNavOpen} onClose={() => setMobileNavOpen(false)} />
+      <aside
+        className={[
+          "fixed inset-y-0 left-0 z-50 flex w-[min(100vw,17.5rem)] flex-col border-r border-white/5 bg-[#003B8E] text-white shadow-xl transition-transform duration-200 lg:z-30 lg:translate-x-0 lg:shadow-none",
+          mobileNavOpen ? "translate-x-0" : "-translate-x-full",
+        ].join(" ")}
+      >
+        <div className="flex items-center justify-between gap-2 border-b border-white/10 px-5 py-5">
+          <TransitLogo size="md" variant="light" subtitle="Admin" />
+          <button
+            type="button"
+            className="rounded-lg p-2 text-white/80 hover:bg-white/10 lg:hidden"
+            aria-label="Close menu"
+            onClick={() => setMobileNavOpen(false)}
+          >
+            <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M6 6l12 12M6 18L18 6" />
+            </svg>
+          </button>
         </div>
 
         <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-4">
@@ -229,7 +247,7 @@ export function AdminShell({ adminName, adminEmail, children }: Props) {
                 className={[
                   "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
                   active
-                    ? "bg-emerald-600 text-white shadow-md shadow-emerald-900/40"
+                    ? "bg-yellow-500 text-[#003B8E] shadow-md shadow-yellow-900/40"
                     : "text-slate-300 hover:bg-white/5 hover:text-white",
                 ].join(" ")}
               >
@@ -253,8 +271,9 @@ export function AdminShell({ adminName, adminEmail, children }: Props) {
           </button>
         </div>
       </aside>
- <div className="ml-[17.5rem] flex min-h-screen flex-1 flex-col">
-         <header className="sticky top-0 z-20 border-b border-blue-200 bg-blue-50 px-6 py-4">
+      <div className="flex min-h-screen w-full flex-1 flex-col lg:ml-[17.5rem]">
+        <MobileTopBar onMenuClick={() => setMobileNavOpen(true)} />
+        <header className="sticky top-0 z-20 hidden border-b border-blue-200 bg-blue-50 px-4 py-4 sm:px-6 lg:block">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div className="relative flex-1 max-w-xl">
               <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
@@ -283,7 +302,7 @@ export function AdminShell({ adminName, adminEmail, children }: Props) {
                   <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 7h18s-3 0-3-7" />
                   <path d="M13.73 21a2 2 0 0 1-3.46 0" />
                 </svg>
-                <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-emerald-500 ring-2 ring-white" />
+                <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-yellow-500 ring-2 ring-white" />
               </button>
               <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white py-1.5 pl-1.5 pr-4 shadow-sm">
                 <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-slate-800 to-slate-900 text-xs font-bold text-white">
@@ -298,7 +317,7 @@ export function AdminShell({ adminName, adminEmail, children }: Props) {
           </div>
         </header>
 
-        <main className="flex-1 px-6 py-6">{children}</main>
+        <main className="safe-pb flex-1 px-4 py-4 sm:px-6 sm:py-6">{children}</main>
       </div>
     </div>
   );

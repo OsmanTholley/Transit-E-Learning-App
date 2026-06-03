@@ -1,9 +1,12 @@
 "use client";
 
-import type { ReactNode } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useStudentSession } from "@/contexts/student-session-context";
+import {
+  DashboardStatCard,
+  DashboardStatsGrid,
+} from "@/components/ui/dashboard-stat-card";
 
 function CourseThumbnail({ type }: { type: string }) {
   const base = "flex h-full w-full items-center justify-center text-white/90";
@@ -40,31 +43,6 @@ function CourseThumbnail({ type }: { type: string }) {
   );
 }
 
-function StatCard({
-  label,
-  value,
-  sub,
-  iconBg,
-  children,
-}: {
-  label: string;
-  value: string;
-  sub: string;
-  iconBg: string;
-  children: ReactNode;
-}) {
-  return (
-    <article className="flex items-center gap-4 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200/80">
-      <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl ${iconBg}`}>{children}</div>
-      <div>
-        <p className="text-xs font-medium text-slate-500">{label}</p>
-        <p className="text-xl font-bold text-slate-900">{value}</p>
-        <p className="text-xs text-slate-500">{sub}</p>
-      </div>
-    </article>
-  );
-}
-
 function FileIcon({ type }: { type: "pdf" | "doc" }) {
   const color = type === "pdf" ? "text-rose-500 bg-rose-50" : "text-blue-500 bg-blue-50";
   return (
@@ -80,7 +58,7 @@ export function StudentDashboard() {
   const { data, loading, error } = useStudentSession();
 
   if (loading) {
-    return <p className="text-sm text-slate-500">Loading your dashboard...</p>;
+    return <p className="text-sm text-slate-500">Loading Student dashboard...</p>;
   }
 
   if (error || !data) {
@@ -96,15 +74,35 @@ export function StudentDashboard() {
   return (
     <div className="space-y-6">
       <section className="relative overflow-hidden rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-200/80 md:p-8">
-        <div className="relative z-10 max-w-xl">
-          <h1 className="text-2xl font-bold text-slate-900 md:text-3xl">
+       <div className="relative z-10 max-w-xl rounded-2xl bg-gradient-to-r 
+                from-[#e8f4ff] to-[#d2f0e5]      /* light gradient */ 
+                dark:from-[#1e2a3b] dark:to-[#152f35]  /* dark‑mode version */
+                p-6 shadow-lg ring-1 ring-slate-200/50 
+                dark:ring-slate-700/50 
+                backdrop-blur-sm   /* optional glass‑morphism */
+                "> {/* ---------- Header ---------- */}
+          <h1 className="text-2xl font-bold text-slate-800 md:text-3xl">
             Welcome back, {profile.fullName}
           </h1>
-          <p className="mt-1 text-sm font-medium text-[#0B3D91]">{profile.studentId}</p>
-          <p className="mt-2 text-sm text-slate-500 md:text-base">
-            Here&apos;s what&apos;s happening in your learning journey today.
+
+          {/* ---------- Student‑ID (brand blue) ---------- */}
+          <p className="mt-1 text-sm font-medium text-transitBlue dark:text-transitBlueDark">
+            {profile.studentId}
+          </p>
+
+          {/* ---------- Motivational copy ---------- */}
+          <p className="mt-2 text-sm text-slate-600 md:text-base">
+            <span className="font-semibold text-transitBlue dark:text-transitBlueDark">
+              Your adventure
+            </span>{" "}
+            is kicking off — discover today’s breakthroughs in your learning journey at{" "}
+            <span className="font-semibold text-transitBlue dark:text-transitBlueDark">
+              Transit College S/L
+            </span>
+            !
           </p>
         </div>
+
         <div className="pointer-events-none absolute -right-4 bottom-0 top-0 hidden w-[280px] md:block lg:w-[320px]">
           <div className="absolute right-8 top-1/2 h-48 w-48 -translate-y-1/2 rounded-full bg-[#FFC107]/20" />
           <div className="absolute right-16 top-8 h-3 w-3 rounded-full bg-[#FFC107]" />
@@ -120,40 +118,37 @@ export function StudentDashboard() {
         </div>
       </section>
 
-      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard label="My Courses" value={String(stats.activeCourses)} sub="Active Courses" iconBg="bg-blue-50 text-blue-600">
-          <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
-            <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
-          </svg>
-        </StatCard>
-        <StatCard label="Assignments" value={String(stats.assignmentsDue)} sub="Due Soon" iconBg="bg-teal-50 text-teal-600">
-          <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-            <path d="M14 2v6h6" />
-          </svg>
-        </StatCard>
-        <StatCard label="Quiz Average" value={`${stats.quizAverage}%`} sub="This Semester" iconBg="bg-amber-50 text-amber-600">
-          <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6M18 9h1.5a2.5 2.5 0 0 0 0-5H18" />
-            <path d="M4 22h16M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20 7 22M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20 17 22" />
-            <path d="M18 2H6v7a6 6 0 0 0 12 0V2z" />
-          </svg>
-        </StatCard>
-        <Link href="/student/notifications" className="block transition hover:opacity-95">
-          <StatCard
-            label="Notices"
-            value={String(stats.newNotifications)}
-            sub="Unread messages"
-            iconBg="bg-rose-50 text-rose-500"
-          >
-            <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 7h18s-3 0-3-7" />
-              <path d="M13.73 21a2 2 0 0 1-3.46 0" />
-            </svg>
-          </StatCard>
-        </Link>
-      </section>
+      <DashboardStatsGrid columns={4}>
+        <DashboardStatCard
+          label="My Courses"
+          value={stats.activeCourses}
+          subtitle="Active courses"
+          tone="blue"
+          icon="courses"
+        />
+        <DashboardStatCard
+          label="Assignments"
+          value={stats.assignmentsDue}
+          subtitle="Due soon"
+          tone="teal"
+          icon="assignments"
+        />
+        <DashboardStatCard
+          label="Quiz Average"
+          value={`${stats.quizAverage}%`}
+          subtitle="This semester"
+          tone="amber"
+          icon="quizzes"
+        />
+        <DashboardStatCard
+          label="Notices"
+          value={stats.newNotifications}
+          subtitle="Unread messages"
+          tone="rose"
+          icon="notifications"
+          href="/student/notifications"
+        />
+      </DashboardStatsGrid>
 
       <section>
         <div className="mb-4 flex items-center justify-between">

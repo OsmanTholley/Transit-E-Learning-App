@@ -54,7 +54,7 @@ export function DepartmentsTable({
                   <p className="truncate font-medium text-slate-900" title={d.name}>
                     {d.name}
                   </p>
-                  <p className="font-mono text-xs text-emerald-800">{d.code}</p>
+                  <p className="font-mono text-xs text-yellow-800">{d.code}</p>
                   <p className="mt-1 text-xs text-slate-500 md:hidden">
                     {d.totalPrograms} programs · {d.totalStudents.toLocaleString()} students
                   </p>

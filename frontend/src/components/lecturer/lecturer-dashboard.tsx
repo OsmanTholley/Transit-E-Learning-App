@@ -2,58 +2,54 @@
 
 import Link from "next/link";
 import { useApiLoad } from "@/hooks/use-api-load";
+import {
+  DashboardStatCard,
+  DashboardStatsGrid,
+} from "@/components/ui/dashboard-stat-card";
 import type { LecturerDashboardData } from "@/types/lecturer-portal";
 
 export function LecturerDashboard() {
   const { data, loading } = useApiLoad<LecturerDashboardData>("/api/lecturer/dashboard", {
-    errorTitle: "Could not load dashboard",
+    errorTitle: "check your internet connection and try again",
   });
 
   if (loading && !data) {
-    return <p className="text-sm text-slate-500">Loading dashboard…</p>;
+    return <p className="text-sm text-slate-500">Loading lecturer dashboard!…</p>;
   }
 
   if (!data) return null;
 
   const firstName = data.lecturerName.split(" ")[0] ?? "Lecturer";
 
-  const stats = [
-    { label: "Courses Managed", value: String(data.stats.coursesManaged) },
-    { label: "Pending Grading", value: String(data.stats.pendingGrading) },
-    { label: "Notes Uploaded", value: String(data.stats.notesUploaded) },
-    { label: "Videos Published", value: String(data.stats.videosUploaded) },
-    { label: "Quizzes Created", value: String(data.stats.quizzesCreated) },
-    { label: "Assignments", value: String(data.stats.assignmentsCount) },
-  ];
-
   const quickLinks = [
-    { href: "/lecturer/materials", label: "Upload materials" },
-    { href: "/lecturer/videos", label: "Add videos" },
-    { href: "/lecturer/quizzes", label: "Create quiz" },
-    { href: "/lecturer/assignments", label: "Grade work" },
-    { href: "/lecturer/students", label: "View students" },
+    { href: "/lecturer/materials", label: "Materials" },
+    { href: "/lecturer/videos", label: "Videos" },
+    { href: "/lecturer/quizzes", label: "Quizzes" },
+    { href: "/lecturer/assignments", label: "Assignments" },
+    { href: "/lecturer/students", label: "Students" },
   ];
 
   return (
     <div className="space-y-6">
-      <section className="rounded-2xl border border-slate-200/80 bg-gradient-to-br from-[#0B3D91] to-[#0a357f] p-6 text-white shadow-sm">
-        <p className="text-xs font-bold uppercase tracking-widest text-blue-200">Lecturer portal</p>
-        <h1 className="mt-2 text-2xl font-bold">Welcome, {firstName}</h1>
-        <p className="mt-2 text-sm text-blue-100">
-          Monitor your classes, content, and grading from one place.
+      <section className="relative overflow-hidden rounded-2xl border border-slate-200/80 bg-gradient-to-br from-[#0B3D91] via-[#0a357f] to-[#072d6b] p-6 text-white shadow-lg sm:p-8">
+        <div className="pointer-events-none absolute -right-8 -top-8 h-40 w-40 rounded-full bg-[#FFC107]/20 blur-2xl" />
+        <p className="text-xs font-bold uppercase tracking-widest text-[#FFC107]">Lecturer portal</p>
+        <h1 className="mt-2 text-2xl font-bold sm:text-3xl">Welcome, {firstName}</h1>
+        <p className="mt-2 max-w-xl text-sm text-blue-100">
+          Monitor your classes, publish content, and grade student work from one place.
         </p>
-        <div className="mt-4 flex flex-wrap gap-2">
+        <div className="mt-5 flex flex-wrap gap-2">
           <Link
             href="/lecturer/courses"
-            className="inline-block rounded-lg bg-white px-4 py-2 text-sm font-semibold text-[#0B3D91] hover:bg-blue-50"
+            className="inline-flex rounded-xl bg-[#FFC107] px-4 py-2.5 text-sm font-semibold text-[#0B3D91] shadow-md hover:bg-[#ffd54f]"
           >
-            View my courses
+            My courses
           </Link>
           {quickLinks.map((link) => (
             <Link
               key={link.href}
               href={link.href}
-              className="inline-block rounded-lg border border-white/30 px-4 py-2 text-sm font-semibold text-white hover:bg-white/10"
+              className="inline-flex rounded-xl border border-white/25 bg-white/10 px-4 py-2.5 text-sm font-semibold backdrop-blur-sm hover:bg-white/20"
             >
               {link.label}
             </Link>
@@ -61,48 +57,79 @@ export function LecturerDashboard() {
         </div>
       </section>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
-        {stats.map((stat) => (
-          <article
-            key={stat.label}
-            className="rounded-xl border border-slate-200/80 bg-white p-4 shadow-sm"
-          >
-            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{stat.label}</p>
-            <p className="mt-2 text-2xl font-bold text-slate-900">{stat.value}</p>
-          </article>
-        ))}
-      </div>
+      <DashboardStatsGrid columns={6}>
+        <DashboardStatCard
+          label="Courses"
+          value={data.stats.coursesManaged}
+          subtitle="Managed"
+          tone="blue"
+          icon="courses"
+        />
+        <DashboardStatCard
+          label="Grading"
+          value={data.stats.pendingGrading}
+          subtitle="Pending"
+          tone="amber"
+          icon="grades"
+        />
+        <DashboardStatCard
+          label="Notes"
+          value={data.stats.notesUploaded}
+          subtitle="Uploaded"
+          tone="emerald"
+          icon="notes"
+        />
+        <DashboardStatCard
+          label="Videos"
+          value={data.stats.videosUploaded}
+          subtitle="Published"
+          tone="violet"
+          icon="videos"
+        />
+        <DashboardStatCard
+          label="Quizzes"
+          value={data.stats.quizzesCreated}
+          subtitle="Created"
+          tone="indigo"
+          icon="quizzes"
+        />
+        <DashboardStatCard
+          label="Assignments"
+          value={data.stats.assignmentsCount}
+          subtitle="Total"
+          tone="teal"
+          icon="assignments"
+        />
+      </DashboardStatsGrid>
 
-      <section className="rounded-2xl border border-slate-200/80 bg-white shadow-sm">
-        <div className="border-b border-slate-100 px-5 py-4">
+      <section className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm">
+        <div className="border-b border-slate-100 px-4 py-4 sm:px-5">
           <h2 className="text-sm font-bold text-slate-900">Your courses</h2>
         </div>
-        <div className="p-5">
+        <div className="overflow-x-auto-touch p-4 sm:p-5">
           {data.recentCourses.length === 0 ? (
             <p className="text-sm text-slate-500">No courses assigned yet. Contact the administrator.</p>
           ) : (
-            <div className="overflow-hidden rounded-xl ring-1 ring-slate-100">
-              <table className="min-w-full text-sm">
-                <thead className="bg-slate-50 text-left text-xs font-semibold uppercase text-slate-500">
-                  <tr>
-                    <th className="px-3 py-2.5">Code</th>
-                    <th className="px-3 py-2.5">Title</th>
-                    <th className="px-3 py-2.5">Students</th>
-                    <th className="px-3 py-2.5">Updated</th>
+            <table className="min-w-[520px] w-full text-sm">
+              <thead className="bg-slate-50 text-left text-xs font-semibold uppercase text-slate-500">
+                <tr>
+                  <th className="px-3 py-2.5">Code</th>
+                  <th className="px-3 py-2.5">Title</th>
+                  <th className="px-3 py-2.5">Students</th>
+                  <th className="px-3 py-2.5">Updated</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {data.recentCourses.map((course) => (
+                  <tr key={course.id} className="hover:bg-slate-50/80">
+                    <td className="px-3 py-2.5 font-mono text-xs font-medium">{course.code}</td>
+                    <td className="px-3 py-2.5 text-slate-700">{course.title}</td>
+                    <td className="px-3 py-2.5">{course.students}</td>
+                    <td className="px-3 py-2.5 text-slate-500">{course.updatedAt}</td>
                   </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {data.recentCourses.map((course) => (
-                    <tr key={course.id}>
-                      <td className="px-3 py-2.5 font-mono text-xs font-medium">{course.code}</td>
-                      <td className="px-3 py-2.5 text-slate-700">{course.title}</td>
-                      <td className="px-3 py-2.5">{course.students}</td>
-                      <td className="px-3 py-2.5 text-slate-500">{course.updatedAt}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                ))}
+              </tbody>
+            </table>
           )}
         </div>
       </section>

@@ -81,7 +81,7 @@ export function CoursesTable({
           ) : (
             courses.map((course) => (
               <tr key={course.id} className="bg-white transition-colors hover:bg-slate-50/80">
-                <td className="px-3 py-3 font-mono text-xs font-semibold text-emerald-800 sm:px-4">
+                <td className="px-3 py-3 font-mono text-xs font-semibold text-yellow-800 sm:px-4">
                   {course.code}
                 </td>
                 <td className="px-3 py-3 sm:px-4">

@@ -44,7 +44,7 @@ export function AiTutorPage() {
             AI
           </div>
           <div>
-            <p className="font-semibold text-slate-900">Transit AI Tutor</p>
+            <p className="font-semibold text-slate-900">Transit College S/L AI Tutor</p>
             <p className="text-sm text-slate-500">Ask about formulas, concepts, or assignments</p>
           </div>
         </div>

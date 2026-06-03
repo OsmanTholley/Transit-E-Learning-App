@@ -4,6 +4,7 @@ import Link from "next/link";
 import { FormEvent, useState } from "react";
 import { normalizeStudentId } from "@/lib/student-id";
 import { showError, showSuccess } from "@/lib/swal";
+import { TransitLogo } from "@/components/brand/transit-logo";
 
 type VerifiedStudent = {
   studentId: string;
@@ -103,12 +104,10 @@ export default function RegisterPage() {
     <main className="flex min-h-screen items-center justify-center bg-slate-100 px-4 py-8">
       <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
         <div className="mb-6 flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#FFC107]">
-            <span className="text-sm font-bold text-[#0B3D91]">TR</span>
-          </div>
+          <TransitLogo size="md" variant="dark" subtitle="E-Learning" />
           <div>
             <h1 className="text-xl font-semibold text-slate-900">Student Registration</h1>
-            <p className="text-sm text-slate-600">Transit E-Learning</p>
+            <p className="text-sm text-slate-600">Transit College S/L E-Learning</p>
           </div>
         </div>
 
@@ -132,7 +131,7 @@ export default function RegisterPage() {
         {step === "verify" ? (
           <form className="space-y-4" onSubmit={handleVerify}>
             <p className="text-sm text-slate-600">
-              Enter your official Transit student ID. The system checks the admitted students database before
+              Enter your official Transit College S/L student ID. The system checks the admitted students database before
               you can register.
             </p>
             <label className="block">
@@ -238,7 +237,7 @@ export default function RegisterPage() {
 
         <p className="mt-6 text-center text-sm text-slate-600">
           Already have an account?{" "}
-          <Link href="/login" className="font-semibold text-[#0B3D91] hover:underline">
+          <Link href="/login?role=student" className="font-semibold text-[#0B3D91] hover:underline">
             Sign in
           </Link>
         </p>

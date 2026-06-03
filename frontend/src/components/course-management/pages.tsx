@@ -220,7 +220,7 @@ export function CourseReportsPage() {
     <StudentSection>
       {stats ? (
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          <StatCard label="Total Courses" value={stats.totalCourses} tone="emerald" />
+          <StatCard label="Total Courses" value={stats.totalCourses} tone="amber" />
           <StatCard label="Active" value={stats.activeCourses} tone="blue" />
           <StatCard label="Pending" value={stats.pendingCourses} tone="amber" />
           <StatCard label="Archived" value={stats.archivedCourses} tone="slate" />

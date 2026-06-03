@@ -2,6 +2,11 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ChatBubble, SuggestionChip, TypingIndicator } from "@/components/student/ai-tutor/ai-tutor-ui";
+import {
+  AI_MODEL_PROFILES,
+  getAiModelProfile,
+  type AiModelProfileId,
+} from "@/lib/ai-models";
 import type { ChatMessage } from "@/types/student-ai-tutor";
 
 const DEFAULT_SUGGESTIONS = [
@@ -38,6 +43,7 @@ export function AiTutorChat({
   const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [modelProfile, setModelProfile] = useState<AiModelProfileId>("light");
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -65,7 +71,7 @@ export function AiTutorChat({
         const res = await fetch("/api/student/ai-tutor", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ question: q, subject, mode }),
+          body: JSON.stringify({ question: q, subject, mode, modelProfile }),
         });
         const json = await res.json();
         const aiMsg: ChatMessage = {
@@ -91,10 +97,34 @@ export function AiTutorChat({
         setLoading(false);
       }
     },
-    [loading, messages, subject, mode, onMessagesChange]
+    [loading, messages, subject, mode, modelProfile, onMessagesChange]
   );
 
   return (
+    <div className="flex min-h-[520px] flex-col gap-4">
+      <div className="grid gap-2 sm:grid-cols-3">
+        {AI_MODEL_PROFILES.map((profile) => {
+          const active = modelProfile === profile.id;
+          return (
+            <button
+              key={profile.id}
+              type="button"
+              onClick={() => setModelProfile(profile.id)}
+              className={[
+                "rounded-xl border p-3 text-left text-xs transition",
+                active
+                  ? "border-[#0B3D91] bg-[#0B3D91]/5 ring-2 ring-[#0B3D91]/15"
+                  : "border-slate-200 bg-white hover:border-slate-300",
+              ].join(" ")}
+            >
+              <p className="font-bold text-slate-900">{profile.label}</p>
+              <p className="mt-0.5 text-slate-500">{profile.description}</p>
+              <p className="mt-1 font-mono text-[10px] text-[#0B3D91]">{profile.hint}</p>
+            </button>
+          );
+        })}
+      </div>
+
     <div className="flex min-h-[520px] gap-4">
       {showSidebar ? (
         <aside className="hidden w-56 shrink-0 flex-col rounded-2xl bg-white p-3 shadow-sm ring-1 ring-slate-200/80 lg:flex">
@@ -138,8 +168,10 @@ export function AiTutorChat({
             AI
           </div>
           <div>
-            <p className="font-bold text-slate-900">Transit AI Tutor</p>
-            <p className="text-xs text-slate-500">Patient lecturer • 24/7 academic support</p>
+            <p className="font-bold text-slate-900">Transit College S/L AI Tutor</p>
+            <p className="text-xs text-slate-500">
+              Patient lecturer • Model: {getAiModelProfile(modelProfile).model}
+            </p>
           </div>
         </div>
 
@@ -192,10 +224,11 @@ export function AiTutorChat({
             </button>
           </div>
           <p className="mt-2 text-[10px] text-slate-400">
-            Educational guidance only • English supported • Krio/French coming soon
+            Local Ollama models • Falls back to offline tutor if Ollama is unavailable
           </p>
         </div>
       </div>
+    </div>
     </div>
   );
 }

@@ -29,9 +29,23 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 a {
   color: inherit;
   text-decoration: none;
+}
+
+/* Responsive tables and wide content */
+.overflow-x-auto-touch {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+@supports (padding: max(0px)) {
+  .safe-pb {
+    padding-bottom: max(1rem, env(safe-area-inset-bottom));
+  }
 }

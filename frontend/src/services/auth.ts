@@ -9,7 +9,7 @@ type StudentLoginInput = {
 };
 
 type StaffLoginInput = {
-  role: "lecturer" | "admin";
+  role: "staff";
   email: string;
   password: string;
 };

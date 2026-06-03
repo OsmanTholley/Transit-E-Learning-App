@@ -42,7 +42,7 @@ export function AllProgramsList() {
   return (
     <StudentSection>
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard label="Total Programs" value={programs.length} tone="emerald" />
+        <StatCard label="Total Programs" value={programs.length} tone="amber" />
         <StatCard label="Active" value={active} tone="blue" />
         <StatCard label="Pending" value={pending} tone="amber" />
         <StatCard label="Enrolled Students" value={totalStudents.toLocaleString()} tone="slate" />
@@ -58,7 +58,7 @@ export function AllProgramsList() {
             placeholder="Search by program, department, or duration…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none transition focus:border-emerald-500/50 focus:ring-2 focus:ring-emerald-500/15 sm:max-w-md"
+            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none transition focus:border-yellow-500/50 focus:ring-2 focus:ring-yellow-500/15 sm:max-w-md"
           />
         }
       />

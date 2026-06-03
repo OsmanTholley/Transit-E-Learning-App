@@ -14,8 +14,24 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Transit E-Learning",
-  description: "Transit College digital learning platform",
+  title: {
+    default: "Transit College S/L E-Learning",
+    template: "%s | Transit College S/L",
+  },
+  description:
+    "Transit College S/L digital learning platform for students, lecturers, and administrators.",
+  icons: {
+    icon: [{ url: "/images/TCSL%20Logo.png", type: "image/png" }],
+    apple: [{ url: "/images/TCSL%20Logo.png" }],
+  },
+  applicationName: "Transit College S/L E-Learning",
+};
+
+export const viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 5,
+  themeColor: "#0B3D91",
 };
 
 export default function RootLayout({
@@ -27,6 +43,7 @@ export default function RootLayout({
     <html
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      suppressHydrationWarning
     >
       <body className="min-h-full">
         <AppProviders>{children}</AppProviders>

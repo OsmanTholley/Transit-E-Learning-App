@@ -75,7 +75,7 @@ export async function POST(request: NextRequest) {
 
     const response = NextResponse.json({
       ok: true,
-      message: "Registration successful. Welcome to Transit E-Learning!",
+      message: "Registration successful. Welcome to Transit College S/L E-Learning!",
     });
 
     setAuthCookies(response, user.id, "student");

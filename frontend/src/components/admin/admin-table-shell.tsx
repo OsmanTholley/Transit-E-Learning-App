@@ -43,7 +43,7 @@ export function AdminTableShell({
           >
             Previous
           </button>
-          <button type="button" className="rounded-lg bg-emerald-600 px-3 py-1.5 font-semibold text-white">
+          <button type="button" className="rounded-lg bg-yellow-500 px-3 py-1.5 font-semibold text-white">
             1
           </button>
           <button
@@ -63,7 +63,7 @@ export function ViewActionLink({ href, label = "View" }: { href: string; label?:
   return (
     <Link
       href={href}
-      className="inline-flex rounded-lg bg-emerald-600 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-emerald-500"
+      className="inline-flex rounded-lg bg-yellow-500 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-yellow-400"
     >
       {label}
     </Link>

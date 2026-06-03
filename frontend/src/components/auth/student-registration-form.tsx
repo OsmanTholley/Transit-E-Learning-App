@@ -104,7 +104,7 @@ export function StudentRegistrationForm() {
         <h1 className="text-2xl font-semibold text-slate-900">Student Registration</h1>
         <p className="mt-1 text-sm text-slate-600">
           {step === 1
-            ? "Enter your official Transit student ID to verify admission."
+            ? "Enter your official Transit College S/L student ID to verify admission."
             : "Create your login credentials to finish registration."}
         </p>
       </div>
@@ -229,7 +229,7 @@ export function StudentRegistrationForm() {
 
       <p className="mt-6 text-center text-sm text-slate-600">
         Already have an account?{" "}
-        <Link href="/login" className="font-semibold text-[#0B3D91] hover:underline">
+        <Link href="/login?role=student" className="font-semibold text-[#0B3D91] hover:underline">
           Sign in
         </Link>
       </p>

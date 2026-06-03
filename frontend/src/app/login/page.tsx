@@ -1,21 +1,43 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { DATABASE_OFFLINE_MESSAGE } from "@/lib/db-errors";
 import { beginDatabaseOfflineRecovery } from "@/lib/db-offline-client";
 import { showError } from "@/lib/swal";
 import { login } from "@/services/auth";
-import { AppRole } from "@/types/app";
+import { TransitLogo } from "@/components/brand/transit-logo";
+
+type LoginPortal = "student" | "staff";
+
+function portalLabel(portal: LoginPortal): string {
+  return portal === "student" ? "Student" : "Staff";
+}
 
 export default function LoginPage() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const roleParam = searchParams.get("role");
+  const portal: LoginPortal | null =
+    roleParam === "student" || roleParam === "staff" ? roleParam : null;
+
   const [studentId, setStudentId] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [role, setRole] = useState<AppRole>("student");
   const [loading, setLoading] = useState(false);
 
-  const isStudent = role === "student";
+  useEffect(() => {
+    if (!portal) {
+      router.replace("/");
+    }
+  }, [portal, router]);
+
+  if (!portal) {
+    return null;
+  }
+
+  const isStudent = portal === "student";
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -23,7 +45,7 @@ export default function LoginPage() {
 
     const result = isStudent
       ? await login({ role: "student", studentId, password })
-      : await login({ role, email, password });
+      : await login({ role: "staff", email, password });
 
     setLoading(false);
 
@@ -44,27 +66,20 @@ export default function LoginPage() {
   return (
     <main className="flex min-h-screen items-center justify-center bg-slate-100 px-4">
       <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
-        <h1 className="text-2xl font-semibold text-slate-900">Transit E-Learning Login</h1>
-        <p className="mt-1 text-sm text-slate-600">
-          {isStudent
-            ? "Students sign in with their TCSL/ ID and password."
-            : "Staff sign in with email and password."}
-        </p>
+        <div className="flex items-center justify-center">
+          <TransitLogo size="md" variant="dark" subtitle="E-Learning" />
+        </div>
+
+        <div className="text-center">
+          <h1 className="text-2xl font-semibold text-slate-900">{portalLabel(portal)} sign in</h1>
+          <p className="mt-1 text-sm text-slate-600">
+            {isStudent
+              ? "Sign in with your student ID and password."
+              : "Sign in with your institutional email and password."}
+          </p>
+        </div>
 
         <form className="mt-5 space-y-4" onSubmit={handleSubmit}>
-          <label className="block">
-            <span className="text-sm text-slate-700">Role</span>
-            <select
-              value={role}
-              onChange={(event) => setRole(event.target.value as AppRole)}
-              className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-700"
-            >
-              <option value="student">Student</option>
-              <option value="lecturer">Lecturer</option>
-              <option value="admin">Admin</option>
-            </select>
-          </label>
-
           {isStudent ? (
             <label className="block">
               <span className="text-sm text-slate-700">Student ID</span>
@@ -116,11 +131,14 @@ export default function LoginPage() {
         <div className="mt-4 flex flex-col gap-2 text-sm">
           {isStudent ? (
             <Link href="/register" className="font-semibold text-blue-800 hover:underline">
-              New student? Register with your TCSL/ ID
+              New student? Verify your ID
             </Link>
           ) : null}
           <Link href="/forgot-password" className="text-blue-800 hover:underline">
             Forgot password?
+          </Link>
+          <Link href="/" className="text-slate-600 hover:text-blue-800 hover:underline">
+            Choose a different portal
           </Link>
         </div>
       </div>

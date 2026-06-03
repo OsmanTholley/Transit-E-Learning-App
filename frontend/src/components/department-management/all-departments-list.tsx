@@ -64,7 +64,7 @@ export function AllDepartmentsList() {
   return (
     <StudentSection>
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard label="Total Departments" value={departments.length} tone="emerald" />
+        <StatCard label="Total Departments" value={departments.length} tone="amber" />
         <StatCard label="Active" value={active} tone="blue" />
         <StatCard label="Inactive" value={inactive} tone="slate" />
         <StatCard label="Pending" value={pending} tone="amber" />
