@@ -28,7 +28,7 @@ export function StudentNotificationsHub() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch("/api/student/notifications", { credentials: "include" });
+      const res = await fetch("/api/notifications", { credentials: "include" });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Failed to load notices");
       setNotices(data.notifications ?? []);
@@ -43,7 +43,7 @@ export function StudentNotificationsHub() {
     let cancelled = false;
     (async () => {
       try {
-        const res = await fetch("/api/student/notifications", { credentials: "include" });
+        const res = await fetch("/api/notifications", { credentials: "include" });
         const data = await res.json();
         if (cancelled) return;
         if (!res.ok) throw new Error(data.error ?? "Failed to load notices");
@@ -68,7 +68,7 @@ export function StudentNotificationsHub() {
 
     setMarkingId(notice.id);
     try {
-      const res = await fetch("/api/student/notifications", {
+      const res = await fetch("/api/notifications", {
         method: "PATCH",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
@@ -105,7 +105,7 @@ export function StudentNotificationsHub() {
   async function handleMarkAllRead() {
     setMarkingAll(true);
     try {
-      const res = await fetch("/api/student/notifications", {
+      const res = await fetch("/api/notifications", {
         method: "PATCH",
         credentials: "include",
         headers: { "Content-Type": "application/json" },

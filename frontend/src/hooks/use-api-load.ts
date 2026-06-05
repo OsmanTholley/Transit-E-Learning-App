@@ -24,6 +24,8 @@ export function useApiLoad<T>(url: string, options?: UseApiLoadOptions<T>) {
     };
   }, []);
 
+  const loadRef = useRef<() => Promise<void>>(async () => {});
+
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -35,7 +37,7 @@ export function useApiLoad<T>(url: string, options?: UseApiLoadOptions<T>) {
       errorTitle,
       onRecovered: () => {
         if (mountedRef.current) {
-          void load();
+          void loadRef.current();
           router.refresh();
         }
       },
@@ -64,7 +66,13 @@ export function useApiLoad<T>(url: string, options?: UseApiLoadOptions<T>) {
   }, [url, errorTitle, silent, router]);
 
   useEffect(() => {
-    void load();
+    loadRef.current = load;
+  }, [load]);
+
+  useEffect(() => {
+    Promise.resolve().then(() => {
+      void load();
+    });
   }, [load]);
 
   return { data, loading, error, reload: load, setData };

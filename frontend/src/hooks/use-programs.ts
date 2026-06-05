@@ -19,6 +19,8 @@ export function usePrograms() {
     };
   }, []);
 
+  const loadRef = useRef<() => Promise<void>>(async () => {});
+
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -28,7 +30,7 @@ export function usePrograms() {
       errorTitle: "Could not load programs",
       onRecovered: () => {
         if (mountedRef.current) {
-          void load();
+          void loadRef.current();
           router.refresh();
         }
       },
@@ -54,7 +56,13 @@ export function usePrograms() {
   }, [router]);
 
   useEffect(() => {
-    void load();
+    loadRef.current = load;
+  }, [load]);
+
+  useEffect(() => {
+    Promise.resolve().then(() => {
+      void load();
+    });
   }, [load]);
 
   return { programs, loading, error, refetch: load };

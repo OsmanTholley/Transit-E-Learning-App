@@ -3,11 +3,11 @@
 import { FormEvent, useEffect, useState } from "react";
 import { requestApi } from "@/lib/fetch-api";
 import { showError, showSuccess } from "@/lib/swal";
-import type { LecturerProfilePayload } from "@/types/user-profile";
+import type { AdminProfilePayload } from "@/types/user-profile";
 import {
-  CourseList,
   InfoGrid,
   Panel,
+  PermissionsList,
   ProfileAvatar,
   ProfileEditForm,
   ProfilePageHeader,
@@ -21,24 +21,22 @@ type EditForm = {
   phone: string;
   bio: string;
   socialLinks: string;
-  specialization: string;
   profileImage: string | null;
 };
 
-function toEditForm(data: LecturerProfilePayload): EditForm {
+function toEditForm(data: AdminProfilePayload): EditForm {
   const dash = (v: string) => (v === "—" ? "" : v);
   return {
     fullName: data.profile.fullName,
     phone: dash(data.profile.phone),
     bio: dash(data.profile.bio),
     socialLinks: dash(data.profile.socialLinks),
-    specialization: dash(data.profile.specialization),
     profileImage: data.profile.profileImage,
   };
 }
 
-export function LecturerProfilePage() {
-  const [data, setData] = useState<LecturerProfilePayload | null>(null);
+export function AdminProfilePage() {
+  const [data, setData] = useState<AdminProfilePayload | null>(null);
   const [form, setForm] = useState<EditForm | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -46,7 +44,7 @@ export function LecturerProfilePage() {
   useEffect(() => {
     let cancelled = false;
     async function load() {
-      const result = await requestApi<LecturerProfilePayload>("/api/lecturer/profile", {
+      const result = await requestApi<AdminProfilePayload>("/api/admin/profile", {
         errorTitle: "Could not load profile",
       });
       if (cancelled) return;
@@ -71,7 +69,7 @@ export function LecturerProfilePage() {
     if (!form) return;
     setSaving(true);
     try {
-      const res = await fetch("/api/lecturer/profile", {
+      const res = await fetch("/api/admin/profile", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -110,11 +108,11 @@ export function LecturerProfilePage() {
   return (
     <div className="mx-auto w-full max-w-3xl space-y-6">
       <ProfilePageHeader
-        title="My Profile"
-        subtitle="Your teaching profile, assigned courses, and contact details."
+        title="Administrator Profile"
+        subtitle="Your account details, access level, and contact information."
       />
 
-      <Panel title="Profile overview" noPadding>
+      <Panel title="Account" noPadding>
         <div className="space-y-6 p-4 sm:p-5">
           <ProfileAvatar
             fullName={profile.fullName}
@@ -127,22 +125,16 @@ export function LecturerProfilePage() {
             items={[
               { label: "Full name", value: profile.fullName },
               { label: "Email", value: profile.email },
-              { label: "Department", value: profile.department },
-              { label: "Specialization", value: profile.specialization },
+              { label: "Role", value: "Administrator" },
+              { label: "Access level", value: profile.adminLevel },
               { label: "Last sign-in", value: profile.lastLoginAt ?? "Not recorded yet" },
             ]}
           />
-          {profile.bio !== "—" ? (
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">About me</p>
-              <p className="mt-1 text-sm leading-relaxed text-slate-700">{profile.bio}</p>
-            </div>
-          ) : null}
         </div>
       </Panel>
 
-      <Panel title="Courses teaching">
-        <CourseList courses={data.coursesTeaching} />
+      <Panel title="Role & permissions">
+        <PermissionsList permissions={profile.permissions} />
       </Panel>
 
       <Panel title="Edit profile">
@@ -157,15 +149,7 @@ export function LecturerProfilePage() {
           </div>
           <div>
             <FieldLabel>Phone</FieldLabel>
-            <TextInput value={form.phone} onChange={(e) => updateField("phone", e.target.value)} placeholder="+232 …" />
-          </div>
-          <div>
-            <FieldLabel>Specialization</FieldLabel>
-            <TextInput
-              value={form.specialization}
-              onChange={(e) => updateField("specialization", e.target.value)}
-              placeholder="e.g. Software Engineering"
-            />
+            <TextInput value={form.phone} onChange={(e) => updateField("phone", e.target.value)} />
           </div>
           <div>
             <FieldLabel>Social links</FieldLabel>
@@ -173,12 +157,7 @@ export function LecturerProfilePage() {
           </div>
           <div className="sm:col-span-2">
             <FieldLabel>Bio / About me</FieldLabel>
-            <TextArea
-              value={form.bio}
-              onChange={(v) => updateField("bio", v)}
-              placeholder="Tell students about your background and teaching approach…"
-              rows={4}
-            />
+            <TextArea value={form.bio} onChange={(v) => updateField("bio", v)} />
           </div>
         </ProfileEditForm>
       </Panel>

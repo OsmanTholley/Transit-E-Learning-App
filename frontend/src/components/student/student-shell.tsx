@@ -4,6 +4,8 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { ReactNode, useEffect, useState } from "react";
 import { TransitLogo } from "@/components/brand/transit-logo";
+import { NotificationBell } from "@/components/layout/notification-bell";
+import { TopbarUserMenu } from "@/components/layout/topbar-user-menu";
 import { MobileNavOverlay, MobileTopBar } from "@/components/layout/mobile-top-bar";
 import { useStudentSession } from "@/contexts/student-session-context";
 import { logout } from "@/services/auth";
@@ -100,8 +102,14 @@ export function StudentShell({ children }: { children: ReactNode }) {
   const router = useRouter();
   const { data, loading } = useStudentSession();
   const profile = data?.profile;
-  const notificationCount = data?.stats.newNotifications ?? 0;
+  const [notificationCount, setNotificationCount] = useState(0);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+
+  useEffect(() => {
+    Promise.resolve().then(() => {
+      setNotificationCount(data?.stats.newNotifications ?? 0);
+    });
+  }, [data?.stats.newNotifications]);
 
   const onLogout = async () => {
     await logout();
@@ -109,7 +117,9 @@ export function StudentShell({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
-    setMobileNavOpen(false);
+    Promise.resolve().then(() => {
+      setMobileNavOpen(false);
+    });
   }, [pathname]);
 
   return (
@@ -198,43 +208,20 @@ export function StudentShell({ children }: { children: ReactNode }) {
             </div>
 
             <div className="flex items-center justify-end gap-3">
-              <Link
-                href="/student/notifications"
-                className="relative flex h-10 w-10 items-center justify-center rounded-full bg-white text-slate-600 shadow-sm ring-1 ring-slate-200 hover:bg-slate-50"
-                aria-label="Notices"
-              >
-                <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 7h18s-3 0-3-7" />
-                  <path d="M13.73 21a2 2 0 0 1-3.46 0" />
-                </svg>
-                {notificationCount > 0 ? (
-                  <span className="absolute -right-0.5 -top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-[#FFC107] text-[9px] font-bold text-[#0B3D91]">
-                    {notificationCount}
-                  </span>
-                ) : null}
-              </Link>
-              <button
-                type="button"
-                className="flex h-10 w-10 items-center justify-center rounded-full bg-white text-slate-600 shadow-sm ring-1 ring-slate-200 hover:bg-slate-50"
-                aria-label="Messages"
-              >
-                <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-                </svg>
-              </button>
-              <div className="flex items-center gap-3 rounded-full bg-white py-1.5 pl-1.5 pr-4 shadow-sm ring-1 ring-slate-200">
-                <div className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-full bg-slate-200">
-                  <span className="text-xs font-bold text-[#0B3D91]">
-                    {loading ? "…" : (profile?.avatarInitials ?? "ST")}
-                  </span>
-                </div>
-                <div className="leading-tight">
-                  <p className="text-sm font-semibold text-slate-900">
-                    {loading ? "Loading…" : (profile?.fullName ?? "Student")}
-                  </p>
-                  <p className="text-xs text-slate-500">{profile?.role ?? "Student"}</p>
-                </div>
-              </div>
+              <NotificationBell
+                role="student"
+                variant="student"
+                onCountChange={setNotificationCount}
+              />
+              <TopbarUserMenu
+                role="student"
+                variant="student"
+                fullName={loading ? "Loading…" : (profile?.fullName ?? "Student")}
+                subtitle={profile?.role ?? "Student"}
+                profileImage={profile?.profileImage}
+                initials={profile?.avatarInitials ?? "ST"}
+                profileHref="/student/profile"
+              />
             </div>
           </div>
         </header>

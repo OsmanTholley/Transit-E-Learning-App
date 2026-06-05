@@ -20,7 +20,11 @@ export default async function AdminLayout({ children }: { children: ReactNode })
   }
 
   return (
-    <AdminShell adminName={admin.fullName} adminEmail={admin.email ?? ""}>
+    <AdminShell
+      adminName={admin.fullName}
+      adminEmail={admin.email ?? ""}
+      profileImage={admin.profileImage}
+    >
       {children}
     </AdminShell>
   );

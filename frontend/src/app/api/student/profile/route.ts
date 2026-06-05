@@ -1,22 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireLecturer, unauthorized } from "@/lib/auth";
+import { unauthorized, validateStudentSession } from "@/lib/auth";
 import { handleRouteDatabaseError } from "@/lib/db-errors";
 import { prisma } from "@/lib/prisma";
-import { loadLecturerProfile, patchUserProfileFields } from "@/lib/user-profile-service";
+import { loadStudentProfile, patchUserProfileFields } from "@/lib/user-profile-service";
 
 export async function GET() {
   try {
-    const lecturer = await requireLecturer();
-    if (!lecturer) return unauthorized();
+    const user = await validateStudentSession();
+    if (!user) return unauthorized();
 
-    const profile = await loadLecturerProfile(lecturer.userId);
+    const profile = await loadStudentProfile(user.id);
     if (!profile) {
-      return NextResponse.json({ error: "Lecturer profile not found." }, { status: 404 });
+      return NextResponse.json({ error: "Student profile not found." }, { status: 404 });
     }
 
     return NextResponse.json(profile);
   } catch (error) {
-    console.error("GET /api/lecturer/profile:", error);
+    console.error("GET /api/student/profile:", error);
     const dbResponse = handleRouteDatabaseError(error);
     if (dbResponse) return dbResponse;
     return NextResponse.json({ error: "Failed to load profile." }, { status: 500 });
@@ -25,45 +25,40 @@ export async function GET() {
 
 export async function PATCH(request: NextRequest) {
   try {
-    const lecturer = await requireLecturer();
-    if (!lecturer) return unauthorized();
+    const user = await validateStudentSession();
+    if (!user) return unauthorized();
 
     const body = await request.json();
-    const { fullName, phone, bio, socialLinks, specialization, profileImage } = body;
+    const { fullName, phone, bio, socialLinks, learningGoals, achievements, profileImage } = body;
 
     if (fullName !== undefined && !fullName?.trim()) {
       return NextResponse.json({ error: "Full name cannot be empty." }, { status: 400 });
     }
 
-    await patchUserProfileFields(lecturer.userId, {
+    await patchUserProfileFields(user.id, {
       fullName,
       phone,
       bio,
       socialLinks,
+      learningGoals,
+      achievements,
       profileImage,
     });
 
-    if (specialization !== undefined) {
-      await prisma.lecturer.update({
-        where: { id: lecturer.id },
-        data: { specialization: specialization?.trim() || null },
-      });
-    }
-
     if (profileImage !== undefined) {
-      await prisma.lecturer.update({
-        where: { id: lecturer.id },
+      await prisma.student.update({
+        where: { userId: user.id },
         data: { profileImage: profileImage || null },
       });
     }
 
-    const profile = await loadLecturerProfile(lecturer.userId);
+    const profile = await loadStudentProfile(user.id);
     return NextResponse.json({
       message: "Profile updated successfully.",
       ...profile,
     });
   } catch (error) {
-    console.error("PATCH /api/lecturer/profile:", error);
+    console.error("PATCH /api/student/profile:", error);
     const dbResponse = handleRouteDatabaseError(error);
     if (dbResponse) return dbResponse;
     return NextResponse.json({ error: "Failed to update profile." }, { status: 500 });

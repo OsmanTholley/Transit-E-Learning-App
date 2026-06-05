@@ -2,7 +2,7 @@
 
 import { motion } from "framer-motion";
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useCourseBookmarks } from "@/hooks/use-course-bookmarks";
 import { ContentEngagementPanel } from "@/components/content/content-engagement-panel";
 import { AssignmentSubmitCard } from "@/components/student/courses/assignment-submit-card";
@@ -48,7 +48,7 @@ export function MaterialsPage({ type }: { type: MaterialType }) {
   const { toggleBookmark, isBookmarked } = useCourseBookmarks();
   const meta = pageMeta[type];
 
-  async function loadItems() {
+  const loadItems = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
@@ -61,11 +61,13 @@ export function MaterialsPage({ type }: { type: MaterialType }) {
     } finally {
       setLoading(false);
     }
-  }
+  }, [type]);
 
   useEffect(() => {
-    void loadItems();
-  }, [type]);
+    Promise.resolve().then(() => {
+      void loadItems();
+    });
+  }, [loadItems]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();

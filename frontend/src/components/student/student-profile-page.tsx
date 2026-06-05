@@ -1,11 +1,14 @@
 "use client";
 
 import { FormEvent, useEffect, useState } from "react";
+import { useStudentSession } from "@/contexts/student-session-context";
 import { requestApi } from "@/lib/fetch-api";
 import { showError, showSuccess } from "@/lib/swal";
-import type { LecturerProfilePayload } from "@/types/user-profile";
+import type { StudentProfilePayload } from "@/types/user-profile";
 import {
+  ActivityList,
   CourseList,
+  GradesTable,
   InfoGrid,
   Panel,
   ProfileAvatar,
@@ -21,24 +24,27 @@ type EditForm = {
   phone: string;
   bio: string;
   socialLinks: string;
-  specialization: string;
+  learningGoals: string;
+  achievements: string;
   profileImage: string | null;
 };
 
-function toEditForm(data: LecturerProfilePayload): EditForm {
+function toEditForm(data: StudentProfilePayload): EditForm {
   const dash = (v: string) => (v === "—" ? "" : v);
   return {
     fullName: data.profile.fullName,
     phone: dash(data.profile.phone),
     bio: dash(data.profile.bio),
     socialLinks: dash(data.profile.socialLinks),
-    specialization: dash(data.profile.specialization),
+    learningGoals: dash(data.profile.learningGoals),
+    achievements: dash(data.profile.achievements),
     profileImage: data.profile.profileImage,
   };
 }
 
-export function LecturerProfilePage() {
-  const [data, setData] = useState<LecturerProfilePayload | null>(null);
+export function StudentProfilePage() {
+  const { refresh: refreshSession } = useStudentSession();
+  const [data, setData] = useState<StudentProfilePayload | null>(null);
   const [form, setForm] = useState<EditForm | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -46,7 +52,7 @@ export function LecturerProfilePage() {
   useEffect(() => {
     let cancelled = false;
     async function load() {
-      const result = await requestApi<LecturerProfilePayload>("/api/lecturer/profile", {
+      const result = await requestApi<StudentProfilePayload>("/api/student/profile", {
         errorTitle: "Could not load profile",
       });
       if (cancelled) return;
@@ -71,7 +77,7 @@ export function LecturerProfilePage() {
     if (!form) return;
     setSaving(true);
     try {
-      const res = await fetch("/api/lecturer/profile", {
+      const res = await fetch("/api/student/profile", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -81,6 +87,7 @@ export function LecturerProfilePage() {
       if (!res.ok) throw new Error(json.error ?? "Failed to update profile.");
       setData(json);
       setForm(toEditForm(json));
+      await refreshSession();
       await showSuccess("Profile updated", json.message ?? "Your profile has been saved.");
     } catch (err) {
       await showError("Could not save profile", err instanceof Error ? err.message : "Failed to update profile.");
@@ -108,10 +115,10 @@ export function LecturerProfilePage() {
   const { profile } = data;
 
   return (
-    <div className="mx-auto w-full max-w-3xl space-y-6">
+    <div className="mx-auto w-full max-w-4xl space-y-6">
       <ProfilePageHeader
         title="My Profile"
-        subtitle="Your teaching profile, assigned courses, and contact details."
+        subtitle="View your academic record, grades, and update your personal details."
       />
 
       <Panel title="Profile overview" noPadding>
@@ -127,22 +134,26 @@ export function LecturerProfilePage() {
             items={[
               { label: "Full name", value: profile.fullName },
               { label: "Email", value: profile.email },
+              { label: "Student ID", value: profile.studentId },
               { label: "Department", value: profile.department },
-              { label: "Specialization", value: profile.specialization },
+              { label: "Program", value: profile.program },
+              { label: "Year / Semester", value: `${profile.year} · ${profile.semester}` },
               { label: "Last sign-in", value: profile.lastLoginAt ?? "Not recorded yet" },
             ]}
           />
-          {profile.bio !== "—" ? (
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">About me</p>
-              <p className="mt-1 text-sm leading-relaxed text-slate-700">{profile.bio}</p>
-            </div>
-          ) : null}
         </div>
       </Panel>
 
-      <Panel title="Courses teaching">
-        <CourseList courses={data.coursesTeaching} />
+      <Panel title="Courses enrolled">
+        <CourseList courses={data.enrolledCourses} />
+      </Panel>
+
+      <Panel title="Recent activity">
+        <ActivityList items={data.recentActivity} />
+      </Panel>
+
+      <Panel title="Assignment & quiz grades">
+        <GradesTable grades={data.grades} />
       </Panel>
 
       <Panel title="Edit profile">
@@ -160,24 +171,31 @@ export function LecturerProfilePage() {
             <TextInput value={form.phone} onChange={(e) => updateField("phone", e.target.value)} placeholder="+232 …" />
           </div>
           <div>
-            <FieldLabel>Specialization</FieldLabel>
-            <TextInput
-              value={form.specialization}
-              onChange={(e) => updateField("specialization", e.target.value)}
-              placeholder="e.g. Software Engineering"
-            />
-          </div>
-          <div>
             <FieldLabel>Social links</FieldLabel>
-            <TextInput value={form.socialLinks} onChange={(e) => updateField("socialLinks", e.target.value)} />
+            <TextInput
+              value={form.socialLinks}
+              onChange={(e) => updateField("socialLinks", e.target.value)}
+              placeholder="LinkedIn, portfolio…"
+            />
           </div>
           <div className="sm:col-span-2">
             <FieldLabel>Bio / About me</FieldLabel>
+            <TextArea value={form.bio} onChange={(v) => updateField("bio", v)} placeholder="A short introduction…" />
+          </div>
+          <div className="sm:col-span-2">
+            <FieldLabel>Learning goals</FieldLabel>
             <TextArea
-              value={form.bio}
-              onChange={(v) => updateField("bio", v)}
-              placeholder="Tell students about your background and teaching approach…"
-              rows={4}
+              value={form.learningGoals}
+              onChange={(v) => updateField("learningGoals", v)}
+              placeholder="What you want to achieve this semester…"
+            />
+          </div>
+          <div className="sm:col-span-2">
+            <FieldLabel>Achievements & certificates</FieldLabel>
+            <TextArea
+              value={form.achievements}
+              onChange={(v) => updateField("achievements", v)}
+              placeholder="Awards, certifications, competitions…"
             />
           </div>
         </ProfileEditForm>

@@ -29,6 +29,8 @@ export function StudentSessionProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
+  const loadRef = useRef<() => Promise<void>>(async () => {});
+
   const load = useCallback(async () => {
     let waitingForConnection = false;
 
@@ -36,7 +38,7 @@ export function StudentSessionProvider({ children }: { children: ReactNode }) {
       silent: true,
       onRecovered: () => {
         if (mountedRef.current) {
-          void load();
+          void loadRef.current();
           router.refresh();
         }
       },
@@ -69,6 +71,10 @@ export function StudentSessionProvider({ children }: { children: ReactNode }) {
       setLoading(false);
     }
   }, [router]);
+
+  useEffect(() => {
+    loadRef.current = load;
+  }, [load]);
 
   useEffect(() => {
     void load();

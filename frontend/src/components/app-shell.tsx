@@ -7,7 +7,11 @@ import { adminNavigation, navigation } from "@/services/mock-data";
 import { logout } from "@/services/auth";
 import { AppRole, NavItem } from "@/types/app";
 import { TransitLogo } from "@/components/brand/transit-logo";
+import { NotificationBell } from "@/components/layout/notification-bell";
+import { TopbarUserMenu } from "@/components/layout/topbar-user-menu";
 import { MobileNavOverlay, MobileTopBar } from "@/components/layout/mobile-top-bar";
+import { requestApi } from "@/lib/fetch-api";
+import type { LecturerProfilePayload } from "@/types/user-profile";
 
 type AppShellProps = {
   role: AppRole;
@@ -85,6 +89,28 @@ export function AppShell({ role, pageTitle, subtitle, children }: AppShellProps)
   const router = useRouter();
   const items = role === "admin" ? null : navigation[role];
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [headerUser, setHeaderUser] = useState<{
+    fullName: string;
+    profileImage: string | null;
+    initials: string;
+  } | null>(null);
+
+  useEffect(() => {
+    if (role !== "lecturer") return;
+    let cancelled = false;
+    (async () => {
+      const result = await requestApi<LecturerProfilePayload>("/api/lecturer/profile", { silent: true });
+      if (cancelled || !result.ok) return;
+      setHeaderUser({
+        fullName: result.data.profile.fullName,
+        profileImage: result.data.profile.profileImage,
+        initials: result.data.profile.avatarInitials,
+      });
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [role]);
 
   const onLogout = async () => {
     await logout();
@@ -92,7 +118,9 @@ export function AppShell({ role, pageTitle, subtitle, children }: AppShellProps)
   };
 
   useEffect(() => {
-    setMobileNavOpen(false);
+    Promise.resolve().then(() => {
+      setMobileNavOpen(false);
+    });
   }, [pathname]);
 
   return (
@@ -185,23 +213,27 @@ export function AppShell({ role, pageTitle, subtitle, children }: AppShellProps)
                   aria-label="Search"
                 />
               </div>
-              <button
-                type="button"
-                className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
-                aria-label="Notifications"
-              >
-                <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M18 8a6 6 0 1 0-12 0c0 7-3 7-3 7h18s-3 0-3-7" />
-                  <path d="M13.73 21a2 2 0 0 1-3.46 0" />
-                </svg>
-              </button>
-              <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white px-3 py-2">
-                <div className="h-8 w-8 rounded-full bg-slate-200" />
-                <div className="leading-tight">
-                  <p className="text-xs font-semibold text-slate-900">User</p>
-                  <p className="text-[11px] text-slate-500">{role === "lecturer" ? "Lecturer" : "Super Admin"}</p>
-                </div>
-              </div>
+              <NotificationBell role={role} variant="lecturer" />
+              {role === "lecturer" ? (
+                <TopbarUserMenu
+                  role="lecturer"
+                  variant="lecturer"
+                  fullName={headerUser?.fullName ?? "Lecturer"}
+                  subtitle="Lecturer"
+                  profileImage={headerUser?.profileImage}
+                  initials={headerUser?.initials ?? "LC"}
+                  profileHref="/lecturer/profile"
+                />
+              ) : (
+                <TopbarUserMenu
+                  role="admin"
+                  variant="admin"
+                  fullName="Administrator"
+                  subtitle="Super Admin"
+                  initials="AD"
+                  profileHref="/admin/profile"
+                />
+              )}
             </div>
           </div>
         </header>

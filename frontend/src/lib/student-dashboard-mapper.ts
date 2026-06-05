@@ -24,6 +24,7 @@ function formatDate(date: Date) {
 type DashboardStudent = {
   id: string;
   studentId: string;
+  profileImage: string | null;
   level: string | null;
   semester: string | null;
   user: {
@@ -31,6 +32,7 @@ type DashboardStudent = {
     fullName: string;
     email: string | null;
     phone: string | null;
+    profileImage: string | null;
   };
   department: { departmentName: string } | null;
   program: { programName: string } | null;
@@ -158,6 +160,7 @@ export function buildStudentDashboardData(
       year: formatAcademicYear(student.level),
       semester: student.semester ?? "—",
       avatarInitials: initials || "ST",
+      profileImage: student.profileImage ?? student.user.profileImage ?? null,
       role: "Student",
     },
     stats,

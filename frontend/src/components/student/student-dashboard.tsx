@@ -1,12 +1,12 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { useStudentSession } from "@/contexts/student-session-context";
 import {
   DashboardStatCard,
   DashboardStatsGrid,
 } from "@/components/ui/dashboard-stat-card";
+import { UserAvatar } from "@/components/ui/user-avatar";
 
 function CourseThumbnail({ type }: { type: string }) {
   const base = "flex h-full w-full items-center justify-center text-white/90";
@@ -103,18 +103,19 @@ export function StudentDashboard() {
           </p>
         </div>
 
-        <div className="pointer-events-none absolute -right-4 bottom-0 top-0 hidden w-[280px] md:block lg:w-[320px]">
-          <div className="absolute right-8 top-1/2 h-48 w-48 -translate-y-1/2 rounded-full bg-[#FFC107]/20" />
-          <div className="absolute right-16 top-8 h-3 w-3 rounded-full bg-[#FFC107]" />
-          <div className="absolute right-32 bottom-12 h-2 w-2 rounded-full bg-[#0B3D91]/20" />
-          <Image
-            src="/images/student-hero.png"
-            alt=""
-            width={280}
-            height={280}
-            className="relative z-10 h-full w-full object-contain object-bottom"
-            priority
-          />
+        <div className="pointer-events-none absolute -right-2 bottom-0 top-0 hidden items-center justify-center md:flex md:w-[240px] lg:w-[280px]">
+          <div className="absolute right-10 top-1/2 h-44 w-44 -translate-y-1/2 rounded-full bg-[#FFC107]/25" />
+          <div className="absolute right-20 top-10 h-3 w-3 rounded-full bg-[#FFC107]" />
+          <div className="absolute right-28 bottom-16 h-2 w-2 rounded-full bg-[#0B3D91]/25" />
+          <div className="relative z-10">
+            <UserAvatar
+              fullName={profile.fullName}
+              profileImage={profile.profileImage}
+              initials={profile.avatarInitials}
+              size="xl"
+              ring
+            />
+          </div>
         </div>
       </section>
 

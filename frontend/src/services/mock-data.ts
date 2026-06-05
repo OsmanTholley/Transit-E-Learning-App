@@ -28,6 +28,7 @@ export const navigation: Record<"student" | "lecturer", NavItem[]> = {
     { label: "Assignments", href: "/lecturer/assignments" },
     { label: "Students", href: "/lecturer/students" },
     { label: "AI Assistant", href: "/lecturer/ai" },
+    { label: "Notifications", href: "/lecturer/notifications" },
     { label: "Profile", href: "/lecturer/profile" },
   ],
 };
@@ -191,9 +192,8 @@ const studentSections: Record<string, SectionContent> = {
     ],
   },
   profile: {
-    title: "Profile",
-    subtitle: "View and update your personal and academic information.",
-    bullets: ["Student ID: TCSL/001", "Program: BSc Computer Science", "Department: Computing Sciences"],
+    title: "My Profile",
+    subtitle: "View your courses, grades, activity, and update your personal details.",
   },
   settings: {
     title: "Settings",
@@ -268,11 +268,15 @@ const lecturerSections: Record<string, SectionContent> = {
   },
   profile: {
     title: "My Profile",
-    subtitle: "Update your contact details and specialization.",
+    subtitle: "Your teaching profile, courses, bio, and contact details.",
   },
   ai: {
     title: "AI Assistant",
     subtitle: "Local Ollama-powered academic AI for lesson planning and grading help.",
+  },
+  notifications: {
+    title: "Notifications",
+    subtitle: "Messages and updates from the institution.",
   },
 };
 
@@ -351,6 +355,10 @@ const adminSections: Record<string, SectionContent> = {
     title: "Reports & Analytics",
     subtitle: "Track platform usage and performance.",
     bullets: ["User growth trends.", "Course and content engagement."],
+  },
+  profile: {
+    title: "My Profile",
+    subtitle: "Your administrator account, access level, and contact details.",
   },
   settings: {
     title: "System Settings",

@@ -68,6 +68,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Invalid credentials." }, { status: 401 });
     }
 
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { lastLoginAt: new Date() },
+    });
+
     const resolvedRole = appRoleFromDb[user.role];
     if (!resolvedRole) {
       return NextResponse.json({ error: "Invalid credentials." }, { status: 401 });

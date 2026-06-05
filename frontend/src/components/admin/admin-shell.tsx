@@ -4,7 +4,10 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { ReactNode, useEffect, useState } from "react";
 import { TransitLogo } from "@/components/brand/transit-logo";
+import { NotificationBell } from "@/components/layout/notification-bell";
+import { TopbarUserMenu } from "@/components/layout/topbar-user-menu";
 import { MobileNavOverlay, MobileTopBar } from "@/components/layout/mobile-top-bar";
+import { avatarInitials } from "@/lib/user-profile-helpers";
 
 function sectionBaseHref(href: string) {
   if (href.includes("/content/")) return "/admin/content";
@@ -101,10 +104,11 @@ function NavIcon({ name }: { name: string }) {
 type Props = {
   adminName: string;
   adminEmail: string;
+  profileImage?: string | null;
   children: ReactNode;
 };
 
-export function AdminShell({ adminName, adminEmail, children }: Props) {
+export function AdminShell({ adminName, adminEmail, profileImage, children }: Props) {
   const pathname = usePathname();
   const router = useRouter();
 
@@ -119,12 +123,7 @@ export function AdminShell({ adminName, adminEmail, children }: Props) {
     return initial;
   });
 
-  const initials = adminName
-    .split(" ")
-    .map((p) => p[0])
-    .join("")
-    .slice(0, 2)
-    .toUpperCase();
+  const initials = avatarInitials(adminName);
 
   const toggleMenu = (href: string) => {
     setOpenMenus((prev) => ({ ...prev, [href]: !prev[href] }));
@@ -136,7 +135,9 @@ export function AdminShell({ adminName, adminEmail, children }: Props) {
   };
 
   useEffect(() => {
-    setMobileNavOpen(false);
+    Promise.resolve().then(() => {
+      setMobileNavOpen(false);
+    });
   }, [pathname]);
 
   const isItemActive = (href: string, hasChildren: boolean) => {
@@ -293,26 +294,16 @@ export function AdminShell({ adminName, adminEmail, children }: Props) {
               <span className="hidden rounded-full bg-yellow-50 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-yellow-800 ring-1 ring-yellow-200 sm:inline">
                 Administrator
               </span>
-              <button
-                type="button"
-                className="relative flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
-                aria-label="Notifications"
-              >
-                <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 7h18s-3 0-3-7" />
-                  <path d="M13.73 21a2 2 0 0 1-3.46 0" />
-                </svg>
-                <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-yellow-500 ring-2 ring-white" />
-              </button>
-              <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white py-1.5 pl-1.5 pr-4 shadow-sm">
-                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-slate-800 to-slate-900 text-xs font-bold text-white">
-                  {initials}
-                </div>
-                <div className="leading-tight">
-                  <p className="text-sm font-semibold text-slate-900">{adminName}</p>
-                  <p className="max-w-[140px] truncate text-xs text-slate-500">{adminEmail}</p>
-                </div>
-              </div>
+              <NotificationBell role="admin" variant="admin" />
+              <TopbarUserMenu
+                role="admin"
+                variant="admin"
+                fullName={adminName}
+                subtitle={adminEmail || "Administrator"}
+                profileImage={profileImage}
+                initials={initials}
+                profileHref="/admin/profile"
+              />
             </div>
           </div>
         </header>

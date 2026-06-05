@@ -7,7 +7,9 @@ import { LecturerAssignmentsPage } from "@/components/lecturer/lecturer-assignme
 import { LecturerCoursesPage } from "@/components/lecturer/lecturer-courses-page";
 import { LecturerDashboard } from "@/components/lecturer/lecturer-dashboard";
 import { LecturerMaterialsPage } from "@/components/lecturer/lecturer-materials-page";
+import { AdminProfilePage } from "@/components/admin/admin-profile-page";
 import { LecturerProfilePage } from "@/components/lecturer/lecturer-profile-page";
+import { StudentProfilePage } from "@/components/student/student-profile-page";
 import { LecturerQuizzesPage } from "@/components/lecturer/lecturer-quizzes-page";
 import { LecturerStudentsPage } from "@/components/lecturer/lecturer-students-page";
 import { LecturerVideosPage } from "@/components/lecturer/lecturer-videos-page";
@@ -17,6 +19,7 @@ import { AiTutorHub } from "@/components/student/ai-tutor/ai-tutor-hub";
 import { NotesHub } from "@/components/student/lecture-notes/notes-hub";
 import { QuizzesHub } from "@/components/student/quizzes/quizzes-hub";
 import { DiscussionsHub } from "@/components/student/discussions/discussions-hub";
+import { UserNotificationsHub } from "@/components/notifications/user-notifications-hub";
 import { StudentNotificationsHub } from "@/components/student/notifications/student-notifications-hub";
 import { AdminSectionView } from "@/components/admin/admin-section-view";
 import { getSectionContent } from "@/services/mock-data";
@@ -27,7 +30,6 @@ const adminDbSections = new Set([
   "quizzes",
   "discussions",
   "announcements",
-  "notifications",
   "reports",
   "settings",
   "activity-logs",
@@ -71,6 +73,9 @@ export function PortalPage({ role, section }: Props) {
     if (section === "notifications") {
       return <StudentNotificationsHub />;
     }
+    if (section === "profile") {
+      return <StudentProfilePage />;
+    }
     return (
       <div className="space-y-4">
         <div>
@@ -85,6 +90,12 @@ export function PortalPage({ role, section }: Props) {
   if (role === "admin") {
     if (section === "dashboard") {
       return <AdminDashboard adminName="Administrator" />;
+    }
+    if (section === "profile") {
+      return <AdminProfilePage />;
+    }
+    if (section === "notifications") {
+      return <UserNotificationsHub title={content.title} subtitle={content.subtitle} />;
     }
     if (adminDbSections.has(section)) {
       return (
@@ -168,6 +179,13 @@ export function PortalPage({ role, section }: Props) {
       return (
         <AppShell role={role} pageTitle="AI Assistant" subtitle="Local Ollama-powered academic AI">
           <LecturerAiPage />
+        </AppShell>
+      );
+    }
+    if (section === "notifications") {
+      return (
+        <AppShell role={role} pageTitle={content.title} subtitle={content.subtitle}>
+          <UserNotificationsHub title={content.title} subtitle={content.subtitle} />
         </AppShell>
       );
     }

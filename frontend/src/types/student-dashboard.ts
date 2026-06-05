@@ -11,6 +11,7 @@ export type StudentDashboardProfile = {
   year: string;
   semester: string;
   avatarInitials: string;
+  profileImage: string | null;
   role: string;
 };
 

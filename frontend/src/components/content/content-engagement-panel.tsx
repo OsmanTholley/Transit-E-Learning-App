@@ -36,19 +36,24 @@ export function ContentEngagementPanel({
 
   const url = `/api/content/${targetType}/${targetId}/social`;
 
-  async function load() {
-    setLoading(true);
-    const result = await requestApi<Engagement>(url, {
-      silent: true,
-      errorTitle: "Could not load comments",
-    });
-    if (result.ok) setData(result.data);
-    setLoading(false);
-  }
-
   useEffect(() => {
-    void load();
-  }, [targetId, targetType]);
+    let active = true;
+    async function load() {
+      setLoading(true);
+      const result = await requestApi<Engagement>(url, {
+        silent: true,
+        errorTitle: "Could not load comments",
+      });
+      if (active && result.ok) setData(result.data);
+      if (active) setLoading(false);
+    }
+    Promise.resolve().then(() => {
+      void load();
+    });
+    return () => {
+      active = false;
+    };
+  }, [url]);
 
   async function toggleLike() {
     const result = await requestApi<Engagement>(url, {
