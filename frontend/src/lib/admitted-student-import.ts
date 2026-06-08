@@ -34,7 +34,7 @@ export async function importAdmittedStudents(
         row: rowNum,
         studentId: input.studentId,
         status: "error",
-        message: "Invalid student ID format. Use TCSL/001.",
+        message: "Invalid student ID format. Use TCSL/0001.",
       });
       continue;
     }

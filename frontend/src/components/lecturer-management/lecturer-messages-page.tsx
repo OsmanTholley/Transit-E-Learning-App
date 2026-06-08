@@ -1,9 +1,14 @@
 "use client";
+import { LoadingState } from "@/components/ui/loading-indicator";
 
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { AdminRowActions, confirmAndDelete } from "@/components/admin/admin-entity-crud";
+import { AdminTableShell } from "@/components/admin/admin-table-shell";
+import { requestApi } from "@/lib/fetch-api";
 import { showError, showSuccess } from "@/lib/swal";
 import type { LecturerMessageAudienceType } from "@/lib/lecturer-message-service";
-import { FieldLabel, Panel, PrimaryButton, StatusBadge, StudentSection, TextInput } from "@/components/student-management/ui";
+import { LecturerCrudPageHero } from "./lecturer-crud-hero";
+import { FieldLabel, Panel, PrimaryButton, StatCard, StatusBadge, StudentSection, TextInput } from "@/components/student-management/ui";
 
 type MessageTargets = {
   departments: { id: string; name: string }[];
@@ -13,6 +18,7 @@ type MessageTargets = {
 type SentMessage = {
   id: string;
   title: string;
+  message?: string;
   audience: string;
   recipientCount: number;
   sentAt: string;
@@ -36,6 +42,11 @@ export function LecturerMessagesPage() {
   const [message, setMessage] = useState("");
   const [audienceType, setAudienceType] = useState<LecturerMessageAudienceType>("department");
   const [targetId, setTargetId] = useState("");
+  const [viewing, setViewing] = useState<SentMessage | null>(null);
+  const [editing, setEditing] = useState<SentMessage | null>(null);
+  const [editTitle, setEditTitle] = useState("");
+  const [editBody, setEditBody] = useState("");
+  const [savingEdit, setSavingEdit] = useState(false);
 
   const loadMessages = useCallback(async () => {
     setLoadingMessages(true);
@@ -155,12 +166,49 @@ export function LecturerMessagesPage() {
     }
   }
 
-  if (loadingTargets) {
-    return (
-      <div className="flex min-h-[200px] items-center justify-center rounded-2xl border border-slate-200/80 bg-white p-8">
-        <p className="text-sm text-slate-500">Loading message settings…</p>
-      </div>
+  async function openView(msg: SentMessage) {
+    const result = await requestApi<{ message: { title: string; body: string; audience: string } }>(
+      `/api/lecturers/messages/${msg.id}`,
+      { errorTitle: "Could not load message" },
     );
+    if (!result.ok) return;
+    setViewing({
+      ...msg,
+      title: result.data.message.title,
+      message: result.data.message.body,
+      audience: result.data.message.audience,
+    });
+  }
+
+  async function openEdit(msg: SentMessage) {
+    const result = await requestApi<{ message: { title: string; body: string } }>(
+      `/api/lecturers/messages/${msg.id}`,
+      { errorTitle: "Could not load message" },
+    );
+    if (!result.ok) return;
+    setEditing(msg);
+    setEditTitle(result.data.message.title);
+    setEditBody(result.data.message.body);
+  }
+
+  async function saveEdit() {
+    if (!editing) return;
+    setSavingEdit(true);
+    const result = await requestApi(`/api/lecturers/messages/${editing.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title: editTitle.trim(), message: editBody.trim() }),
+      errorTitle: "Could not update message",
+    });
+    setSavingEdit(false);
+    if (!result.ok) return;
+    await showSuccess("Updated", result.data.message ?? "Message saved.");
+    setEditing(null);
+    await loadMessages();
+  }
+
+  if (loadingTargets) {
+    return <LoadingState message="Loading message settings…" panel minHeight={200} />;
   }
 
   if (!targets) {
@@ -173,7 +221,19 @@ export function LecturerMessagesPage() {
 
   return (
     <StudentSection>
-      <Panel title="Send Message">
+      <LecturerCrudPageHero section="messages" />
+
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        <StatCard label="Messages sent" value={messages.length} tone="amber" />
+        <StatCard
+          label="Total recipients"
+          value={messages.reduce((sum, m) => sum + m.recipientCount, 0)}
+          tone="blue"
+        />
+        <StatCard label="Departments" value={targets.departments.length} tone="slate" />
+      </div>
+
+      <Panel title="Send message (Create)">
         <form className="grid max-w-2xl gap-4" onSubmit={handleSubmit}>
           <div>
             <FieldLabel>Title</FieldLabel>
@@ -224,11 +284,6 @@ export function LecturerMessagesPage() {
                   </option>
                 ))}
               </select>
-              {specificOptions.length === 0 ? (
-                <p className="mt-2 text-xs text-amber-700">
-                  No {specificLabel.toLowerCase()} options available. Add lecturers or departments first.
-                </p>
-              ) : null}
             </div>
           ) : (
             <p className="rounded-xl bg-slate-50 px-3 py-2 text-sm text-slate-600 ring-1 ring-slate-200">
@@ -243,48 +298,124 @@ export function LecturerMessagesPage() {
         </form>
       </Panel>
 
-      <Panel title="Recent Messages" noPadding>
-        <div className="overflow-x-auto">
-          <table className="min-w-full text-sm">
-            <thead className="bg-slate-50/80 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+      <AdminTableShell title="Message history" count={messages.length} countLabel="messages" variant="detailed">
+        <table className="admin-crud-table">
+          <thead className="bg-slate-50/80 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+            <tr>
+              {["Title", "Audience", "Recipients", "Sent", "Status", "Actions"].map((h) => (
+                <th key={h} className="px-3 py-2.5 sm:px-4">
+                  {h}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-100">
+            {loadingMessages ? (
               <tr>
-                {["Title", "Audience", "Recipients", "Sent", "Status"].map((h) => (
-                  <th key={h} className="px-3 py-2.5 sm:px-4">
-                    {h}
-                  </th>
-                ))}
+                <td colSpan={6} className="px-3 py-8 text-center text-slate-500">
+                  Loading messages…
+                </td>
               </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {loadingMessages ? (
-                <tr>
-                  <td colSpan={5} className="px-4 py-8 text-center text-slate-500">
-                    Loading messages…
+            ) : messages.length === 0 ? (
+              <tr>
+                <td colSpan={6} className="px-3 py-8 text-center text-slate-500">
+                  No messages sent yet.
+                </td>
+              </tr>
+            ) : (
+              messages.map((m) => (
+                <tr key={m.id} className="admin-crud-table-row bg-white hover:bg-slate-50/80">
+                  <td className="px-3 py-3 font-medium sm:px-4">{m.title}</td>
+                  <td className="px-3 py-3 sm:px-4">{m.audience}</td>
+                  <td className="px-3 py-3 text-slate-600 sm:px-4">{m.recipientCount}</td>
+                  <td className="px-3 py-3 text-slate-500 sm:px-4">{m.sentAt}</td>
+                  <td className="px-3 py-3 sm:px-4">
+                    <StatusBadge status={m.status} />
+                  </td>
+                  <td className="admin-crud-table-actions-cell px-3 py-3 sm:px-4">
+                    <AdminRowActions
+                      onView={() => void openView(m)}
+                      onEdit={() => void openEdit(m)}
+                      onDelete={() =>
+                        void confirmAndDelete(
+                          `/api/lecturers/messages/${m.id}`,
+                          "This broadcast will be removed from message history.",
+                          () => void loadMessages(),
+                        )
+                      }
+                    />
                   </td>
                 </tr>
-              ) : messages.length === 0 ? (
-                <tr>
-                  <td colSpan={5} className="px-4 py-8 text-center text-slate-500">
-                    No messages sent yet.
-                  </td>
-                </tr>
-              ) : (
-                messages.map((m) => (
-                  <tr key={m.id} className="bg-white">
-                    <td className="px-3 py-2.5 font-medium sm:px-4">{m.title}</td>
-                    <td className="px-3 py-2.5 sm:px-4">{m.audience}</td>
-                    <td className="px-3 py-2.5 text-slate-600 sm:px-4">{m.recipientCount}</td>
-                    <td className="px-3 py-2.5 text-slate-500 sm:px-4">{m.sentAt}</td>
-                    <td className="px-3 py-2.5 sm:px-4">
-                      <StatusBadge status={m.status} />
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+              ))
+            )}
+          </tbody>
+        </table>
+      </AdminTableShell>
+
+      {viewing ? (
+        <div className="admin-crud-modal-overlay" role="dialog" aria-modal="true">
+          <div className="admin-crud-modal">
+            <div className="admin-crud-modal-header admin-crud-modal-header--department">
+              <div className="admin-crud-modal-header-top">
+                <h3 className="admin-crud-modal-title">{viewing.title}</h3>
+                <button type="button" onClick={() => setViewing(null)} className="admin-crud-modal-close">
+                  ×
+                </button>
+              </div>
+            </div>
+            <div className="admin-crud-modal-body space-y-3">
+              <p className="text-xs text-slate-500">{viewing.audience}</p>
+              <p className="whitespace-pre-wrap text-sm text-slate-700">{viewing.message}</p>
+            </div>
+          </div>
         </div>
-      </Panel>
+      ) : null}
+
+      {editing ? (
+        <div className="admin-crud-modal-overlay" role="dialog" aria-modal="true">
+          <div className="admin-crud-modal">
+            <div className="admin-crud-modal-header admin-crud-modal-header--department">
+              <div className="admin-crud-modal-header-top">
+                <h3 className="admin-crud-modal-title">Edit message</h3>
+                <button type="button" onClick={() => setEditing(null)} className="admin-crud-modal-close">
+                  ×
+                </button>
+              </div>
+            </div>
+            <div className="admin-crud-modal-body space-y-4">
+              <div className="admin-crud-field">
+                <label className="admin-crud-label">Title</label>
+                <input
+                  className="admin-crud-input"
+                  value={editTitle}
+                  onChange={(e) => setEditTitle(e.target.value)}
+                />
+              </div>
+              <div className="admin-crud-field">
+                <label className="admin-crud-label">Message</label>
+                <textarea
+                  className="admin-crud-textarea"
+                  value={editBody}
+                  onChange={(e) => setEditBody(e.target.value)}
+                />
+              </div>
+            </div>
+            <div className="admin-crud-modal-footer">
+              <button
+                type="button"
+                disabled={savingEdit}
+                onClick={() => void saveEdit()}
+                className="admin-crud-btn-primary"
+              >
+                {savingEdit ? "Saving…" : "Save changes"}
+              </button>
+              <button type="button" onClick={() => setEditing(null)} className="admin-crud-btn-secondary">
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </StudentSection>
   );
 }

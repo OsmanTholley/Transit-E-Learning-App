@@ -1,16 +1,19 @@
 "use client";
 
+import { ReactNode } from "react";
 import { TransitLogo } from "@/components/brand/transit-logo";
 
 export function MobileTopBar({
   onMenuClick,
   title,
+  trailing,
 }: {
   onMenuClick: () => void;
   title?: string;
+  trailing?: ReactNode;
 }) {
   return (
-    <header className="sticky top-0 z-40 flex items-center justify-between gap-3 border-b border-slate-200/80 bg-white/95 px-4 py-3 backdrop-blur-md lg:hidden">
+    <header className="sticky top-0 z-40 flex items-center justify-between gap-3 border-b border-slate-200/80 bg-white px-4 py-3 lg:hidden">
       <button
         type="button"
         onClick={onMenuClick}
@@ -28,7 +31,7 @@ export function MobileTopBar({
           <TransitLogo size="sm" variant="dark" subtitle="E-Learning" />
         )}
       </div>
-      <div className="w-10" aria-hidden />
+      <div className="flex w-10 shrink-0 items-center justify-end">{trailing}</div>
     </header>
   );
 }

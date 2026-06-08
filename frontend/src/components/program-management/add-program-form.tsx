@@ -1,4 +1,5 @@
 "use client";
+import { LoadingState } from "@/components/ui/loading-indicator";
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -80,7 +81,7 @@ export function AddProgramForm() {
   if (loadingOptions) {
     return (
       <Panel title="Create Program">
-        <p className="text-sm text-slate-500">Loading departments…</p>
+        <LoadingState message="Loading departments…" layout="inline" />
       </Panel>
     );
   }

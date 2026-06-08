@@ -19,7 +19,7 @@ export function useLecturers() {
     };
   }, []);
 
-  const loadRef = useRef<() => Promise<void>>(async () => {});
+  const loadRef = useRef<(() => Promise<void>) | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -30,7 +30,7 @@ export function useLecturers() {
       errorTitle: "Could not load lecturers",
       onRecovered: () => {
         if (mountedRef.current) {
-          void loadRef.current();
+          void loadRef.current?.();
           router.refresh();
         }
       },
@@ -55,14 +55,10 @@ export function useLecturers() {
     }
   }, [router]);
 
-  useEffect(() => {
-    loadRef.current = load;
-  }, [load]);
+  loadRef.current = load;
 
   useEffect(() => {
-    Promise.resolve().then(() => {
-      void load();
-    });
+    void load();
   }, [load]);
 
   return { lecturers, loading, error, refetch: load };

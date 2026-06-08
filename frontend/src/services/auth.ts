@@ -16,10 +16,13 @@ type StaffLoginInput = {
 
 export type LoginInput = StudentLoginInput | StaffLoginInput;
 
+export type LoginErrorField = "email" | "password" | "studentId";
+
 type LoginResult = {
   ok: boolean;
   role?: AppRole;
   message?: string;
+  field?: LoginErrorField;
   offline?: boolean;
 };
 
@@ -49,7 +52,11 @@ export async function login(input: LoginInput): Promise<LoginResult> {
       if (isDatabaseOfflineResponse(res, data)) {
         return { ok: false, message: DATABASE_OFFLINE_MESSAGE, offline: true };
       }
-      return { ok: false, message: data.error ?? "Invalid credentials." };
+      return {
+        ok: false,
+        message: data.error ?? "Invalid credentials.",
+        field: data.field as LoginErrorField | undefined,
+      };
     }
 
     return { ok: true, role: data.role as AppRole };
@@ -58,6 +65,23 @@ export async function login(input: LoginInput): Promise<LoginResult> {
   }
 }
 
-export async function logout(): Promise<void> {
-  await fetch("/api/auth/logout", { method: "POST", credentials: "include" });
+export async function logout(): Promise<{ ok: boolean; message?: string; offline?: boolean }> {
+  try {
+    const res = await fetch("/api/auth/logout", { method: "POST", credentials: "include" });
+    const data = await res.json().catch(() => ({}));
+
+    if (!res.ok) {
+      if (isDatabaseOfflineResponse(res, data)) {
+        return { ok: false, message: DATABASE_OFFLINE_MESSAGE, offline: true };
+      }
+      return { ok: false, message: (data as { error?: string }).error ?? "Logout failed." };
+    }
+
+    return { ok: true };
+  } catch {
+    if (typeof navigator !== "undefined" && !navigator.onLine) {
+      return { ok: false, message: DATABASE_OFFLINE_MESSAGE, offline: true };
+    }
+    return { ok: false, message: DATABASE_OFFLINE_MESSAGE };
+  }
 }

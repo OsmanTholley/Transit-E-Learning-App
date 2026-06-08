@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { requestApi } from "@/lib/fetch-api";
+import { reportStudentError, studentMutation, studentSuccess } from "@/lib/student-ui";
 import { PrimaryButton } from "@/components/student/courses/ui/course-ui";
 import type { AssignmentItem } from "@/types/student-courses";
 
@@ -38,8 +38,7 @@ export function AssignmentSubmitCard({
       setFileUrl(url);
       setFileName(file.name);
     } catch (e) {
-      const { showError } = await import("@/lib/swal");
-      await showError("Upload failed", e instanceof Error ? e.message : "Try again.");
+      reportStudentError("Upload failed", e, "Try again.");
     } finally {
       setUploading(false);
     }
@@ -48,15 +47,16 @@ export function AssignmentSubmitCard({
   async function submit() {
     if (!fileUrl) return;
     setSubmitting(true);
-    const result = await requestApi(`/api/student/assignments/${assignment.id}/submit`, {
+    const result = await studentMutation(`/api/student/assignments/${assignment.id}/submit`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ fileUrl }),
       errorTitle: "Submission failed",
+      offlineLabel: "Assignment submission",
+      offlineDetail: "Your submission is queued and will upload when you reconnect.",
     });
     if (result.ok) {
-      const { showSuccess } = await import("@/lib/swal");
-      await showSuccess("Submitted", "Your assignment was submitted successfully.");
+      await studentSuccess("Your assignment was submitted successfully.");
       setOpen(false);
       onSubmitted();
     }

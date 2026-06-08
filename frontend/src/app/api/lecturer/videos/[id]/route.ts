@@ -3,7 +3,6 @@ import { requireLecturer, unauthorized } from "@/lib/auth";
 import { handleRouteDatabaseError } from "@/lib/db-errors";
 import { getLecturerCourseOrThrow } from "@/lib/lecturer/course-access";
 import { prisma } from "@/lib/prisma";
-import { defaultVideoDeletionNotice, getVideoExpiryDate } from "@/lib/video-expiry";
 
 export async function PATCH(
   request: NextRequest,
@@ -26,17 +25,13 @@ export async function PATCH(
     const title = body.title?.trim() ?? existing.title ?? "Video lesson";
     const videoUrl = body.videoUrl?.trim() ?? existing.videoUrl;
     const duration = body.duration?.trim() ?? existing.duration;
-    const resetExpiry = Boolean(body.resetExpiry);
+    const deletionNotice =
+      body.deletionNotice !== undefined ? body.deletionNotice?.trim() || null : existing.deletionNotice;
 
     const course = await getLecturerCourseOrThrow(lecturer.id, courseId);
     if (!course) {
       return NextResponse.json({ error: "Course not found." }, { status: 404 });
     }
-
-    const expiresAt = resetExpiry ? getVideoExpiryDate() : existing.expiresAt;
-    const deletionNotice =
-      body.deletionNotice?.trim() ||
-      (expiresAt ? defaultVideoDeletionNotice(expiresAt) : existing.deletionNotice);
 
     const video = await prisma.video.update({
       where: { id },
@@ -45,7 +40,7 @@ export async function PATCH(
         title,
         videoUrl,
         duration,
-        expiresAt,
+        expiresAt: null,
         deletionNotice,
       },
       include: { course: { select: { courseCode: true, courseTitle: true } } },

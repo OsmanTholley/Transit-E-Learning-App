@@ -1,19 +1,15 @@
 "use client";
+import { LoadingState } from "@/components/ui/loading-indicator";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { LS_LIKES, LS_SAVED, questionStatusLabel, questionStatusStyles } from "@/components/student/discussions/discussion-ui";
+import { useStudentPreference } from "@/hooks/use-student-preference";
+import { requestApi } from "@/lib/fetch-api";
+import { STUDENT_PREF_KEYS } from "@/lib/student-preference-keys";
+import { studentMutation } from "@/lib/student-ui";
+import { questionStatusLabel, questionStatusStyles } from "@/components/student/discussions/discussion-ui";
 import type { DiscussionComment, DiscussionDetail } from "@/types/student-discussions";
-
-function safeParse<T>(value: string | null, fallback: T): T {
-  if (!value) return fallback;
-  try {
-    return JSON.parse(value) as T;
-  } catch {
-    return fallback;
-  }
-}
 
 function formatRelative(iso: string) {
   const diff = Date.now() - new Date(iso).getTime();
@@ -64,85 +60,107 @@ function CommentItem({ comment }: { comment: DiscussionComment }) {
 export function DiscussionThreadPage({ discussionId }: { discussionId: string }) {
   const [discussion, setDiscussion] = useState<DiscussionDetail | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [reply, setReply] = useState("");
   const [posting, setPosting] = useState(false);
-  const [likes, setLikes] = useState(0);
-  const [saved, setSaved] = useState(false);
+  const mountedRef = useRef(true);
+  const loadRef = useRef<(() => Promise<void>) | null>(null);
+  const [likeMap, setLikeMap] = useStudentPreference<Record<string, number>>(
+    STUDENT_PREF_KEYS.discussionLikes,
+    {}
+  );
+  const [savedMap, setSavedMap] = useStudentPreference<Record<string, true>>(
+    STUDENT_PREF_KEYS.discussionSaved,
+    {}
+  );
+  const likes = likeMap[discussionId] ?? 0;
+  const saved = Boolean(savedMap[discussionId]);
 
   useEffect(() => {
-    let cancelled = false;
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
+
+  useEffect(() => {
     async function load() {
       setLoading(true);
-      try {
-        const res = await fetch(`/api/student/discussions/${discussionId}`);
-        const json = await res.json();
-        if (!res.ok) throw new Error(json?.error ?? "Failed to load");
-        if (!cancelled) {
-          setDiscussion(json);
-          const likeMap = safeParse<Record<string, number>>(localStorage.getItem(LS_LIKES), {});
-          setLikes(likeMap[discussionId] ?? 0);
-          const savedMap = safeParse<Record<string, true>>(localStorage.getItem(LS_SAVED), {});
-          setSaved(Boolean(savedMap[discussionId]));
-        }
-      } catch (e) {
-        if (!cancelled) setError(e instanceof Error ? e.message : "Failed to load");
-      } finally {
-        if (!cancelled) setLoading(false);
+      let waitingForConnection = false;
+
+      const result = await requestApi<DiscussionDetail>(`/api/student/discussions/${discussionId}`, {
+        errorTitle: "Could not load discussion",
+        onRecovered: () => {
+          if (mountedRef.current) void loadRef.current?.();
+        },
+      });
+
+      if (!mountedRef.current) return;
+
+      if (result.offline) {
+        waitingForConnection = true;
+      } else if (result.ok) {
+        setDiscussion(result.data);
+      } else {
+        setDiscussion(null);
+      }
+
+      if (!waitingForConnection) {
+        setLoading(false);
       }
     }
-    load();
-    return () => {
-      cancelled = true;
-    };
+
+    loadRef.current = load;
+    void load();
   }, [discussionId]);
 
   async function postReply() {
     if (!reply.trim()) return;
     setPosting(true);
-    try {
-      const res = await fetch(`/api/student/discussions/${discussionId}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ comment: reply }),
-      });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json?.error ?? "Failed to post");
+    const body = JSON.stringify({ comment: reply });
+
+    const result = await studentMutation<DiscussionComment>(`/api/student/discussions/${discussionId}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body,
+      errorTitle: "Could not post reply",
+      offlineLabel: "Discussion reply",
+    });
+
+    if (result.ok) {
       setDiscussion((prev) =>
-        prev ? { ...prev, comments: [...prev.comments, json], replyCount: prev.replyCount + 1 } : prev
+        prev
+          ? { ...prev, comments: [...prev.comments, result.data], replyCount: prev.replyCount + 1 }
+          : prev
       );
       setReply("");
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to post reply");
-    } finally {
-      setPosting(false);
     }
+    setPosting(false);
   }
 
   function toggleLike() {
-    const likeMap = safeParse<Record<string, number>>(localStorage.getItem(LS_LIKES), {});
-    const next = (likeMap[discussionId] ?? 0) + 1;
-    likeMap[discussionId] = next;
-    localStorage.setItem(LS_LIKES, JSON.stringify(likeMap));
-    setLikes(next);
+    setLikeMap((prev) => ({
+      ...prev,
+      [discussionId]: (prev[discussionId] ?? 0) + 1,
+    }));
   }
 
   function toggleSave() {
-    const savedMap = safeParse<Record<string, true>>(localStorage.getItem(LS_SAVED), {});
-    if (savedMap[discussionId]) delete savedMap[discussionId];
-    else savedMap[discussionId] = true;
-    localStorage.setItem(LS_SAVED, JSON.stringify(savedMap));
-    setSaved(Boolean(savedMap[discussionId]));
+    setSavedMap((prev) => {
+      const next = { ...prev };
+      if (next[discussionId]) delete next[discussionId];
+      else next[discussionId] = true;
+      return next;
+    });
   }
 
   if (loading) {
-    return <p className="text-sm text-slate-500">Loading discussion…</p>;
+    return <LoadingState message="Loading discussion…" layout="inline" />;
   }
 
-  if (error || !discussion) {
+  if (!discussion) {
     return (
-      <div className="rounded-2xl bg-rose-50 p-6 text-sm text-rose-700 ring-1 ring-rose-200">
-        {error ?? "Discussion not found"}
+      <div className="rounded-2xl bg-white p-8 text-center text-sm text-slate-500 ring-1 ring-slate-200/80">
+        Discussion not found or unavailable.
       </div>
     );
   }

@@ -1,4 +1,5 @@
 "use client";
+import { LoadingState } from "@/components/ui/loading-indicator";
 
 import { AnimatePresence, motion } from "framer-motion";
 import Link from "next/link";
@@ -110,7 +111,7 @@ export function CourseDetailPage({ courseId }: { courseId: string }) {
     load();
   }, [courseId]);
 
-  if (loading) return <p className="text-sm text-slate-500">Loading course...</p>;
+  if (loading) return <LoadingState message="Loading course..." layout="inline" />;
   if (error || !course) {
     return (
       <div className="rounded-2xl bg-rose-50 px-4 py-3 text-sm text-rose-700 ring-1 ring-rose-200">
@@ -255,7 +256,11 @@ export function CourseDetailPage({ courseId }: { courseId: string }) {
           {tab === "Video Lessons" && (
             <div className="grid gap-4 sm:grid-cols-2">
               {course.videos.map((v) => (
-                <div key={v.id} className="rounded-xl ring-1 ring-slate-200 overflow-hidden">
+                <Link
+                  key={v.id}
+                  href={`/student/video-lessons/watch/${v.id}`}
+                  className="rounded-xl ring-1 ring-slate-200 overflow-hidden transition-shadow hover:shadow-md"
+                >
                   <div className="flex aspect-video items-center justify-center bg-gradient-to-br from-[#0B3D91] to-indigo-700 text-white">
                     ▶ {v.title}
                   </div>
@@ -264,7 +269,7 @@ export function CourseDetailPage({ courseId }: { courseId: string }) {
                       <div className="h-full rounded-full bg-[#FFC107]" style={{ width: `${v.progress}%` }} />
                     </div>
                   </div>
-                </div>
+                </Link>
               ))}
             </div>
           )}
@@ -304,7 +309,12 @@ export function CourseDetailPage({ courseId }: { courseId: string }) {
                   {q.bestScore != null ? (
                     <p className="mt-1 text-sm font-semibold text-[#0B3D91]">Score: {q.bestScore}%</p>
                   ) : null}
-                  <PrimaryButton className="mt-3">{q.attempted ? "Review" : "Start Quiz"}</PrimaryButton>
+                  <Link
+                    href={q.attempted ? `/student/quizzes/review/${q.id}` : `/student/quizzes/take/${q.id}`}
+                    className="mt-3 inline-block"
+                  >
+                    <PrimaryButton>{q.attempted ? "Review" : "Start Quiz"}</PrimaryButton>
+                  </Link>
                 </li>
               ))}
             </ul>

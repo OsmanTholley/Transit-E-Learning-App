@@ -15,5 +15,9 @@ export default async function StudentCoursesPage({
     redirect("/student/courses?filter=completed");
   }
 
+  if (segment?.[0] === "assignments") {
+    redirect("/student/assignments");
+  }
+
   return <CoursesHub segment={segment} filter={filter ?? null} />;
 }

@@ -19,18 +19,22 @@ export function useDepartments() {
     };
   }, []);
 
-  const loadRef = useRef<() => Promise<void>>(async () => {});
+  const loadRef = useRef<(() => Promise<void>) | null>(null);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError(null);
+  const load = useCallback(async (options?: { silent?: boolean }) => {
+    const isSilent = options?.silent ?? false;
+    if (!isSilent) {
+      setLoading(true);
+      setError(null);
+    }
     let waitingForConnection = false;
 
     const result = await requestApi<{ departments: DepartmentRecord[] }>("/api/departments", {
-      errorTitle: "Could not load departments",
+      errorTitle: isSilent ? undefined : "Could not load departments",
+      silent: isSilent,
       onRecovered: () => {
         if (mountedRef.current) {
-          void loadRef.current();
+          void loadRef.current?.();
           router.refresh();
         }
       },
@@ -44,25 +48,21 @@ export function useDepartments() {
     }
 
     if (!result.ok) {
-      setError(result.message);
+      if (!isSilent) setError(result.message);
     } else {
       setDepartments(result.data.departments ?? []);
-      setError(null);
+      if (!isSilent) setError(null);
     }
 
-    if (!waitingForConnection) {
+    if (!waitingForConnection && !isSilent) {
       setLoading(false);
     }
   }, [router]);
 
-  useEffect(() => {
-    loadRef.current = load;
-  }, [load]);
+  loadRef.current = load;
 
   useEffect(() => {
-    Promise.resolve().then(() => {
-      void load();
-    });
+    void load();
   }, [load]);
 
   return { departments, loading, error, refetch: load };

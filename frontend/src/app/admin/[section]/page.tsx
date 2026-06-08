@@ -37,5 +37,8 @@ export default async function AdminSectionPage({
   if (section === "discussions") {
     redirect("/admin/content/discussions");
   }
+  if (section === "reports") {
+    redirect("/admin/dashboard#platform-engagement");
+  }
   return <PortalPage role="admin" section={section} />;
 }

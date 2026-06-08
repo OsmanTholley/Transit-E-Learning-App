@@ -1,3 +1,4 @@
+import { LoadingState } from "@/components/ui/loading-indicator";
 import { Suspense } from "react";
 import { discussionsSubmenu } from "@/components/student/discussions/discussions-nav-config";
 import { DiscussionsHub } from "@/components/student/discussions/discussions-hub";
@@ -11,7 +12,7 @@ export default async function StudentDiscussionsPage({
   const { segment } = await params;
 
   return (
-    <Suspense fallback={<p className="text-sm text-slate-500">Loading discussions…</p>}>
+    <Suspense fallback={<LoadingState message="Loading discussions…" layout="inline" />}>
       <StudentHubLayout
         items={discussionsSubmenu}
         ariaLabel="Discussion views"

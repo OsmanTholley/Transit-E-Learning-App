@@ -1,9 +1,13 @@
 "use client";
+import { LoadingState } from "@/components/ui/loading-indicator";
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { requestApi } from "@/lib/fetch-api";
 import { showError, showSuccess } from "@/lib/swal";
-import { FieldLabel, Panel, PrimaryButton } from "@/components/student-management/ui";
+import { useLecturers } from "@/hooks/use-lecturers";
+import { FieldLabel, Panel, PrimaryButton, StatCard, StudentSection } from "@/components/student-management/ui";
+import { LecturerCrudPageHero } from "./lecturer-crud-hero";
+import { LecturersTable } from "./lecturers-table";
 
 type AssignOptions = {
   lecturers: { id: string; name: string; email: string | null }[];
@@ -25,6 +29,7 @@ const emptyForm = {
 };
 
 export function AssignCoursesForm() {
+  const { lecturers, loading: lecturersLoading, refetch } = useLecturers();
   const [options, setOptions] = useState<AssignOptions | null>(null);
   const [form, setForm] = useState(emptyForm);
   const [loading, setLoading] = useState(true);
@@ -118,6 +123,7 @@ export function AssignCoursesForm() {
       if (!res.ok) throw new Error(data.error ?? "Failed to assign course");
       await showSuccess("Course assigned", data.message);
       setForm((prev) => ({ ...prev, courseId: "" }));
+      void refetch();
     } catch (err) {
       await showError("Assignment failed", err instanceof Error ? err.message : "Please try again.");
     } finally {
@@ -128,7 +134,7 @@ export function AssignCoursesForm() {
   if (loading) {
     return (
       <Panel title="Assign Course">
-        <p className="text-sm text-slate-500">Loading lecturers, departments, and courses…</p>
+        <LoadingState message="Loading lecturers, departments, and courses…" layout="inline" />
       </Panel>
     );
   }
@@ -141,8 +147,19 @@ export function AssignCoursesForm() {
     );
   }
 
+  const assignedCount = lecturers.filter((l) => l.assignedCourses > 0).length;
+
   return (
-    <Panel title="Assign Course">
+    <StudentSection>
+      <LecturerCrudPageHero section="assign" />
+
+      <div className="grid gap-4 sm:grid-cols-3">
+        <StatCard label="Lecturers" value={lecturers.length} tone="amber" />
+        <StatCard label="With courses" value={assignedCount} tone="blue" />
+        <StatCard label="Courses in catalog" value={options.courses.length} tone="slate" />
+      </div>
+
+    <Panel title="Assign course">
       <form className="grid max-w-2xl gap-4 sm:grid-cols-2" onSubmit={handleSubmit}>
         <div className="sm:col-span-2">
           <FieldLabel>Lecturer</FieldLabel>
@@ -222,5 +239,14 @@ export function AssignCoursesForm() {
         <p className="mt-4 text-sm text-amber-800">No courses in this department yet.</p>
       ) : null}
     </Panel>
+
+      {!lecturersLoading ? (
+        <LecturersTable
+          lecturers={lecturers}
+          title="Lecturer course assignments"
+          onRefresh={() => void refetch()}
+        />
+      ) : null}
+    </StudentSection>
   );
 }

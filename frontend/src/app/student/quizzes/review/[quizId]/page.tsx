@@ -1,3 +1,4 @@
+import { LoadingState } from "@/components/ui/loading-indicator";
 import { Suspense } from "react";
 import { QuizResultsPage } from "@/components/student/quizzes/quiz-results-page";
 
@@ -8,7 +9,7 @@ export default async function QuizReviewRoute({
 }) {
   const { quizId } = await params;
   return (
-    <Suspense fallback={<p className="text-sm text-slate-500">Loading results…</p>}>
+    <Suspense fallback={<LoadingState message="Loading results…" layout="inline" />}>
       <QuizResultsPage quizId={quizId} />
     </Suspense>
   );

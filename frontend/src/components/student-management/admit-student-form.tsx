@@ -1,4 +1,5 @@
 "use client";
+import { LoadingState } from "@/components/ui/loading-indicator";
 
 import { useRouter } from "next/navigation";
 import { FormEvent, useEffect, useMemo, useState } from "react";
@@ -11,7 +12,7 @@ type FormOptions = {
   departments: { id: string; name: string }[];
   programs: { id: string; name: string; departmentId: string | null }[];
   years: string[];
-  semesters: string[];
+  genders: string[];
   nextStudentId?: string;
   studentIdFormat?: string;
 };
@@ -22,7 +23,7 @@ const emptyForm = {
   departmentName: "",
   programName: "",
   year: "",
-  semester: "",
+  gender: "",
   admissionYear: "",
 };
 
@@ -108,7 +109,7 @@ export function AdmitStudentForm() {
   if (loadingOptions) {
     return (
       <Panel title="Admit Student for Registration">
-        <p className="text-sm text-slate-500">Loading form...</p>
+        <LoadingState message="Loading form..." layout="inline" />
       </Panel>
     );
   }
@@ -132,7 +133,7 @@ export function AdmitStudentForm() {
         <div>
           <FieldLabel>Student ID *</FieldLabel>
           <TextInput
-            placeholder="e.g. TCSL/001"
+            placeholder="e.g. TCSL/0001"
             value={form.studentId}
             onChange={(e) => updateField("studentId", e.target.value)}
             onBlur={(e) => {
@@ -144,7 +145,7 @@ export function AdmitStudentForm() {
             required
           />
           <p className="mt-1 text-xs text-slate-500">
-            Format: {options?.studentIdFormat ?? "TCSL/001"}
+            Format: {options?.studentIdFormat ?? "TCSL/0001"}
           </p>
         </div>
         <div>
@@ -175,12 +176,12 @@ export function AdmitStudentForm() {
           />
         </div>
         <div>
-          <FieldLabel>Semester</FieldLabel>
+          <FieldLabel>Gender</FieldLabel>
           <SelectInput
-            placeholder="Select semester"
-            options={options?.semesters ?? []}
-            value={form.semester}
-            onChange={(e) => updateField("semester", e.target.value)}
+            placeholder="Select gender"
+            options={options?.genders ?? []}
+            value={form.gender}
+            onChange={(e) => updateField("gender", e.target.value)}
           />
         </div>
         <div>

@@ -31,7 +31,7 @@ export async function GET() {
 
     return NextResponse.json({
       nextStudentId,
-      studentIdFormat: "TCSL/001",
+      studentIdFormat: "TCSL/0001",
       departments: departments.map((d: { id: string; departmentName: string }) => ({
         id: d.id,
         name: d.departmentName,
@@ -42,7 +42,7 @@ export async function GET() {
         departmentId: p.departmentId,
       })),
       years: [...ACADEMIC_YEARS],
-      semesters: ["First", "Second"],
+      genders: ["Male", "Female", "Other"],
     });
   } catch (error) {
     console.error("GET /api/students/options:", error);

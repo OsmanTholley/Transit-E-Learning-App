@@ -5,8 +5,9 @@ import { Prisma, Role } from "@prisma/client";
 import { requireAdminUser, unauthorized } from "@/lib/auth";
 import { handleRouteDatabaseError } from "@/lib/db-errors";
 import { prisma } from "@/lib/prisma";
+import { logActivity } from "@/lib/activity-log";
 import { mapStudentToRecord } from "@/lib/student-mapper";
-import { isValidStudentId, normalizeStudentId } from "@/lib/student-id";
+import { isValidStudentId, normalizeStudentId, STUDENT_ID_FORMAT_HINT } from "@/lib/student-id";
 
 export async function GET() {
   try {
@@ -48,7 +49,7 @@ export async function POST(request: NextRequest) {
       departmentName,
       programName,
       year,
-      semester,
+      gender,
       admissionYear,
     } = body;
 
@@ -66,7 +67,7 @@ export async function POST(request: NextRequest) {
     const normalizedStudentId = normalizeStudentId(studentId);
     if (!isValidStudentId(normalizedStudentId)) {
       return NextResponse.json(
-        { error: "Student ID must use the format TCSL/001 (TCSL/ followed by at least 3 digits)." },
+        { error: `Student ID must use the format ${STUDENT_ID_FORMAT_HINT}.` },
         { status: 400 }
       );
     }
@@ -131,7 +132,7 @@ export async function POST(request: NextRequest) {
           departmentId,
           programId,
           level: normalizeAcademicYear(year),
-          semester: semester?.trim() || null,
+          gender: gender?.trim() || null,
           admissionYear: admissionYear?.trim() || null,
         },
         include: {
@@ -140,6 +141,14 @@ export async function POST(request: NextRequest) {
           program: true,
         },
       });
+    });
+
+    await logActivity({
+      actorId: admin.id,
+      action: "student.created",
+      entityType: "student",
+      entityId: student.id,
+      summary: `Registered ${student.user.fullName} (${student.studentId})`,
     });
 
     return NextResponse.json(

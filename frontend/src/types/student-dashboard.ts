@@ -1,4 +1,4 @@
-import { StudentAssignment, StudentCourse, StudentLectureNote } from "@/services/student-dashboard-data";
+import { NewUpload, StudentAssignment, StudentCourse, StudentLectureNote } from "@/services/student-dashboard-data";
 
 export type StudentDashboardProfile = {
   id: string;
@@ -28,4 +28,5 @@ export type StudentDashboardData = {
   courses: StudentCourse[];
   upcomingAssignments: StudentAssignment[];
   recentLectureNotes: StudentLectureNote[];
+  newUploads: NewUpload[];
 };

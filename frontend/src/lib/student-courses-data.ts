@@ -1,12 +1,11 @@
 import { prisma } from "@/lib/prisma";
 import {
-  courseMatchesStudentProfile,
   formatDisplayDate,
   mapCourseCard,
   computeCourseStats,
 } from "@/lib/student-courses-service";
 import { semestersMatch } from "@/lib/academic-semesters";
-import { purgeExpiredVideos } from "@/lib/video-expiry";
+import { clearLegacyVideoExpiry } from "@/lib/video-expiry";
 import type {
   AssignmentItem,
   CourseDetail,
@@ -77,30 +76,18 @@ type StudentCourseProfile = {
   semester: string | null;
 };
 
-/** Enrolled courses plus profile-matched courses from the catalog. */
-export async function getAccessibleCoursesForStudent(studentId: string, student: StudentCourseProfile) {
-  const enrolled = await getEnrolledCoursesForStudent(studentId);
-  const byId = new Map(enrolled.map((course) => [course.id, course]));
+/** Courses the student is enrolled in via course_students. */
+export async function getAccessibleCoursesForStudent(studentId: string, _student?: StudentCourseProfile) {
+  return getEnrolledCoursesForStudent(studentId);
+}
 
-  const where: { departmentId?: string; programId?: string } = {};
-  if (student.departmentId) where.departmentId = student.departmentId;
-  if (student.programId) where.programId = student.programId;
-
-  if (Object.keys(where).length > 0) {
-    const catalog = await prisma.course.findMany({
-      where,
-      include: courseInclude,
-      orderBy: { courseTitle: "asc" },
-    });
-
-    for (const course of catalog) {
-      if (courseMatchesStudentProfile(course, student)) {
-        byId.set(course.id, course);
-      }
-    }
-  }
-
-  return [...byId.values()];
+/** Course IDs a student can access based on department/program profile and enrollments. */
+export async function getAccessibleCourseIdsForStudent(
+  studentId: string,
+  student: StudentCourseProfile
+) {
+  const courses = await getAccessibleCoursesForStudent(studentId, student);
+  return courses.map((c) => c.id);
 }
 
 export function buildCoursesPayload(
@@ -108,8 +95,7 @@ export function buildCoursesPayload(
   courses: Awaited<ReturnType<typeof getEnrolledCoursesForStudent>>,
   filter?: string
 ) {
-  const matched = courses.filter((c) => courseMatchesStudentProfile(c, student));
-  const cards = matched.map((course, index) => ({
+  const cards = courses.map((course, index) => ({
     ...mapCourseCard(course, index, student.submissions, student.quizAttempts),
     isCurrentSemester: semestersMatch(course.semester, student.semester),
   }));
@@ -123,7 +109,7 @@ export function buildCoursesPayload(
 
   const submittedIds = new Set(student.submissions.map((s) => s.assignmentId));
   const now = new Date();
-  const pendingAssignments = matched.reduce((count, course) => {
+  const pendingAssignments = courses.reduce((count, course) => {
     return (
       count +
       course.assignments.filter((a) => !submittedIds.has(a.id) && (!a.dueDate || a.dueDate >= now)).length
@@ -184,10 +170,7 @@ export function buildCourseDetail(
     uploadedAt: formatDisplayDate(n.createdAt),
   }));
 
-  const now = new Date();
-  const videos: VideoItem[] = course.videos
-    .filter((v) => !v.expiresAt || v.expiresAt > now)
-    .map((v, i) => ({
+  const videos: VideoItem[] = course.videos.map((v, i) => ({
       id: v.id,
       title: v.title ?? `Lesson ${i + 1}`,
       courseId: course.id,
@@ -285,11 +268,9 @@ export async function getMaterialsForStudent(
   type: string
 ) {
   if (type === "videos") {
-    await purgeExpiredVideos();
+    await clearLegacyVideoExpiry();
   }
-  const courses = (await getAccessibleCoursesForStudent(student.id, student)).filter((c) =>
-    courseMatchesStudentProfile(c, student)
-  );
+  const courses = await getAccessibleCoursesForStudent(student.id, student);
 
   if (type === "lecture-notes") {
     return courses.flatMap((course) =>
@@ -310,11 +291,8 @@ export async function getMaterialsForStudent(
   }
 
   if (type === "videos") {
-    const now = new Date();
     return courses.flatMap((course, courseIndex) =>
-      course.videos
-        .filter((v) => !v.expiresAt || v.expiresAt > now)
-        .map((v, i) => ({
+      course.videos.map((v, i) => ({
           id: v.id,
           title: v.title ?? `Lesson ${i + 1}`,
           courseId: course.id,

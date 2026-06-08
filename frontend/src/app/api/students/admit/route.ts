@@ -1,9 +1,10 @@
 import { normalizeAcademicYear } from "@/lib/academic-years";
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdminUser, unauthorized } from "@/lib/auth";
+import { logActivity } from "@/lib/activity-log";
 import { resolveDepartmentProgramIds } from "@/lib/admitted-student";
 import { prisma } from "@/lib/prisma";
-import { isValidStudentId, normalizeStudentId } from "@/lib/student-id";
+import { isValidStudentId, normalizeStudentId, STUDENT_ID_FORMAT_HINT } from "@/lib/student-id";
 
 export async function POST(request: NextRequest) {
   try {
@@ -11,7 +12,7 @@ export async function POST(request: NextRequest) {
     if (!admin) return unauthorized();
 
     const body = await request.json();
-    const { fullName, studentId, departmentName, programName, year, semester, admissionYear } = body;
+    const { fullName, studentId, departmentName, programName, year, gender, admissionYear } = body;
 
     if (!fullName?.trim() || !studentId?.trim()) {
       return NextResponse.json({ error: "Full name and student ID are required." }, { status: 400 });
@@ -20,7 +21,7 @@ export async function POST(request: NextRequest) {
     const normalizedStudentId = normalizeStudentId(studentId);
     if (!isValidStudentId(normalizedStudentId)) {
       return NextResponse.json(
-        { error: "Student ID must use the format TCSL/001 (TCSL/ followed by at least 3 digits)." },
+        { error: `Student ID must use the format ${STUDENT_ID_FORMAT_HINT}.` },
         { status: 400 }
       );
     }
@@ -54,10 +55,18 @@ export async function POST(request: NextRequest) {
         departmentId: deptProgram.departmentId,
         programId: deptProgram.programId,
         level: normalizeAcademicYear(year),
-        semester: semester?.trim() || null,
+        gender: gender?.trim() || null,
         admissionYear: admissionYear?.trim() || null,
       },
       include: { department: true, program: true },
+    });
+
+    await logActivity({
+      actorId: admin.id,
+      action: "student.admitted",
+      entityType: "admitted_student",
+      entityId: admitted.id,
+      summary: `Admitted ${admitted.fullName} (${admitted.studentId})`,
     });
 
     return NextResponse.json(

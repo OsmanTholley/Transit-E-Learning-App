@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
 import { unauthorized, validateStudentSession } from "@/lib/auth";
+import { syncEnrollmentsForStudents } from "@/lib/course-enrollment";
 import { handleRouteDatabaseError } from "@/lib/db-errors";
 import { prisma } from "@/lib/prisma";
+import { getAccessibleCourseIdsForStudent } from "@/lib/student-courses-data";
 import { buildStudentDashboardData } from "@/lib/student-dashboard-mapper";
 import { countUnreadNotifications } from "@/lib/student-notifications-service";
 
@@ -35,9 +37,51 @@ export async function GET() {
       return NextResponse.json({ error: "Student profile not found." }, { status: 404 });
     }
 
-    const courseIds = student.courseStudents.map((e) => e.courseId);
+    if (
+      student.courseStudents.length === 0 &&
+      (student.departmentId || student.programId)
+    ) {
+      await syncEnrollmentsForStudents([student.id]);
+      const refreshed = await prisma.student.findUnique({
+        where: { userId: user.id },
+        include: {
+          user: true,
+          department: true,
+          program: true,
+          courseStudents: {
+            include: {
+              course: {
+                include: {
+                  assignments: { select: { id: true } },
+                  quizzes: { select: { id: true } },
+                },
+              },
+            },
+          },
+          submissions: { select: { assignmentId: true } },
+          quizAttempts: { select: { quizId: true, score: true } },
+        },
+      });
+      if (refreshed) Object.assign(student, refreshed);
+    }
 
-    const [assignments, lectureNotes, unreadNotifications, quizAttemptsWithMax] = await Promise.all([
+    const courseIds = await getAccessibleCourseIdsForStudent(student.id, student);
+
+    const accessibleCourses =
+      courseIds.length > 0
+        ? await prisma.course.findMany({
+            where: { id: { in: courseIds } },
+            select: {
+              id: true,
+              courseTitle: true,
+              courseCode: true,
+              assignments: { select: { id: true } },
+              quizzes: { select: { id: true } },
+            },
+          })
+        : [];
+
+    const [assignments, lectureNotes, videos, unreadNotifications, quizAttemptsWithMax] = await Promise.all([
       courseIds.length
         ? prisma.assignment.findMany({
             where: { courseId: { in: courseIds } },
@@ -48,7 +92,21 @@ export async function GET() {
       courseIds.length
         ? prisma.lectureNote.findMany({
             where: { courseId: { in: courseIds } },
-            include: { course: { select: { courseTitle: true } } },
+            include: {
+              course: { select: { courseTitle: true, courseCode: true } },
+              lecturer: { include: { user: { select: { fullName: true } } } },
+            },
+            orderBy: { createdAt: "desc" },
+            take: 10,
+          })
+        : Promise.resolve([]),
+      courseIds.length
+        ? prisma.video.findMany({
+            where: { courseId: { in: courseIds } },
+            include: {
+              course: { select: { courseTitle: true, courseCode: true } },
+              lecturer: { include: { user: { select: { fullName: true } } } },
+            },
             orderBy: { createdAt: "desc" },
             take: 10,
           })
@@ -69,9 +127,10 @@ export async function GET() {
         : 0;
 
     const data = buildStudentDashboardData(
-      student,
+      { ...student, accessibleCourses },
       assignments,
       lectureNotes,
+      videos,
       unreadNotifications,
       quizAverage
     );

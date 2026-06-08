@@ -1,6 +1,8 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useState } from "react";
+import { LoadingState } from "@/components/ui/loading-indicator";
+import { useApiLoad } from "@/hooks/use-api-load";
 import { requestApi } from "@/lib/fetch-api";
 import type { SocialTargetSlug } from "@/lib/content-social";
 
@@ -29,31 +31,13 @@ export function ContentEngagementPanel({
   canDelete?: boolean;
   onDelete?: () => void;
 }) {
-  const [data, setData] = useState<Engagement | null>(null);
-  const [loading, setLoading] = useState(true);
+  const url = `/api/content/${targetType}/${targetId}/social`;
+  const { data, loading, setData } = useApiLoad<Engagement>(url, {
+    silent: true,
+    errorTitle: "Could not load comments",
+  });
   const [comment, setComment] = useState("");
   const [posting, setPosting] = useState(false);
-
-  const url = `/api/content/${targetType}/${targetId}/social`;
-
-  useEffect(() => {
-    let active = true;
-    async function load() {
-      setLoading(true);
-      const result = await requestApi<Engagement>(url, {
-        silent: true,
-        errorTitle: "Could not load comments",
-      });
-      if (active && result.ok) setData(result.data);
-      if (active) setLoading(false);
-    }
-    Promise.resolve().then(() => {
-      void load();
-    });
-    return () => {
-      active = false;
-    };
-  }, [url]);
 
   async function toggleLike() {
     const result = await requestApi<Engagement>(url, {
@@ -98,7 +82,7 @@ export function ContentEngagementPanel({
   }
 
   if (loading && !data) {
-    return <p className="text-xs text-slate-500">Loading comments…</p>;
+    return <LoadingState message="Loading comments…" layout="inline" spinnerSize="sm" className="text-xs" />;
   }
 
   return (

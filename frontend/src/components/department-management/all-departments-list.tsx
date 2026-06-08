@@ -1,4 +1,5 @@
 "use client";
+import { LoadingState } from "@/components/ui/loading-indicator";
 
 import { useMemo, useState } from "react";
 import { useApiLoad } from "@/hooks/use-api-load";
@@ -9,6 +10,7 @@ import {
   matchesDepartmentSize,
 } from "./department-filters";
 import { DepartmentsTable } from "./departments-table";
+import { AdminCrudPageHero } from "@/components/admin/admin-entity-crud";
 import { StatCard, StudentSection } from "@/components/student-management/ui";
 
 const emptyFilters: DepartmentFilterValues = {
@@ -31,7 +33,7 @@ function matchesFilters(department: DepartmentRecord, filters: DepartmentFilterV
 }
 
 export function AllDepartmentsList() {
-  const { data, loading, error } = useApiLoad<{ departments: DepartmentRecord[] }>(
+  const { data, loading, error, reload } = useApiLoad<{ departments: DepartmentRecord[] }>(
     "/api/departments",
     { errorTitle: "Could not load departments" }
   );
@@ -49,9 +51,7 @@ export function AllDepartmentsList() {
 
   if (loading) {
     return (
-      <div className="flex min-h-[200px] items-center justify-center rounded-2xl border border-slate-200/80 bg-white p-8">
-        <p className="text-sm text-slate-500">Loading departments…</p>
-      </div>
+      <LoadingState message="Loading departments…" panel minHeight={200} />
     );
   }
 
@@ -63,6 +63,14 @@ export function AllDepartmentsList() {
 
   return (
     <StudentSection>
+      <AdminCrudPageHero
+        entity="department"
+        title="Manage departments"
+        description="Create, edit, and remove academic departments. Each department can host programs, courses, and student enrollments."
+        addHref="/admin/departments/add"
+        addLabel="Add department"
+      />
+
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard label="Total Departments" value={departments.length} tone="amber" />
         <StatCard label="Active" value={active} tone="blue" />
@@ -73,7 +81,7 @@ export function AllDepartmentsList() {
       <DepartmentsTable
         departments={filtered}
         title="All departments"
-        actions="view"
+        onRefresh={() => void reload()}
         toolbar={
           <DepartmentFilters
             inline

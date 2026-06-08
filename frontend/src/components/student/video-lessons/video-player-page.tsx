@@ -1,35 +1,21 @@
 "use client";
 
+import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
+import { useStudentPreference } from "@/hooks/use-student-preference";
+import { STUDENT_PREF_KEYS } from "@/lib/student-preference-keys";
+import { LoadingState } from "@/components/ui/loading-indicator";
+import { VideoCommentsPanel } from "@/components/student/video-lessons/video-comments-panel";
+import { YoutubeStyleVideoPlayer } from "@/components/video/youtube-style-video-player";
+import type { VideoPlayState } from "@/components/video/youtube-style-video-player";
 import { VideoLesson } from "@/types/video-lessons";
-
-type PlayerState = {
-  speed: number;
-  quality: "Auto" | "1080p" | "720p" | "480p";
-  pip: boolean;
-};
 
 type ProgressSnapshot = {
   secondsWatched: number;
   durationSeconds: number;
   updatedAt: string;
 };
-
-const LS_KEYS = {
-  progress: "transit.videoLessons.progress.v1",
-  bookmarks: "transit.videoLessons.bookmarks.v1",
-} as const;
-
-function safeParse<T>(value: string | null, fallback: T): T {
-  if (!value) return fallback;
-  try {
-    return JSON.parse(value) as T;
-  } catch {
-    return fallback;
-  }
-}
 
 function clamp(n: number, min: number, max: number) {
   return Math.max(min, Math.min(max, n));
@@ -53,55 +39,9 @@ function secondsFromLabel(label: string | null) {
 
 function ProgressBar({ percent }: { percent: number }) {
   return (
-    <div className="h-2 overflow-hidden rounded-full bg-slate-100">
-      <div className="h-full rounded-full bg-[#FFC107]" style={{ width: `${clamp(percent, 0, 100)}%` }} />
+    <div className="h-1.5 overflow-hidden rounded-full bg-slate-100">
+      <div className="h-full rounded-full bg-red-600" style={{ width: `${clamp(percent, 0, 100)}%` }} />
     </div>
-  );
-}
-
-function IconButton({
-  label,
-  active,
-  onClick,
-  children,
-}: {
-  label: string;
-  active?: boolean;
-  onClick?: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={[
-        "inline-flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-bold ring-1 transition-colors",
-        active ? "bg-[#FFC107] text-[#0B3D91] ring-[#FFC107]" : "bg-white text-slate-700 ring-slate-200 hover:bg-slate-50",
-      ].join(" ")}
-      aria-pressed={active}
-    >
-      {children}
-      {label}
-    </button>
-  );
-}
-
-function SimpleTextarea({
-  value,
-  onChange,
-  placeholder,
-}: {
-  value: string;
-  onChange: (v: string) => void;
-  placeholder: string;
-}) {
-  return (
-    <textarea
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      placeholder={placeholder}
-      className="min-h-28 w-full resize-y rounded-2xl border border-slate-200 bg-white p-4 text-sm shadow-sm outline-none focus:border-[#0B3D91]/30 focus:ring-2 focus:ring-[#0B3D91]/10"
-    />
   );
 }
 
@@ -110,8 +50,7 @@ export function VideoPlayerPage({ videoId }: { videoId: string }) {
   const [allVideos, setAllVideos] = useState<VideoLesson[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
-  const [player, setPlayer] = useState<PlayerState>({ speed: 1, quality: "Auto", pip: false });
+  const [playState, setPlayState] = useState<VideoPlayState>("paused");
   const [showNotes, setShowNotes] = useState(false);
   const [showTutor, setShowTutor] = useState(false);
   const [notes, setNotes] = useState("");
@@ -119,23 +58,16 @@ export function VideoPlayerPage({ videoId }: { videoId: string }) {
   const [tutorAnswer, setTutorAnswer] = useState<string | null>(null);
   const [tutorLoading, setTutorLoading] = useState(false);
 
-  const [progressById, setProgressById] = useState<Record<string, ProgressSnapshot>>(() =>
-    safeParse<Record<string, ProgressSnapshot>>(typeof window === "undefined" ? null : localStorage.getItem(LS_KEYS.progress), {})
+  const [progressById, setProgressById] = useStudentPreference<Record<string, ProgressSnapshot>>(
+    STUDENT_PREF_KEYS.videoProgress,
+    {}
   );
-  const [bookmarks, setBookmarks] = useState<Record<string, true>>(() =>
-    safeParse<Record<string, true>>(typeof window === "undefined" ? null : localStorage.getItem(LS_KEYS.bookmarks), {})
+  const [bookmarks, setBookmarks] = useStudentPreference<Record<string, true>>(
+    STUDENT_PREF_KEYS.videoBookmarks,
+    {}
   );
 
-  const videoRef = useRef<HTMLVideoElement | null>(null);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    localStorage.setItem(LS_KEYS.progress, JSON.stringify(progressById));
-  }, [progressById]);
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    localStorage.setItem(LS_KEYS.bookmarks, JSON.stringify(bookmarks));
-  }, [bookmarks]);
+  const lastSyncRef = useRef(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -183,13 +115,7 @@ export function VideoPlayerPage({ videoId }: { videoId: string }) {
       });
     }, 0);
     return () => window.clearTimeout(t);
-  }, [video, progressById]);
-
-  useEffect(() => {
-    const el = videoRef.current;
-    if (!el) return;
-    el.playbackRate = player.speed;
-  }, [player.speed]);
+  }, [video, progressById, setProgressById]);
 
   const playlist = useMemo(() => {
     if (!allVideos || !video) return [];
@@ -207,7 +133,25 @@ export function VideoPlayerPage({ videoId }: { videoId: string }) {
   const prev = idx >= 0 ? playlist[idx - 1] : null;
 
   const progress = video ? progressById[video.id] : undefined;
-  const percent = progress && progress.durationSeconds > 0 ? Math.round((progress.secondsWatched / progress.durationSeconds) * 100) : 0;
+  const percent =
+    progress && progress.durationSeconds > 0
+      ? Math.round((progress.secondsWatched / progress.durationSeconds) * 100)
+      : 0;
+
+  function syncProgress(currentTime: number, duration: number) {
+    if (!video || !duration) return;
+    const now = Date.now();
+    if (now - lastSyncRef.current < 800) return;
+    lastSyncRef.current = now;
+    setProgressById((prevMap) => ({
+      ...prevMap,
+      [video.id]: {
+        secondsWatched: clamp(Math.floor(currentTime), 0, Math.floor(duration)),
+        durationSeconds: Math.floor(duration),
+        updatedAt: new Date().toISOString(),
+      },
+    }));
+  }
 
   function toggleBookmark() {
     if (!video) return;
@@ -242,28 +186,8 @@ export function VideoPlayerPage({ videoId }: { videoId: string }) {
     }
   }
 
-  function syncProgressFromPlayer() {
-    const el = videoRef.current;
-    if (!el || !video) return;
-    const durationSeconds = Number.isFinite(el.duration) ? Math.floor(el.duration) : progress?.durationSeconds ?? 0;
-    const secondsWatched = Number.isFinite(el.currentTime) ? Math.floor(el.currentTime) : 0;
-    if (!durationSeconds) return;
-    setProgressById((prevMap) => ({
-      ...prevMap,
-      [video.id]: {
-        secondsWatched: clamp(secondsWatched, 0, durationSeconds),
-        durationSeconds,
-        updatedAt: new Date().toISOString(),
-      },
-    }));
-  }
-
   if (loading) {
-    return (
-      <div className="rounded-2xl bg-white p-6 text-sm text-slate-500 shadow-sm ring-1 ring-slate-200/80">
-        Loading video player…
-      </div>
-    );
+    return <LoadingState message="Loading video player…" panel minHeight={160} />;
   }
 
   if (error || !video) {
@@ -274,186 +198,107 @@ export function VideoPlayerPage({ videoId }: { videoId: string }) {
     );
   }
 
-  return (
-    <div className="space-y-6">
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-        <div>
-          <p className="text-xs font-bold text-[#0B3D91]">{video.courseCode}</p>
-          <h1 className="mt-1 text-2xl font-bold text-slate-900">{video.title}</h1>
-          <p className="mt-1 text-sm text-slate-500">
-            Lecturer: {video.lecturerName} • Uploaded {formatDate(video.createdAt)}
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <Link
-            href="/student/video-lessons"
-            className="rounded-xl bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm ring-1 ring-slate-200 hover:bg-slate-50"
-          >
-            Back to videos
-          </Link>
-          {prev ? (
-            <Link
-              href={`/student/video-lessons/watch/${prev.id}`}
-              className="rounded-xl bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm ring-1 ring-slate-200 hover:bg-slate-50"
-            >
-              Previous
-            </Link>
-          ) : null}
-          {next ? (
-            <Link
-              href={`/student/video-lessons/watch/${next.id}`}
-              className="rounded-xl bg-[#0B3D91] px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-[#0B3D91]/90"
-            >
-              Next lesson
-            </Link>
-          ) : null}
-        </div>
-      </div>
+  const hidePlaylist = playState === "playing";
 
-      <div className="grid gap-6 lg:grid-cols-12">
-        <section className="lg:col-span-8 space-y-4">
-          <div className="overflow-hidden rounded-2xl bg-black shadow-sm ring-1 ring-slate-200/80">
-            <video
-              ref={videoRef}
-              src={video.videoUrl}
-              controls
-              playsInline
-              className="h-full w-full"
-              onTimeUpdate={() => {
-                // lightweight throttling via RAF-ish: update only sometimes by sampling
-                syncProgressFromPlayer();
-              }}
-              onPause={syncProgressFromPlayer}
-              onEnded={syncProgressFromPlayer}
-            />
+  return (
+    <div className="mx-auto max-w-[1280px] space-y-4">
+      <div className="grid gap-4 lg:grid-cols-12 lg:gap-6">
+        <section className="lg:col-span-8 space-y-3">
+          <YoutubeStyleVideoPlayer
+            key={video.id}
+            src={video.videoUrl}
+            title={video.title}
+            poster={video.thumbnailUrl ?? undefined}
+            onPlayStateChange={setPlayState}
+            onTimeUpdate={syncProgress}
+            className="w-full"
+          />
+
+          <div className="space-y-2 px-0.5">
+            <h1 className="text-lg font-bold leading-snug text-slate-900 sm:text-xl">{video.title}</h1>
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-slate-600">
+              <span className="font-semibold text-slate-800">{video.lecturerName}</span>
+              <span className="text-slate-300">•</span>
+              <span>{video.courseCode}</span>
+              <span className="text-slate-300">•</span>
+              <span>{formatDate(video.createdAt)}</span>
+            </div>
           </div>
 
-          <div className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200/80">
-            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-              <div className="min-w-0">
-                <p className="text-sm font-bold text-slate-900">Learning progress</p>
-                <p className="text-xs text-slate-500">
-                  {percent}% watched • Auto next lesson enabled • Picture-in-picture supported
-                </p>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                <IconButton
-                  label={bookmarks[video.id] ? "Bookmarked" : "Bookmark"}
-                  active={Boolean(bookmarks[video.id])}
-                  onClick={toggleBookmark}
-                >
-                  <svg viewBox="0 0 24 24" className="h-4 w-4" fill="currentColor">
-                    <path d="M6 2h12a2 2 0 0 1 2 2v20l-8-5-8 5V4a2 2 0 0 1 2-2z" />
-                  </svg>
-                </IconButton>
-                <IconButton
-                  label="Download"
-                  onClick={() => {
-                    // UI-only: direct download if the URL is downloadable
-                    window.open(video.videoUrl, "_blank", "noreferrer");
-                  }}
-                >
-                  <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M12 3v10" />
-                    <path d="m7 11 5 5 5-5" />
-                    <path d="M5 21h14" />
-                  </svg>
-                </IconButton>
-                <IconButton
-                  label="Share"
-                  onClick={async () => {
-                    const url = `${window.location.origin}/student/video-lessons/watch/${video.id}`;
-                    await navigator.clipboard.writeText(url);
-                  }}
-                >
-                  <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M4 12v7a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7" />
-                    <path d="M16 6l-4-4-4 4" />
-                    <path d="M12 2v14" />
-                  </svg>
-                </IconButton>
-                <IconButton label="Notes" active={showNotes} onClick={() => setShowNotes((v) => !v)}>
-                  <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                    <path d="M14 2v6h6" />
-                  </svg>
-                </IconButton>
-                <IconButton label="AI Tutor" active={showTutor} onClick={() => setShowTutor((v) => !v)}>
-                  <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M12 2a4 4 0 0 1 4 4v1h1a3 3 0 0 1 3 3v8a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3V10a3 3 0 0 1 3-3h1V6a4 4 0 0 1 4-4z" />
-                    <path d="M9 14h6M10 18h4" />
-                  </svg>
-                </IconButton>
-              </div>
+          <div className="flex flex-wrap gap-2 rounded-xl bg-slate-50 p-3 ring-1 ring-slate-200/80">
+            <button
+              type="button"
+              onClick={toggleBookmark}
+              className={[
+                "rounded-full px-3 py-1.5 text-xs font-bold ring-1",
+                bookmarks[video.id]
+                  ? "bg-[#0B3D91] text-white ring-[#0B3D91]"
+                  : "bg-white text-slate-700 ring-slate-200 hover:bg-slate-100",
+              ].join(" ")}
+            >
+              {bookmarks[video.id] ? "Saved" : "Save"}
+            </button>
+            <button
+              type="button"
+              onClick={() => window.open(video.videoUrl, "_blank", "noreferrer")}
+              className="rounded-full bg-white px-3 py-1.5 text-xs font-bold text-slate-700 ring-1 ring-slate-200 hover:bg-slate-100"
+            >
+              Download
+            </button>
+            <button
+              type="button"
+              onClick={async () => {
+                const url = `${window.location.origin}/student/video-lessons/watch/${video.id}`;
+                await navigator.clipboard.writeText(url);
+              }}
+              className="rounded-full bg-white px-3 py-1.5 text-xs font-bold text-slate-700 ring-1 ring-slate-200 hover:bg-slate-100"
+            >
+              Share
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowNotes((v) => !v)}
+              className={[
+                "rounded-full px-3 py-1.5 text-xs font-bold ring-1",
+                showNotes ? "bg-[#0B3D91] text-white ring-[#0B3D91]" : "bg-white text-slate-700 ring-slate-200 hover:bg-slate-100",
+              ].join(" ")}
+            >
+              Notes
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowTutor((v) => !v)}
+              className={[
+                "rounded-full px-3 py-1.5 text-xs font-bold ring-1",
+                showTutor ? "bg-[#0B3D91] text-white ring-[#0B3D91]" : "bg-white text-slate-700 ring-slate-200 hover:bg-slate-100",
+              ].join(" ")}
+            >
+              AI Tutor
+            </button>
+            {prev ? (
+              <Link
+                href={`/student/video-lessons/watch/${prev.id}`}
+                className="rounded-full bg-white px-3 py-1.5 text-xs font-bold text-slate-700 ring-1 ring-slate-200 hover:bg-slate-100"
+              >
+                Previous
+              </Link>
+            ) : null}
+            {next ? (
+              <Link
+                href={`/student/video-lessons/watch/${next.id}`}
+                className="rounded-full bg-[#0B3D91] px-3 py-1.5 text-xs font-bold text-white ring-1 ring-[#0B3D91] hover:bg-[#0a3580]"
+              >
+                Next
+              </Link>
+            ) : null}
+          </div>
+
+          <div className="rounded-xl bg-white p-3 ring-1 ring-slate-200/80">
+            <div className="flex items-center justify-between text-xs text-slate-500">
+              <span>Progress</span>
+              <span className="font-bold text-slate-700">{percent}%</span>
             </div>
-
-            <div className="mt-3 grid gap-3 md:grid-cols-12">
-              <div className="md:col-span-6">
-                <label className="text-xs font-semibold text-slate-600">Playback speed</label>
-                <div className="mt-2 flex flex-wrap gap-2">
-                  {[0.75, 1, 1.25, 1.5, 2].map((s) => (
-                    <button
-                      key={s}
-                      type="button"
-                      onClick={() => setPlayer((p) => ({ ...p, speed: s }))}
-                      className={[
-                        "rounded-full px-3 py-1.5 text-xs font-bold ring-1 transition-colors",
-                        player.speed === s
-                          ? "bg-[#0B3D91] text-white ring-[#0B3D91]"
-                          : "bg-white text-slate-700 ring-slate-200 hover:bg-slate-50",
-                      ].join(" ")}
-                    >
-                      {s}x
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div className="md:col-span-3">
-                <label className="text-xs font-semibold text-slate-600">Quality</label>
-                <select
-                  value={player.quality}
-                  onChange={(e) => setPlayer((p) => ({ ...p, quality: e.target.value as PlayerState["quality"] }))}
-                  className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm outline-none focus:border-[#0B3D91]/30 focus:ring-2 focus:ring-[#0B3D91]/10"
-                >
-                  {(["Auto", "1080p", "720p", "480p"] as const).map((q) => (
-                    <option key={q} value={q}>
-                      {q}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="md:col-span-3">
-                <label className="text-xs font-semibold text-slate-600">Picture-in-picture</label>
-                <button
-                  type="button"
-                  onClick={async () => {
-                    const el = videoRef.current;
-                    if (!el) return;
-                    if (document.pictureInPictureElement) {
-                      await document.exitPictureInPicture?.();
-                      setPlayer((p) => ({ ...p, pip: false }));
-                      return;
-                    }
-                    try {
-                      await el.requestPictureInPicture?.();
-                      setPlayer((p) => ({ ...p, pip: true }));
-                    } catch {
-                      setPlayer((p) => ({ ...p, pip: false }));
-                    }
-                  }}
-                  className={[
-                    "mt-2 w-full rounded-xl px-3 py-2 text-sm font-bold ring-1 transition-colors",
-                    player.pip ? "bg-[#FFC107] text-[#0B3D91] ring-[#FFC107]" : "bg-white text-slate-700 ring-slate-200 hover:bg-slate-50",
-                  ].join(" ")}
-                >
-                  {player.pip ? "PiP enabled" : "Enable PiP"}
-                </button>
-              </div>
-            </div>
-
-            <div className="mt-4">
+            <div className="mt-2">
               <ProgressBar percent={percent} />
             </div>
           </div>
@@ -461,16 +306,18 @@ export function VideoPlayerPage({ videoId }: { videoId: string }) {
           <AnimatePresence>
             {showNotes ? (
               <motion.div
-                initial={{ opacity: 0, y: 10 }}
+                initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200/80"
+                exit={{ opacity: 0, y: -8 }}
+                className="rounded-xl bg-white p-4 ring-1 ring-slate-200/80"
               >
-                <h2 className="text-lg font-bold text-slate-900">Notes</h2>
-                <p className="mt-1 text-sm text-slate-500">Write your key takeaways while watching. (Saved in this session.)</p>
-                <div className="mt-4">
-                  <SimpleTextarea value={notes} onChange={setNotes} placeholder="Example: Definition of SQL, examples of SELECT…" />
-                </div>
+                <h2 className="text-base font-bold text-slate-900">Notes</h2>
+                <textarea
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  placeholder="Write key takeaways while watching…"
+                  className="mt-3 min-h-24 w-full resize-y rounded-xl border border-slate-200 p-3 text-sm outline-none focus:border-[#0B3D91]/30 focus:ring-2 focus:ring-[#0B3D91]/10"
+                />
               </motion.div>
             ) : null}
           </AnimatePresence>
@@ -478,88 +325,54 @@ export function VideoPlayerPage({ videoId }: { videoId: string }) {
           <AnimatePresence>
             {showTutor ? (
               <motion.div
-                initial={{ opacity: 0, y: 10 }}
+                initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200/80"
+                exit={{ opacity: 0, y: -8 }}
+                className="rounded-xl bg-white p-4 ring-1 ring-slate-200/80"
               >
-                <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                  <div>
-                    <h2 className="text-lg font-bold text-slate-900">AI Tutor</h2>
-                    <p className="mt-1 text-sm text-slate-500">Ask questions about this video and get step-by-step help.</p>
-                  </div>
-                  <Link
-                    href="/student/ai-tutor"
-                    className="rounded-xl bg-[#FFC107] px-4 py-2 text-sm font-bold text-[#0B3D91] shadow-sm hover:bg-[#FFC107]/90"
-                  >
-                    Full AI Tutor
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <h2 className="text-base font-bold text-slate-900">AI Tutor</h2>
+                  <Link href="/student/ai-tutor" className="text-xs font-bold text-[#0B3D91] hover:underline">
+                    Open full tutor
                   </Link>
                 </div>
-
-                <div className="mt-4 grid gap-3">
-                  <input
-                    value={tutorQuestion}
-                    onChange={(e) => setTutorQuestion(e.target.value)}
-                    placeholder='Try: "Explain the law of reflection from this video."'
-                    className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm shadow-sm outline-none focus:border-[#0B3D91]/30 focus:ring-2 focus:ring-[#0B3D91]/10"
-                  />
-                  <button
-                    type="button"
-                    onClick={askTutor}
-                    disabled={tutorLoading}
-                    className="inline-flex items-center justify-center rounded-2xl bg-[#0B3D91] px-4 py-3 text-sm font-bold text-white shadow-sm hover:bg-[#0B3D91]/90 disabled:opacity-60"
-                  >
-                    {tutorLoading ? "Thinking…" : "Ask AI Tutor"}
-                  </button>
-                  {tutorAnswer ? (
-                    <div className="rounded-2xl bg-slate-50 p-4 text-sm text-slate-700 ring-1 ring-slate-200/70 whitespace-pre-wrap">
-                      {tutorAnswer}
-                    </div>
-                  ) : null}
-                </div>
+                <input
+                  value={tutorQuestion}
+                  onChange={(e) => setTutorQuestion(e.target.value)}
+                  placeholder='Ask about this video…'
+                  className="mt-3 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-[#0B3D91]/30 focus:ring-2 focus:ring-[#0B3D91]/10"
+                />
+                <button
+                  type="button"
+                  onClick={askTutor}
+                  disabled={tutorLoading}
+                  className="mt-2 rounded-xl bg-[#0B3D91] px-4 py-2 text-sm font-bold text-white disabled:opacity-60"
+                >
+                  {tutorLoading ? "Thinking…" : "Ask"}
+                </button>
+                {tutorAnswer ? (
+                  <div className="mt-3 whitespace-pre-wrap rounded-xl bg-slate-50 p-3 text-sm text-slate-700">
+                    {tutorAnswer}
+                  </div>
+                ) : null}
               </motion.div>
             ) : null}
           </AnimatePresence>
 
-          <div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200/80">
-            <h2 className="text-lg font-bold text-slate-900">Comments & Discussions</h2>
-            <p className="mt-1 text-sm text-slate-500">
-              Ask questions under videos, reply to classmates, and see pinned lecturer notes (UI ready).
-            </p>
-            <div className="mt-4 grid gap-3 lg:grid-cols-2">
-              <div className="rounded-2xl bg-[#0B3D91]/10 p-4 ring-1 ring-[#0B3D91]/15">
-                <p className="text-xs font-bold text-[#0B3D91]">Pinned lecturer comment</p>
-                <p className="mt-2 text-sm text-slate-700">
-                  Focus on the examples in the last 5 minutes—these are common exam patterns.
-                </p>
-                <p className="mt-2 text-xs font-semibold text-slate-500">— {video.lecturerName}</p>
-              </div>
-              <div className="rounded-2xl bg-slate-50 p-4 ring-1 ring-slate-200/70">
-                <p className="text-xs font-bold text-slate-700">Start a discussion</p>
-                <p className="mt-2 text-sm text-slate-600">Threaded replies, likes, and lecturer responses are supported in UI.</p>
-                <button
-                  type="button"
-                  className="mt-3 inline-flex items-center justify-center rounded-xl bg-white px-4 py-2 text-xs font-bold text-slate-700 shadow-sm ring-1 ring-slate-200 hover:bg-slate-50"
-                >
-                  New comment
-                </button>
-              </div>
-            </div>
-          </div>
+          {!hidePlaylist ? <VideoCommentsPanel videoId={video.id} lecturerName={video.lecturerName} /> : null}
         </section>
 
-        <aside className="lg:col-span-4 space-y-4">
-          <div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200/80">
-            <h2 className="text-lg font-bold text-slate-900">Playlist</h2>
-            <p className="mt-1 text-sm text-slate-500">
-              {video.courseCode} — {video.courseTitle}
-            </p>
-
-            <div className="mt-4 space-y-2">
-              {playlist.length === 0 ? (
-                <p className="text-sm text-slate-500">No playlist lessons found.</p>
-              ) : (
-                playlist.map((v) => {
+        {!hidePlaylist ? (
+          <aside className="lg:col-span-4">
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <h2 className="text-sm font-bold text-slate-900">Up next</h2>
+                <Link href="/student/video-lessons" className="text-xs font-semibold text-[#0B3D91] hover:underline">
+                  All videos
+                </Link>
+              </div>
+              <div className="space-y-2">
+                {playlist.map((v) => {
                   const snap = progressById[v.id];
                   const duration = snap?.durationSeconds ?? secondsFromLabel(v.durationLabel);
                   const p = duration > 0 ? Math.round(((snap?.secondsWatched ?? 0) / duration) * 100) : 0;
@@ -569,36 +382,33 @@ export function VideoPlayerPage({ videoId }: { videoId: string }) {
                       key={v.id}
                       href={`/student/video-lessons/watch/${v.id}`}
                       className={[
-                        "block rounded-2xl p-3 ring-1 transition-colors",
-                        active ? "bg-[#FFC107]/15 ring-[#FFC107]/40" : "bg-white ring-slate-200 hover:bg-slate-50",
+                        "flex gap-2 rounded-lg p-1.5 transition hover:bg-slate-100",
+                        active ? "bg-slate-100" : "",
                       ].join(" ")}
                     >
-                      <div className="flex items-start gap-3">
-                        <span className="mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-xs font-bold text-slate-700">
-                          {playlist.findIndex((x) => x.id === v.id) + 1}
-                        </span>
-                        <div className="min-w-0 flex-1">
-                          <p className="line-clamp-2 text-sm font-semibold text-slate-900">{v.title}</p>
-                          <p className="mt-1 text-xs text-slate-500">{v.durationLabel ?? "—"}</p>
-                          <div className="mt-2">
-                            <ProgressBar percent={clamp(p, 0, 100)} />
-                          </div>
+                      <div className="relative aspect-video w-40 shrink-0 overflow-hidden rounded-lg bg-slate-900">
+                        <div className="absolute inset-0 bg-gradient-to-br from-slate-700 to-black" />
+                        {v.durationLabel ? (
+                          <span className="absolute bottom-1 right-1 rounded bg-black/80 px-1 text-[10px] font-bold text-white">
+                            {v.durationLabel}
+                          </span>
+                        ) : null}
+                      </div>
+                      <div className="min-w-0 flex-1 py-0.5">
+                        <p className="line-clamp-2 text-sm font-semibold leading-snug text-slate-900">{v.title}</p>
+                        <p className="mt-1 text-xs text-slate-500">{v.lecturerName}</p>
+                        <div className="mt-2">
+                          <ProgressBar percent={p} />
                         </div>
                       </div>
                     </Link>
                   );
-                })
-              )}
+                })}
+              </div>
             </div>
-
-            <div className="mt-5 rounded-2xl bg-slate-50 p-4 ring-1 ring-slate-200/70">
-              <p className="text-xs font-bold text-slate-700">Auto next lesson</p>
-              <p className="mt-1 text-xs text-slate-600">When this video ends, the “Next lesson” button is ready.</p>
-            </div>
-          </div>
-        </aside>
+          </aside>
+        ) : null}
       </div>
     </div>
   );
 }
-

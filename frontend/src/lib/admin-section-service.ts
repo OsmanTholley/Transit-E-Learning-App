@@ -5,11 +5,6 @@ function formatDate(date: Date) {
   return date.toISOString().slice(0, 10);
 }
 
-function formatDateTime(date: Date | null | undefined) {
-  if (!date) return "—";
-  return date.toISOString().replace("T", " ").slice(0, 16);
-}
-
 const sectionMeta: Record<string, { title: string; subtitle: string }> = {
   assignments: {
     title: "Assignments",
@@ -30,10 +25,6 @@ const sectionMeta: Record<string, { title: string; subtitle: string }> = {
   notifications: {
     title: "Notifications",
     subtitle: "Review system notifications delivered to users.",
-  },
-  reports: {
-    title: "Reports & Analytics",
-    subtitle: "Track platform usage and performance.",
   },
   settings: {
     title: "System Settings",
@@ -210,43 +201,6 @@ export async function buildAdminSectionContent(section: string): Promise<Section
             formatDate(n.createdAt),
           ]),
         },
-      };
-    }
-    case "reports": {
-      const [
-        students,
-        lecturers,
-        courses,
-        notes,
-        videos,
-        quizzes,
-        assignments,
-        discussions,
-      ] = await Promise.all([
-        prisma.student.count(),
-        prisma.lecturer.count(),
-        prisma.course.count(),
-        prisma.lectureNote.count(),
-        prisma.video.count(),
-        prisma.quiz.count(),
-        prisma.assignment.count(),
-        prisma.discussion.count(),
-      ]);
-      return {
-        ...meta,
-        stats: [
-          { label: "Students", value: students.toLocaleString() },
-          { label: "Lecturers", value: String(lecturers) },
-          { label: "Courses", value: String(courses) },
-          { label: "Lecture notes", value: String(notes) },
-          { label: "Videos", value: String(videos) },
-          { label: "Quizzes", value: String(quizzes) },
-        ],
-        bullets: [
-          `${assignments} assignments in the catalog.`,
-          `${discussions} discussion threads on the platform.`,
-          "Use department and course reports for detailed exports.",
-        ],
       };
     }
     case "settings": {

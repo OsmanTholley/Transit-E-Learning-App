@@ -2,12 +2,20 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { ReactNode, useEffect, useState } from "react";
+import { FormEvent, ReactNode, Suspense, useEffect, useRef, useState } from "react";
+import type { StudentSearchResult } from "@/lib/student-search";
 import { TransitLogo } from "@/components/brand/transit-logo";
+import { NavigationProgress } from "@/components/layout/navigation-progress";
+import { LoadingSpinner } from "@/components/ui/loading-indicator";
+import { PortalTopbar } from "@/components/layout/portal-topbar";
 import { NotificationBell } from "@/components/layout/notification-bell";
-import { TopbarUserMenu } from "@/components/layout/topbar-user-menu";
+import { OfflineSyncBanner } from "@/components/layout/offline-sync-banner";
 import { MobileNavOverlay, MobileTopBar } from "@/components/layout/mobile-top-bar";
 import { useStudentSession } from "@/contexts/student-session-context";
+import { useMobileNav } from "@/hooks/use-mobile-nav";
+import { useOfflineSync } from "@/hooks/use-offline-sync";
+import { requestApi } from "@/lib/fetch-api";
+import { reportStudentError, studentError, studentWarning } from "@/lib/student-ui";
 import { logout } from "@/services/auth";
 import { studentNavItems } from "@/services/student-dashboard-data";
 
@@ -97,34 +105,181 @@ function NavIcon({ name }: { name: string }) {
   }
 }
 
+const SEARCH_TYPE_LABELS: Record<StudentSearchResult["type"], string> = {
+  course: "Course",
+  note: "Note",
+  video: "Video",
+  quiz: "Quiz",
+  assignment: "Assignment",
+};
+
+function StudentPortalErrorHandler() {
+  useEffect(() => {
+    const onUnhandledRejection = (event: PromiseRejectionEvent) => {
+      event.preventDefault();
+      reportStudentError("Something went wrong", event.reason);
+    };
+
+    const onWindowError = (event: ErrorEvent) => {
+      if (event.defaultPrevented) return;
+      reportStudentError("Something went wrong", event.error ?? event.message);
+    };
+
+    window.addEventListener("unhandledrejection", onUnhandledRejection);
+    window.addEventListener("error", onWindowError);
+    return () => {
+      window.removeEventListener("unhandledrejection", onUnhandledRejection);
+      window.removeEventListener("error", onWindowError);
+    };
+  }, []);
+
+  return null;
+}
+
 export function StudentShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { data, loading } = useStudentSession();
+  const { data, loading, refresh } = useStudentSession();
+  const { online } = useOfflineSync();
   const profile = data?.profile;
-  const [notificationCount, setNotificationCount] = useState(0);
-  const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const sessionNotificationCount = data?.stats.newNotifications ?? 0;
+  const [notificationOverride, setNotificationOverride] = useState<number | null>(null);
+  const [notificationSource, setNotificationSource] = useState(sessionNotificationCount);
+  const { mobileNavOpen, openMobileNav, closeMobileNav } = useMobileNav(pathname);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<StudentSearchResult[]>([]);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [searchOffline, setSearchOffline] = useState(false);
+  const searchRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    Promise.resolve().then(() => {
-      setNotificationCount(data?.stats.newNotifications ?? 0);
-    });
-  }, [data?.stats.newNotifications]);
+    if (notificationSource !== sessionNotificationCount) {
+      setNotificationSource(sessionNotificationCount);
+      setNotificationOverride(null);
+    }
+  }, [notificationSource, sessionNotificationCount]);
+
+  useEffect(() => {
+    const q = searchQuery.trim();
+    if (q.length < 2) {
+      setSearchResults([]);
+      setSearchLoading(false);
+      setSearchOffline(false);
+      return;
+    }
+
+    if (!online) {
+      setSearchResults([]);
+      setSearchLoading(false);
+      setSearchOffline(true);
+      return;
+    }
+
+    setSearchLoading(true);
+    setSearchOffline(false);
+    const timer = window.setTimeout(async () => {
+      const result = await requestApi<{ results?: StudentSearchResult[] }>(
+        `/api/student/search?q=${encodeURIComponent(q)}`,
+        {
+          silent: true,
+          errorTitle: "Search unavailable",
+          onRecovered: () => {
+            if (searchQuery.trim().length >= 2) {
+              void loadSearch(searchQuery.trim());
+            }
+          },
+        }
+      );
+
+      if (result.offline) {
+        setSearchResults([]);
+        setSearchOffline(true);
+        setSearchLoading(false);
+        return;
+      }
+
+      if (!result.ok) {
+        setSearchResults([]);
+        await studentError("Search failed", result.message);
+      } else {
+        setSearchResults(result.data.results ?? []);
+      }
+      setSearchLoading(false);
+    }, 300);
+
+    return () => window.clearTimeout(timer);
+  }, [searchQuery, online]);
+
+  async function loadSearch(q: string) {
+    setSearchLoading(true);
+    const result = await requestApi<{ results?: StudentSearchResult[] }>(
+      `/api/student/search?q=${encodeURIComponent(q)}`,
+      { silent: true, errorTitle: "Search unavailable" }
+    );
+
+    if (result.offline) {
+      setSearchResults([]);
+      setSearchOffline(true);
+    } else if (!result.ok) {
+      setSearchResults([]);
+      await studentError("Search failed", result.message);
+    } else {
+      setSearchResults(result.data.results ?? []);
+      setSearchOffline(false);
+    }
+    setSearchLoading(false);
+  }
+
+  useEffect(() => {
+    function onPointerDown(event: MouseEvent) {
+      if (!searchRef.current?.contains(event.target as Node)) {
+        setSearchOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", onPointerDown);
+    return () => document.removeEventListener("mousedown", onPointerDown);
+  }, []);
+
+  function handleSearchSubmit(event: FormEvent) {
+    event.preventDefault();
+    if (!online) {
+      void studentWarning("You are offline", "Search needs an internet connection.");
+      return;
+    }
+    const first = searchResults[0];
+    if (first) {
+      setSearchOpen(false);
+      router.push(first.href);
+    }
+  }
+
+  const notificationCount = notificationOverride ?? sessionNotificationCount;
 
   const onLogout = async () => {
-    await logout();
-    router.push("/login");
+    try {
+      const result = await logout();
+      if (result.offline) {
+        await studentWarning("You are offline", "Logout will complete when you reconnect.");
+        return;
+      }
+      if (!result.ok) {
+        await studentError("Logout failed", result.message ?? "Please try again.");
+        return;
+      }
+      router.push("/login");
+    } catch (error) {
+      reportStudentError("Logout failed", error);
+    }
   };
-
-  useEffect(() => {
-    Promise.resolve().then(() => {
-      setMobileNavOpen(false);
-    });
-  }, [pathname]);
 
   return (
     <div className="flex min-h-screen bg-[#f4f6f9]">
-      <MobileNavOverlay open={mobileNavOpen} onClose={() => setMobileNavOpen(false)} />
+      <StudentPortalErrorHandler />
+      <Suspense fallback={null}>
+        <NavigationProgress />
+      </Suspense>
+      <MobileNavOverlay open={mobileNavOpen} onClose={closeMobileNav} />
       <aside
         className={[
           "fixed inset-y-0 left-0 z-50 flex w-[min(100vw,18rem)] flex-col bg-[#0B3D91] text-white shadow-xl transition-transform duration-200 lg:z-30 lg:w-64 lg:translate-x-0 lg:shadow-none",
@@ -137,7 +292,7 @@ export function StudentShell({ children }: { children: ReactNode }) {
             type="button"
             className="rounded-lg p-2 text-white/80 hover:bg-white/10 lg:hidden"
             aria-label="Close menu"
-            onClick={() => setMobileNavOpen(false)}
+            onClick={closeMobileNav}
           >
             <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M6 6l12 12M6 18L18 6" />
@@ -190,43 +345,97 @@ export function StudentShell({ children }: { children: ReactNode }) {
       </aside>
 
       <div className="flex min-h-screen w-full flex-1 flex-col lg:ml-64">
-        <MobileTopBar onMenuClick={() => setMobileNavOpen(true)} />
-        <header className="sticky top-0 z-20 hidden border-b border-slate-200/80 bg-[#f4f6f9]/95 px-4 py-4 backdrop-blur-sm sm:px-6 lg:block">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-            <div className="relative flex-1 max-w-2xl">
-              <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
-                <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2">
-                  <circle cx="11" cy="11" r="7" />
-                  <path d="M20 20l-3.5-3.5" />
-                </svg>
-              </span>
-              <input
-                type="search"
-                placeholder="Search for courses, notes, videos..."
-                className="w-full rounded-full border border-slate-200 bg-white py-2.5 pl-11 pr-4 text-sm shadow-sm outline-none focus:border-[#0B3D91]/30 focus:ring-2 focus:ring-[#0B3D91]/10"
-              />
+        <MobileTopBar
+          onMenuClick={openMobileNav}
+          trailing={
+            <NotificationBell
+              role="student"
+              variant="admin"
+              onCountChange={setNotificationOverride}
+            />
+          }
+        />
+        <PortalTopbar
+          role="student"
+          variant="admin"
+          roleBadge="Student"
+          searchPlaceholder="Search for courses, notes, videos..."
+          searchSlot={
+            <div ref={searchRef} className="relative flex-1 max-w-2xl">
+              <form onSubmit={handleSearchSubmit}>
+                <span className="pointer-events-none absolute left-4 top-1/2 z-10 -translate-y-1/2 text-slate-400">
+                  <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2">
+                    <circle cx="11" cy="11" r="7" />
+                    <path d="M20 20l-3.5-3.5" />
+                  </svg>
+                </span>
+                <input
+                  type="search"
+                  value={searchQuery}
+                  onChange={(e) => {
+                    setSearchQuery(e.target.value);
+                    setSearchOpen(true);
+                  }}
+                  onFocus={() => setSearchOpen(true)}
+                  placeholder="Search for courses, notes, videos..."
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 pl-11 pr-4 text-sm outline-none focus:border-[#0B3D91]/30 focus:ring-2 focus:ring-[#0B3D91]/10"
+                />
+              </form>
+              {searchOpen && searchQuery.trim().length >= 2 ? (
+                <div className="absolute left-0 right-0 top-full z-30 mt-2 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-lg">
+                  {searchLoading ? (
+                    <div className="flex items-center gap-2 px-4 py-3">
+                      <LoadingSpinner size="sm" />
+                      <p className="text-sm text-slate-500">Searching…</p>
+                    </div>
+                  ) : searchOffline ? (
+                    <p className="px-4 py-3 text-sm text-amber-700">
+                      Search is unavailable offline. Reconnect to find courses, notes, and videos.
+                    </p>
+                  ) : searchResults.length === 0 ? (
+                    <p className="px-4 py-3 text-sm text-slate-500">No results found.</p>
+                  ) : (
+                    <ul className="max-h-80 overflow-y-auto py-1">
+                      {searchResults.map((result) => (
+                        <li key={`${result.type}-${result.id}`}>
+                          <Link
+                            href={result.href}
+                            onClick={() => {
+                              setSearchOpen(false);
+                              setSearchQuery("");
+                            }}
+                            className="flex items-start gap-3 px-4 py-3 hover:bg-slate-50"
+                          >
+                            <span className="mt-0.5 rounded-full bg-[#0B3D91]/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-[#0B3D91]">
+                              {SEARCH_TYPE_LABELS[result.type]}
+                            </span>
+                            <span className="min-w-0 flex-1">
+                              <span className="block truncate text-sm font-medium text-slate-900">
+                                {result.title}
+                              </span>
+                              <span className="block truncate text-xs text-slate-500">{result.subtitle}</span>
+                            </span>
+                          </Link>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              ) : null}
             </div>
+          }
+          fullName={loading ? "Loading…" : (profile?.fullName ?? "Student")}
+          subtitle={profile?.email ?? profile?.role ?? "Student"}
+          profileImage={profile?.profileImage}
+          initials={profile?.avatarInitials ?? "ST"}
+          profileHref="/student/profile"
+          onNotificationCountChange={setNotificationOverride}
+        />
 
-            <div className="flex items-center justify-end gap-3">
-              <NotificationBell
-                role="student"
-                variant="student"
-                onCountChange={setNotificationCount}
-              />
-              <TopbarUserMenu
-                role="student"
-                variant="student"
-                fullName={loading ? "Loading…" : (profile?.fullName ?? "Student")}
-                subtitle={profile?.role ?? "Student"}
-                profileImage={profile?.profileImage}
-                initials={profile?.avatarInitials ?? "ST"}
-                profileHref="/student/profile"
-              />
-            </div>
-          </div>
-        </header>
-
-        <main className="safe-pb flex-1 px-4 py-4 sm:px-6 sm:py-6">{children}</main>
+        <main className="safe-pb flex-1 px-4 py-4 sm:px-6 sm:py-6">
+          <OfflineSyncBanner onReconnect={refresh} />
+          {children}
+        </main>
       </div>
     </div>
   );

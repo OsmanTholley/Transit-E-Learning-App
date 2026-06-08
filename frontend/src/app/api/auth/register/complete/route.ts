@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { Role } from "@prisma/client";
 import { findAdmittedStudentForRegistration } from "@/lib/admitted-student";
+import { syncEnrollmentsForStudents } from "@/lib/course-enrollment";
 import { prisma } from "@/lib/prisma";
 import { setAuthCookies } from "@/lib/auth";
 
@@ -41,7 +42,7 @@ export async function POST(request: NextRequest) {
 
     const passwordHash = await bcrypt.hash(password, 10);
 
-    const user = await prisma.$transaction(async (tx) => {
+    const { user, createdStudentId } = await prisma.$transaction(async (tx) => {
       const createdUser = await tx.user.create({
         data: {
           fullName: admitted.fullName,
@@ -53,7 +54,7 @@ export async function POST(request: NextRequest) {
         },
       });
 
-      await tx.student.create({
+      const createdStudent = await tx.student.create({
         data: {
           userId: createdUser.id,
           studentId: normalizedStudentId,
@@ -70,8 +71,10 @@ export async function POST(request: NextRequest) {
         data: { registeredAt: new Date() },
       });
 
-      return createdUser;
+      return { user: createdUser, createdStudentId: createdStudent.id };
     });
+
+    await syncEnrollmentsForStudents([createdStudentId]);
 
     const response = NextResponse.json({
       ok: true,

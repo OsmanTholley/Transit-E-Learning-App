@@ -51,8 +51,11 @@ export function HubSubNav({
   const checkActive = isActive ?? ((item, path, filter) => defaultHubNavActive(item, path, filter, basePath));
 
   return (
-    <nav aria-label={ariaLabel} className="overflow-x-auto-touch -mx-1 px-1 pb-1">
-      <div className="flex min-w-max gap-2">
+    <nav
+      aria-label={ariaLabel}
+      className="subnav-scroll w-full rounded-xl border border-slate-200/80 bg-white shadow-sm"
+    >
+      <div className="flex min-w-max items-stretch">
         {items.map((item) => {
           const active = checkActive(item, pathname, activeFilter);
           return (
@@ -60,10 +63,10 @@ export function HubSubNav({
               key={item.href}
               href={item.href}
               className={[
-                "inline-flex shrink-0 items-center rounded-full px-4 py-2 text-sm font-semibold transition",
+                "inline-flex shrink-0 items-center whitespace-nowrap border-b-2 px-4 py-3 text-sm font-medium transition-colors",
                 active
-                  ? "bg-[#0B3D91] text-white shadow-sm"
-                  : "bg-white text-slate-600 ring-1 ring-slate-200 hover:bg-slate-50",
+                  ? "border-[#FFC107] font-semibold text-[#0B3D91]"
+                  : "border-transparent text-slate-600 hover:border-slate-200 hover:text-slate-900",
               ].join(" ")}
             >
               {navLabel(item)}

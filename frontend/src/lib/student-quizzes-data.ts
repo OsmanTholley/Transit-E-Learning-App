@@ -1,3 +1,4 @@
+import { getAccessibleCourseIdsForStudent } from "@/lib/student-courses-data";
 import { prisma } from "@/lib/prisma";
 import type {
   QuizQuestionView,
@@ -18,8 +19,16 @@ async function getEnrolledStudent(userId: string) {
     include: {
       courseStudents: { select: { courseId: true } },
       quizAttempts: { select: { id: true, quizId: true, score: true, submittedAt: true } },
+      department: { select: { departmentName: true } },
+      program: { select: { programName: true } },
     },
   });
+}
+
+async function getStudentCourseIds(
+  student: NonNullable<Awaited<ReturnType<typeof getEnrolledStudent>>>
+) {
+  return getAccessibleCourseIdsForStudent(student.id, student);
 }
 
 function inferQuestionType(q: {
@@ -91,7 +100,7 @@ export async function listQuizzesForStudent(
   const student = await getEnrolledStudent(userId);
   if (!student) return [];
 
-  const courseIds = student.courseStudents.map((e) => e.courseId);
+  const courseIds = await getStudentCourseIds(student);
   if (!courseIds.length) return [];
 
   const inProgressSet = new Set(inProgressIds);
@@ -145,7 +154,7 @@ export async function getQuizDetailForStudent(
   const student = await getEnrolledStudent(userId);
   if (!student) return null;
 
-  const courseIds = student.courseStudents.map((e) => e.courseId);
+  const courseIds = await getStudentCourseIds(student);
 
   const quiz = await prisma.quiz.findFirst({
     where: { id: quizId, courseId: { in: courseIds } },
@@ -224,7 +233,7 @@ export async function submitQuizAttempt(
   const student = await getEnrolledStudent(userId);
   if (!student) return { error: "Unauthorized.", status: 401 };
 
-  const courseIds = student.courseStudents.map((e) => e.courseId);
+  const courseIds = await getStudentCourseIds(student);
 
   const quiz = await prisma.quiz.findFirst({
     where: { id: quizId, courseId: { in: courseIds } },
@@ -290,7 +299,7 @@ export async function getLeaderboardForStudent(userId: string) {
   const student = await getEnrolledStudent(userId);
   if (!student) return [];
 
-  const courseIds = student.courseStudents.map((e) => e.courseId);
+  const courseIds = await getStudentCourseIds(student);
   if (!courseIds.length) return [];
 
   const attempts = await prisma.quizAttempt.findMany({

@@ -1,32 +1,24 @@
 "use client";
+import { LoadingState } from "@/components/ui/loading-indicator";
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useStudentSession } from "@/contexts/student-session-context";
 import { getDiscussionsViewTitle } from "@/components/student/discussions/discussions-nav-config";
+import { useStudentPreference } from "@/hooks/use-student-preference";
+import { requestApi } from "@/lib/fetch-api";
+import { STUDENT_PREF_KEYS } from "@/lib/student-preference-keys";
+import { reportStudentError, studentMutation } from "@/lib/student-ui";
 import {
   DashboardStat,
   DiscussionCard,
   DiscussionFilters,
-  LS_LIKES,
-  LS_SAVED,
 } from "@/components/student/discussions/discussion-ui";
 import type { DiscussionSummary } from "@/types/student-discussions";
 
 type Props = { segment?: string[] };
-
-const LS_GROUPS = "transit.discussions.studyGroups.v1";
-
-function safeParse<T>(value: string | null, fallback: T): T {
-  if (!value) return fallback;
-  try {
-    return JSON.parse(value) as T;
-  } catch {
-    return fallback;
-  }
-}
 
 type StudyGroup = { id: string; name: string; courseCode: string; members: number };
 
@@ -35,25 +27,29 @@ export function DiscussionsHub({ segment }: Props) {
   const title = getDiscussionsViewTitle(view);
   const searchParams = useSearchParams();
   const urlCourseId = searchParams.get("courseId") ?? "";
-  const { data: session, loading: sessionLoading, error: sessionError } = useStudentSession();
+  const { data: session, loading: sessionLoading } = useStudentSession();
 
   const [discussions, setDiscussions] = useState<DiscussionSummary[] | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const mountedRef = useRef(true);
+  const loadRef = useRef<(() => Promise<void>) | null>(null);
 
   const [query, setQuery] = useState("");
   const [courseId, setCourseId] = useState("");
   const activeCourseId = urlCourseId || courseId;
   const [sort, setSort] = useState("latest");
 
-  const [likes, setLikes] = useState<Record<string, number>>(() =>
-    safeParse(typeof window === "undefined" ? null : localStorage.getItem(LS_LIKES), {})
+  const [likes, setLikes] = useStudentPreference<Record<string, number>>(
+    STUDENT_PREF_KEYS.discussionLikes,
+    {}
   );
-  const [saved, setSaved] = useState<Record<string, true>>(() =>
-    safeParse(typeof window === "undefined" ? null : localStorage.getItem(LS_SAVED), {})
+  const [saved, setSaved] = useStudentPreference<Record<string, true>>(
+    STUDENT_PREF_KEYS.discussionSaved,
+    {}
   );
-  const [groups, setGroups] = useState<StudyGroup[]>(() =>
-    safeParse(typeof window === "undefined" ? null : localStorage.getItem(LS_GROUPS), [])
+  const [groups, setGroups] = useStudentPreference<StudyGroup[]>(
+    STUDENT_PREF_KEYS.discussionStudyGroups,
+    []
   );
 
   const [showCreate, setShowCreate] = useState(false);
@@ -67,44 +63,50 @@ export function DiscussionsHub({ segment }: Props) {
   const [tutorLoading, setTutorLoading] = useState(false);
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    localStorage.setItem(LS_LIKES, JSON.stringify(likes));
-  }, [likes]);
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    localStorage.setItem(LS_SAVED, JSON.stringify(saved));
-  }, [saved]);
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    localStorage.setItem(LS_GROUPS, JSON.stringify(groups));
-  }, [groups]);
-
-  useEffect(() => {
-    let cancelled = false;
-    async function load() {
-      setLoading(true);
-      setError(null);
-      try {
-        const params = new URLSearchParams();
-        if (view) params.set("view", view);
-        if (activeCourseId) params.set("courseId", activeCourseId);
-        if (query) params.set("search", query);
-
-        const res = await fetch(`/api/student/discussions?${params.toString()}`);
-        const json = await res.json();
-        if (!res.ok) throw new Error(json?.error ?? "Failed to load discussions.");
-        if (!cancelled) setDiscussions(json);
-      } catch (e) {
-        if (!cancelled) setError(e instanceof Error ? e.message : "Failed to load discussions.");
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    }
-    load();
+    mountedRef.current = true;
     return () => {
-      cancelled = true;
+      mountedRef.current = false;
     };
+  }, []);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    let waitingForConnection = false;
+    const params = new URLSearchParams();
+    if (view) params.set("view", view);
+    if (activeCourseId) params.set("courseId", activeCourseId);
+    if (query) params.set("search", query);
+
+    const result = await requestApi<DiscussionSummary[]>(
+      `/api/student/discussions?${params.toString()}`,
+      {
+        errorTitle: "Could not load discussions",
+        onRecovered: () => {
+          if (mountedRef.current) void loadRef.current?.();
+        },
+      }
+    );
+
+    if (!mountedRef.current) return;
+
+    if (result.offline) {
+      waitingForConnection = true;
+    } else if (result.ok) {
+      setDiscussions(result.data);
+    } else {
+      setDiscussions(null);
+    }
+
+    if (!waitingForConnection) {
+      setLoading(false);
+    }
   }, [view, activeCourseId, query]);
+
+  loadRef.current = load;
+
+  useEffect(() => {
+    void load();
+  }, [load]);
 
   const courses = useMemo(() => {
     return (session?.courses ?? []).map((c) => ({ id: c.id, code: c.code, title: c.title }));
@@ -154,30 +156,30 @@ export function DiscussionsHub({ segment }: Props) {
   async function createPost() {
     if (!newTitle.trim() || !newMessage.trim()) return;
     setCreating(true);
-    try {
-      const discussionType = newCourseId ? "COURSE" : view === "announcements" ? "PROGRAM" : "GENERAL";
-      const res = await fetch("/api/student/discussions", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          title: newTitle,
-          message: newMessage,
-          courseId: newCourseId || null,
-          discussionType,
-        }),
-      });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json?.error ?? "Failed to create post");
-      setDiscussions((prev) => [json, ...(prev ?? [])]);
+    const discussionType = newCourseId ? "COURSE" : view === "announcements" ? "PROGRAM" : "GENERAL";
+    const body = JSON.stringify({
+      title: newTitle,
+      message: newMessage,
+      courseId: newCourseId || null,
+      discussionType,
+    });
+
+    const result = await studentMutation<DiscussionSummary>("/api/student/discussions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body,
+      errorTitle: "Could not create post",
+      offlineLabel: "Discussion post",
+    });
+
+    if (result.ok) {
+      setDiscussions((prev) => [result.data, ...(prev ?? [])]);
       setShowCreate(false);
       setNewTitle("");
       setNewMessage("");
       setNewCourseId("");
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to create post");
-    } finally {
-      setCreating(false);
     }
+    setCreating(false);
   }
 
   async function askTutor() {
@@ -186,28 +188,24 @@ export function DiscussionsHub({ segment }: Props) {
     setTutorLoading(true);
     setTutorAnswer(null);
     try {
-      const res = await fetch("/api/student/ai-tutor", {
+      const result = await requestApi<{ answer?: string; error?: string }>("/api/student/ai-tutor", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ question: q }),
+        errorTitle: "AI Tutor unavailable",
       });
-      const json = await res.json();
-      setTutorAnswer(json.answer ?? json.error ?? "No response.");
+      if (result.ok) {
+        setTutorAnswer(result.data.answer ?? result.data.error ?? "No response.");
+      }
     } catch (e) {
-      setTutorAnswer(e instanceof Error ? e.message : "AI Tutor failed.");
+      reportStudentError("AI Tutor failed", e);
     } finally {
       setTutorLoading(false);
     }
   }
 
   if (sessionLoading) {
-    return <p className="text-sm text-slate-500">Loading discussions…</p>;
-  }
-
-  if (sessionError) {
-    return (
-      <div className="rounded-2xl bg-rose-50 px-4 py-3 text-sm text-rose-700 ring-1 ring-rose-200">{sessionError}</div>
-    );
+    return <LoadingState message="Loading discussions…" layout="inline" />;
   }
 
   const specialViews = ["study-groups", "notifications", "ai-tutor"];
@@ -279,10 +277,6 @@ export function DiscussionsHub({ segment }: Props) {
         />
       </section>
 
-      {error ? (
-        <div className="rounded-2xl bg-rose-50 px-4 py-3 text-sm text-rose-700 ring-1 ring-rose-200">{error}</div>
-      ) : null}
-
       {view === "study-groups" ? (
         <StudyGroupsView groups={groups} courses={courses} onCreate={(g) => setGroups((prev) => [g, ...prev])} />
       ) : view === "notifications" ? (
@@ -312,8 +306,8 @@ export function DiscussionsHub({ segment }: Props) {
           ) : null}
 
           {loading ? (
-            <p className="text-sm text-slate-500">Loading discussions…</p>
-          ) : (
+        <LoadingState message="Loading discussions…" layout="inline" />
+      ) : (
             <section className="space-y-4">
               {filtered.length === 0 ? (
                 <div className="rounded-2xl bg-white p-8 text-center text-sm text-slate-500 ring-1 ring-slate-200/80">

@@ -1,4 +1,5 @@
 "use client";
+import { LoadingState } from "@/components/ui/loading-indicator";
 
 import { useApiLoad } from "@/hooks/use-api-load";
 import { usePrograms } from "@/hooks/use-programs";
@@ -25,7 +26,7 @@ export function ProgramReportsPage() {
   ];
 
   if (loading) {
-    return <p className="text-sm text-slate-500">Loading program reports…</p>;
+    return <LoadingState message="Loading program reports…" layout="inline" />;
   }
 
   const stats = data?.stats;

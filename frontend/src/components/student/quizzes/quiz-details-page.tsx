@@ -1,44 +1,66 @@
 "use client";
+import { LoadingState } from "@/components/ui/loading-indicator";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
+import { requestApi } from "@/lib/fetch-api";
 import type { StudentQuizDetail } from "@/types/student-quizzes";
 import { statusLabel, statusStyles } from "@/components/student/quizzes/quiz-ui";
 
 export function QuizDetailsPage({ quizId }: { quizId: string }) {
   const [quiz, setQuiz] = useState<StudentQuizDetail | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const mountedRef = useRef(true);
+  const loadRef = useRef<(() => Promise<void>) | null>(null);
 
   useEffect(() => {
-    let cancelled = false;
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
+
+  useEffect(() => {
     async function load() {
       setLoading(true);
-      try {
-        const res = await fetch(`/api/student/quizzes/${quizId}`);
-        const json = await res.json();
-        if (!res.ok) throw new Error(json?.error ?? "Failed to load quiz");
-        if (!cancelled) setQuiz(json);
-      } catch (e) {
-        if (!cancelled) setError(e instanceof Error ? e.message : "Failed to load quiz");
-      } finally {
-        if (!cancelled) setLoading(false);
+      let waitingForConnection = false;
+
+      const result = await requestApi<StudentQuizDetail>(`/api/student/quizzes/${quizId}`, {
+        errorTitle: "Could not load quiz",
+        onRecovered: () => {
+          if (mountedRef.current) void loadRef.current?.();
+        },
+      });
+
+      if (!mountedRef.current) return;
+
+      if (result.offline) {
+        waitingForConnection = true;
+      } else if (result.ok) {
+        setQuiz(result.data);
+      } else {
+        setQuiz(null);
+      }
+
+      if (!waitingForConnection) {
+        setLoading(false);
       }
     }
-    load();
-    return () => {
-      cancelled = true;
-    };
+
+    loadRef.current = load;
+    void load();
   }, [quizId]);
 
   if (loading) {
-    return <p className="text-sm text-slate-500">Loading quiz details…</p>;
+    return <LoadingState message="Loading quiz details…" layout="inline" />;
   }
 
-  if (error || !quiz) {
+  if (!quiz) {
     return (
-      <div className="rounded-2xl bg-rose-50 p-6 text-sm text-rose-700 ring-1 ring-rose-200">{error ?? "Quiz not found"}</div>
+      <div className="rounded-2xl bg-white p-8 text-center text-sm text-slate-500 ring-1 ring-slate-200/80">
+        Quiz not found or unavailable.
+      </div>
     );
   }
 

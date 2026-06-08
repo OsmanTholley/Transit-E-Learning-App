@@ -1,4 +1,5 @@
 "use client";
+import { LoadingState } from "@/components/ui/loading-indicator";
 
 import { FormEvent, useEffect, useState } from "react";
 import { requestApi } from "@/lib/fetch-api";
@@ -89,9 +90,7 @@ export function AdminProfilePage() {
 
   if (loading) {
     return (
-      <div className="rounded-2xl border border-slate-200/80 bg-white p-8">
-        <p className="text-sm text-slate-500">Loading profile…</p>
-      </div>
+      <LoadingState message="Loading profile…" panel minHeight={160} />
     );
   }
 

@@ -1,9 +1,11 @@
 "use client";
+import { LoadingState } from "@/components/ui/loading-indicator";
 
 import { useMemo, useState } from "react";
 import { useStudents } from "@/hooks/use-students";
 import { StudentRecord } from "@/types/student";
 import { StudentFilters, type StudentFilterValues } from "./student-filters";
+import { StudentCrudPageHero } from "./student-crud-hero";
 import { StudentsTable } from "./students-table";
 import { StatCard, StudentSection } from "./ui";
 
@@ -29,7 +31,7 @@ function matchesFilters(student: StudentRecord, filters: StudentFilterValues) {
 }
 
 export function AllStudentsList() {
-  const { students, loading, error } = useStudents();
+  const { students, loading, error, refetch } = useStudents();
   const [filters, setFilters] = useState<StudentFilterValues>(emptyFilters);
 
   const filtered = useMemo(
@@ -43,9 +45,7 @@ export function AllStudentsList() {
 
   if (loading) {
     return (
-      <div className="flex min-h-[200px] items-center justify-center rounded-2xl border border-slate-200/80 bg-white p-8">
-        <p className="text-sm text-slate-500">Loading students…</p>
-      </div>
+      <LoadingState message="Loading students…" panel minHeight={200} />
     );
   }
 
@@ -57,6 +57,8 @@ export function AllStudentsList() {
 
   return (
     <StudentSection>
+      <StudentCrudPageHero section="all" />
+
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard label="Total Students" value={students.length} tone="amber" />
         <StatCard label="Active" value={active} tone="blue" />
@@ -67,8 +69,7 @@ export function AllStudentsList() {
       <StudentsTable
         students={filtered}
         title="All students"
-        variant="directory"
-        actions="view"
+        onRefresh={() => void refetch()}
         toolbar={
           <StudentFilters
             inline

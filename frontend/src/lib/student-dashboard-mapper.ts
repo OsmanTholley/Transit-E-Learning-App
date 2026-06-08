@@ -1,5 +1,6 @@
 import { formatAcademicYear } from "@/lib/academic-years";
 import {
+  NewUpload,
   StudentAssignment,
   StudentCourse,
   StudentLectureNote,
@@ -7,10 +8,10 @@ import {
 import { StudentDashboardData, StudentDashboardStats } from "@/types/student-dashboard";
 
 const thumbnailStyles = [
-  { thumbnail: "code", thumbnailBg: "from-violet-600 via-indigo-600 to-blue-700" },
-  { thumbnail: "database", thumbnailBg: "from-sky-500 via-blue-600 to-indigo-700" },
+  { thumbnail: "code",        thumbnailBg: "from-violet-600 via-indigo-600 to-blue-700" },
+  { thumbnail: "database",    thumbnailBg: "from-sky-500 via-blue-600 to-indigo-700" },
   { thumbnail: "engineering", thumbnailBg: "from-emerald-500 via-teal-600 to-cyan-700" },
-  { thumbnail: "math", thumbnailBg: "from-amber-500 via-orange-500 to-rose-600" },
+  { thumbnail: "math",        thumbnailBg: "from-amber-500 via-orange-500 to-rose-600" },
 ] as const;
 
 function pickThumbnail(index: number) {
@@ -19,6 +20,15 @@ function pickThumbnail(index: number) {
 
 function formatDate(date: Date) {
   return date.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+}
+
+function lecturerInitials(fullName: string) {
+  return fullName
+    .split(" ")
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((p) => p[0]?.toUpperCase())
+    .join("");
 }
 
 type DashboardStudent = {
@@ -36,6 +46,13 @@ type DashboardStudent = {
   };
   department: { departmentName: string } | null;
   program: { programName: string } | null;
+  accessibleCourses?: {
+    id: string;
+    courseTitle: string;
+    courseCode: string;
+    assignments: { id: string }[];
+    quizzes: { id: string }[];
+  }[];
   courseStudents: {
     course: {
       id: string;
@@ -61,7 +78,16 @@ type LectureNoteRow = {
   title: string;
   fileType: string | null;
   createdAt: Date;
-  course: { courseTitle: string };
+  course: { courseTitle: string; courseCode: string };
+  lecturer: { user: { fullName: string } } | null;
+};
+
+type VideoRow = {
+  id: string;
+  title: string | null;
+  createdAt: Date;
+  course: { courseTitle: string; courseCode: string };
+  lecturer: { user: { fullName: string } } | null;
 };
 
 export function courseProgress(
@@ -92,6 +118,7 @@ export function buildStudentDashboardData(
   student: DashboardStudent,
   assignments: AssignmentRow[],
   lectureNotes: LectureNoteRow[],
+  videos: VideoRow[],
   unreadNotifications: number,
   quizAverage: number
 ): StudentDashboardData {
@@ -104,13 +131,17 @@ export function buildStudentDashboardData(
 
   const submittedIds = new Set(student.submissions.map((s) => s.assignmentId));
 
-  const courses: StudentCourse[] = student.courseStudents.map((enrollment, index) => {
+  const courseRows =
+    student.accessibleCourses ??
+    student.courseStudents.map((enrollment) => enrollment.course);
+
+  const courses: StudentCourse[] = courseRows.map((course, index) => {
     const style = pickThumbnail(index);
     return {
-      id: enrollment.course.id,
-      title: enrollment.course.courseTitle,
-      code: enrollment.course.courseCode,
-      progress: courseProgress(enrollment.course, student.submissions, student.quizAttempts),
+      id: course.id,
+      title: course.courseTitle,
+      code: course.courseCode,
+      progress: courseProgress(course, student.submissions, student.quizAttempts),
       thumbnail: style.thumbnail,
       thumbnailBg: style.thumbnailBg,
     };
@@ -141,6 +172,41 @@ export function buildStudentDashboardData(
     format: (note.fileType ?? "PDF").toUpperCase(),
   }));
 
+  /* ── Build unified NEW UPLOADS feed (notes + videos, sorted by recency) ── */
+  const noteUploads: NewUpload[] = lectureNotes.map((note) => {
+    const name = note.lecturer?.user.fullName ?? "Lecturer";
+    return {
+      id: `note-${note.id}`,
+      type: "note",
+      title: note.title,
+      course: note.course.courseTitle,
+      courseCode: note.course.courseCode,
+      lecturerName: name,
+      lecturerInitials: lecturerInitials(name),
+      uploadedAt: note.createdAt.toISOString(),
+      href: `/student/lecture-notes/view/${note.id}`,
+    };
+  });
+
+  const videoUploads: NewUpload[] = videos.map((video) => {
+    const name = video.lecturer?.user.fullName ?? "Lecturer";
+    return {
+      id: `video-${video.id}`,
+      type: "video",
+      title: video.title ?? "Untitled Video",
+      course: video.course.courseTitle,
+      courseCode: video.course.courseCode,
+      lecturerName: name,
+      lecturerInitials: lecturerInitials(name),
+      uploadedAt: video.createdAt.toISOString(),
+      href: `/student/video-lessons`,
+    };
+  });
+
+  const newUploads: NewUpload[] = [...noteUploads, ...videoUploads]
+    .sort((a, b) => b.uploadedAt.localeCompare(a.uploadedAt))
+    .slice(0, 8);
+
   const stats: StudentDashboardStats = {
     activeCourses: courses.length,
     assignmentsDue: upcomingAssignments.length,
@@ -167,5 +233,6 @@ export function buildStudentDashboardData(
     courses,
     upcomingAssignments,
     recentLectureNotes,
+    newUploads,
   };
 }

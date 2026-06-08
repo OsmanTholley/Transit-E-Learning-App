@@ -2,16 +2,18 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { adminNavigation, navigation } from "@/services/mock-data";
 import { logout } from "@/services/auth";
 import { AppRole, NavItem } from "@/types/app";
 import { TransitLogo } from "@/components/brand/transit-logo";
+import { NavigationProgress } from "@/components/layout/navigation-progress";
 import { NotificationBell } from "@/components/layout/notification-bell";
 import { TopbarUserMenu } from "@/components/layout/topbar-user-menu";
 import { MobileNavOverlay, MobileTopBar } from "@/components/layout/mobile-top-bar";
 import { requestApi } from "@/lib/fetch-api";
 import type { LecturerProfilePayload } from "@/types/user-profile";
+import { useMobileNav } from "@/hooks/use-mobile-nav";
 
 type AppShellProps = {
   role: AppRole;
@@ -88,7 +90,7 @@ export function AppShell({ role, pageTitle, subtitle, children }: AppShellProps)
   const pathname = usePathname();
   const router = useRouter();
   const items = role === "admin" ? null : navigation[role];
-  const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const { mobileNavOpen, openMobileNav, closeMobileNav } = useMobileNav(pathname);
   const [headerUser, setHeaderUser] = useState<{
     fullName: string;
     profileImage: string | null;
@@ -117,15 +119,12 @@ export function AppShell({ role, pageTitle, subtitle, children }: AppShellProps)
     router.push("/login");
   };
 
-  useEffect(() => {
-    Promise.resolve().then(() => {
-      setMobileNavOpen(false);
-    });
-  }, [pathname]);
-
   return (
     <div className="flex min-h-screen bg-slate-50 text-slate-900">
-      <MobileNavOverlay open={mobileNavOpen} onClose={() => setMobileNavOpen(false)} />
+      <Suspense fallback={null}>
+        <NavigationProgress />
+      </Suspense>
+      <MobileNavOverlay open={mobileNavOpen} onClose={closeMobileNav} />
 
       <aside
         className={[
@@ -139,7 +138,7 @@ export function AppShell({ role, pageTitle, subtitle, children }: AppShellProps)
             type="button"
             className="rounded-lg p-2 text-white/80 hover:bg-white/10 lg:hidden"
             aria-label="Close menu"
-            onClick={() => setMobileNavOpen(false)}
+            onClick={closeMobileNav}
           >
             <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M6 6l12 12M6 18L18 6" />
@@ -191,7 +190,7 @@ export function AppShell({ role, pageTitle, subtitle, children }: AppShellProps)
       </aside>
 
       <div className="flex min-h-screen w-full flex-1 flex-col lg:ml-72">
-        <MobileTopBar onMenuClick={() => setMobileNavOpen(true)} />
+        <MobileTopBar onMenuClick={openMobileNav} />
 
         <header className="hidden rounded-2xl border-b border-slate-200/0 bg-white px-5 py-4 shadow-sm ring-1 ring-slate-200 lg:block">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
@@ -213,7 +212,7 @@ export function AppShell({ role, pageTitle, subtitle, children }: AppShellProps)
                   aria-label="Search"
                 />
               </div>
-              <NotificationBell role={role} variant="lecturer" />
+              <NotificationBell role={role} variant="admin" />
               {role === "lecturer" ? (
                 <TopbarUserMenu
                   role="lecturer"

@@ -1,5 +1,6 @@
 @import "tailwindcss";
 @import "sweetalert2/dist/sweetalert2.min.css";
+@import "../styles/admin-entity-crud.css";
 
 :root {
   --background: #f8fafc;
@@ -9,6 +10,19 @@
   --primary: #0b3b8c;
   --primary-foreground: #ffffff;
   --accent: #facc15;
+  /* Transit institution portal theme — Thick Blue + Thick Yellow */
+  --portal-bg: #f0f4fb;
+  --portal-sidebar: #ffffff;
+  --portal-sidebar-border: #dce6f4;
+  --portal-accent: #0B3D91;
+  --portal-accent-soft: #e8effa;
+  --portal-accent-strong: #082d6e;
+  --portal-yellow: #FFC107;
+  --portal-yellow-soft: #fff8e1;
+  --portal-yellow-strong: #e6a800;
+  --portal-heading: #0f172a;
+  --portal-muted: #64748b;
+  --portal-card-shadow: 0 1px 3px rgba(11, 61, 145, 0.08), 0 1px 2px rgba(11, 61, 145, 0.05);
 }
 
 @theme inline {
@@ -41,6 +55,17 @@ a {
 /* Smooth scrolling */
 html {
   scroll-behavior: smooth;
+  /* Prevent body from scrolling when shell takes full height */
+  height: 100%;
+}
+
+body {
+  height: 100%;
+}
+
+/* Next.js root */
+#__next, [data-nextjs-scroll-focus-boundary] {
+  height: 100%;
 }
 
 /* Custom scrollbar */
@@ -119,6 +144,62 @@ html {
   animation: glowPulse 2.5s ease-in-out infinite;
 }
 
+/* Portal loading animations */
+@keyframes portalSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.portal-spinner {
+  border-top-color: var(--portal-accent);
+  border-right-color: var(--portal-yellow);
+  animation: portalSpin 0.75s linear infinite;
+}
+
+@keyframes loadingShimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+.loading-shimmer {
+  background: linear-gradient(90deg, #e2e8f0 0%, #f8fafc 45%, #e2e8f0 90%);
+  background-size: 200% 100%;
+  animation: loadingShimmer 1.4s ease-in-out infinite;
+}
+
+@keyframes loadingDotPulse {
+  0%,
+  80%,
+  100% {
+    opacity: 0.35;
+    transform: scale(0.85);
+  }
+  40% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.loading-dot {
+  animation: loadingDotPulse 0.9s ease-in-out infinite;
+}
+
+.navigation-progress-bar {
+  background: linear-gradient(
+    90deg,
+    var(--portal-accent) 0%,
+    var(--portal-yellow) 55%,
+    var(--portal-accent) 100%
+  );
+  background-size: 200% 100%;
+  animation: loadingShimmer 1.2s linear infinite;
+}
+
 
 /* Responsive tables and wide content */
 .overflow-x-auto-touch {
@@ -126,8 +207,211 @@ html {
   -webkit-overflow-scrolling: touch;
 }
 
+/* Hide scrollbar but keep scrolling */
+.no-scrollbar {
+  -ms-overflow-style: none;  /* IE / Edge */
+  scrollbar-width: none;     /* Firefox */
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;             /* Chrome / Safari / Opera */
+}
+
+/* Sub-nav horizontal scroll — hidden scrollbar, touch friendly */
+.subnav-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.subnav-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.yt-progress::-webkit-slider-thumb {
+  appearance: none;
+  height: 12px;
+  width: 12px;
+  border-radius: 9999px;
+  background: #ff0000;
+}
+
+.yt-progress::-moz-range-thumb {
+  height: 12px;
+  width: 12px;
+  border-radius: 9999px;
+  background: #ff0000;
+  border: none;
+}
+
 @supports (padding: max(0px)) {
   .safe-pb {
     padding-bottom: max(1rem, env(safe-area-inset-bottom));
   }
+}
+
+.portal-shell-bg {
+  background: var(--portal-bg);
+}
+
+.portal-card {
+  border-radius: 1rem;
+  border: 1px solid #e8edf4;
+  background: #fff;
+  box-shadow: var(--portal-card-shadow);
+}
+
+.portal-sidebar {
+  background: var(--portal-sidebar);
+  border-right: 1px solid var(--portal-sidebar-border);
+}
+
+.portal-nav-active {
+  background: var(--portal-accent-soft);
+  color: var(--portal-accent);
+  border-left: 3px solid var(--portal-yellow);
+}
+
+.portal-nav-idle {
+  color: var(--portal-muted);
+  border-left: 3px solid transparent;
+}
+
+.portal-nav-idle:hover {
+  background: #f0f4fb;
+  color: var(--portal-accent);
+  border-left: 3px solid var(--portal-yellow);
+}
+
+.portal-accent-btn {
+  background: var(--portal-accent);
+  color: white;
+}
+
+.portal-accent-btn:hover {
+  background: var(--portal-accent-strong);
+}
+
+.portal-yellow-btn {
+  background: var(--portal-yellow);
+  color: var(--portal-accent);
+  font-weight: 700;
+}
+
+.portal-yellow-btn:hover {
+  background: var(--portal-yellow-strong);
+}
+
+/* ─── Lecturer Portal — Teachmint-Inspired Professional Theme ─────────────
+   Palette:
+     Sidebar bg    : #0f1117  (near-black, like Teachmint's dark nav)
+     Sidebar active: #6366f1  (indigo-500, modern EdTech accent)
+     Sidebar idle  : rgba(255,255,255,0.62) soft gray-white
+     Topbar bg     : #ffffff  (crisp white)
+     Topbar border : #6366f1  (indigo bottom stripe)
+     Page bg       : #f5f5f7  (Apple-style off-white)
+     Accent btn    : #6366f1 → #4f46e5
+   ─────────────────────────────────────────────────────────────────────── */
+
+/* Shell background */
+.lecturer-shell-bg {
+  background: #f5f5f7;
+}
+
+/* Jet-black sidebar — Teachmint style */
+.lecturer-sidebar {
+  background: #0f1117;
+  border-right: none;
+  box-shadow: 2px 0 20px rgba(0, 0, 0, 0.35);
+}
+
+/* Logo row divider */
+.lecturer-sidebar-divider {
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+/* Panel label */
+.lecturer-panel-label {
+  color: rgba(255, 255, 255, 0.35);
+  letter-spacing: 0.12em;
+}
+
+/* Active nav item — indigo highlight */
+.lecturer-nav-active {
+  background: rgba(99, 102, 241, 0.18);
+  color: #a5b4fc;          /* indigo-300 — readable on dark */
+  border-left: 3px solid #6366f1;
+  font-weight: 600;
+}
+
+/* Idle nav item */
+.lecturer-nav-idle {
+  color: rgba(255, 255, 255, 0.58);
+  border-left: 3px solid transparent;
+}
+
+.lecturer-nav-idle:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.9);
+  border-left: 3px solid rgba(99, 102, 241, 0.5);
+}
+
+/* User card at bottom of sidebar */
+.lecturer-sidebar-card {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 0.75rem;
+}
+
+.lecturer-sidebar-card-title {
+  color: #ffffff;
+}
+
+.lecturer-sidebar-card-sub {
+  color: rgba(255, 255, 255, 0.45);
+}
+
+/* Logout button — indigo */
+.lecturer-logout-btn {
+  background: #6366f1;
+  color: #ffffff;
+  font-weight: 600;
+  border-radius: 0.5rem;
+  transition: background 0.15s;
+}
+
+.lecturer-logout-btn:hover {
+  background: #4f46e5;
+}
+
+/* Topbar: clean white with indigo bottom stripe */
+.lecturer-header-accent {
+  background: #ffffff;
+  border-bottom: 2px solid #6366f1;
+  box-shadow: 0 1px 12px rgba(99, 102, 241, 0.08);
+}
+
+/* Topbar search input */
+.lecturer-search-input {
+  background: #f5f5f7;
+  border: 1px solid #e2e2ea;
+  border-radius: 0.75rem;
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.lecturer-search-input:focus {
+  border-color: #6366f1;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12);
+}
+
+/* Mobile close button on dark sidebar */
+.lecturer-mobile-close-btn {
+  color: rgba(255, 255, 255, 0.55);
+  border-radius: 0.5rem;
+  transition: background 0.15s;
+}
+
+.lecturer-mobile-close-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
 }

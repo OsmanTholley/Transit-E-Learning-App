@@ -24,15 +24,18 @@ type StudentProfile = {
   semester: string | null;
 };
 
-type CourseRow = {
+export type CourseMatchInput = {
   id: string;
-  courseTitle: string;
-  courseCode: string;
-  semester: string | null;
-  level: string | null;
-  description: string | null;
   departmentId: string | null;
   programId: string | null;
+  level: string | null;
+  semester: string | null;
+};
+
+type CourseRow = CourseMatchInput & {
+  courseTitle: string;
+  courseCode: string;
+  description: string | null;
   department: { departmentName: string } | null;
   program: { programName: string } | null;
   lecturer: {
@@ -45,7 +48,7 @@ type CourseRow = {
   videos: { id: string }[];
 };
 
-export function courseMatchesStudentProfile(course: CourseRow, student: StudentProfile) {
+export function courseMatchesStudentProfile(course: CourseMatchInput, student: StudentProfile) {
   if (student.departmentId && course.departmentId && course.departmentId !== student.departmentId) {
     return false;
   }
@@ -53,7 +56,7 @@ export function courseMatchesStudentProfile(course: CourseRow, student: StudentP
     return false;
   }
   const studentYear = normalizeAcademicYear(student.level);
-  const courseYear = normalizeAcademicYear(course.level);
+  const courseYear  = normalizeAcademicYear(course.level);
   if (studentYear && courseYear && courseYear !== studentYear) {
     return false;
   }

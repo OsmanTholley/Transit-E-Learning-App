@@ -16,10 +16,17 @@ export async function assertContentTargetExists(
   targetType: ContentTargetType,
   targetId: string
 ) {
+  const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(targetId);
   if (targetType === "LECTURE_NOTE") {
+    if (!isUuid) return null;
     const note = await prisma.lectureNote.findUnique({ where: { id: targetId } });
     if (!note) return null;
     return { courseId: note.courseId };
+  }
+  
+  if (!isUuid) {
+    // YouTube video ID
+    return { courseId: "youtube" };
   }
   const video = await prisma.video.findUnique({ where: { id: targetId } });
   if (!video) return null;
@@ -58,6 +65,20 @@ export async function getContentEngagement(
       authorRole: c.user.role,
       createdAt: c.createdAt.toISOString(),
     })),
+    pinnedComment: (() => {
+      const lecturerComments = comments.filter((c) => c.user.role === "LECTURER");
+      if (lecturerComments.length === 0) return null;
+      const latest = lecturerComments.reduce((a, b) =>
+        a.createdAt > b.createdAt ? a : b
+      );
+      return {
+        id: latest.id,
+        body: latest.body,
+        authorName: latest.user.fullName,
+        authorRole: latest.user.role,
+        createdAt: latest.createdAt.toISOString(),
+      };
+    })(),
   };
 }
 

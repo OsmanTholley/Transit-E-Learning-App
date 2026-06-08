@@ -3,7 +3,10 @@
 import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
 import { showError, showSuccess } from "@/lib/swal";
-import { FieldLabel, Panel, PrimaryButton, SecondaryButton, TextInput } from "@/components/student-management/ui";
+import { useLecturers } from "@/hooks/use-lecturers";
+import { FieldLabel, Panel, PrimaryButton, SecondaryButton, TextInput, StudentSection } from "@/components/student-management/ui";
+import { LecturerCrudPageHero } from "./lecturer-crud-hero";
+import { LecturersTable } from "./lecturers-table";
 
 const emptyForm = {
   fullName: "",
@@ -13,6 +16,7 @@ const emptyForm = {
 
 export function AddLecturerForm() {
   const router = useRouter();
+  const { lecturers, loading: listLoading, refetch } = useLecturers();
   const [form, setForm] = useState(emptyForm);
   const [loading, setLoading] = useState(false);
 
@@ -48,7 +52,10 @@ export function AddLecturerForm() {
   }
 
   return (
-    <Panel title="Create Lecturer Account">
+    <StudentSection>
+      <LecturerCrudPageHero section="add" />
+
+      <Panel title="Create lecturer account">
       <p className="mb-4 text-sm text-slate-600">
         Create login credentials for the lecturer. After signing in, they can complete their profile with phone,
         specialization, and other details.
@@ -93,5 +100,14 @@ export function AddLecturerForm() {
         </div>
       </form>
     </Panel>
+
+      {!listLoading ? (
+        <LecturersTable
+          lecturers={lecturers.slice(0, 8)}
+          title="Recent lecturers"
+          onRefresh={() => void refetch()}
+        />
+      ) : null}
+    </StudentSection>
   );
 }

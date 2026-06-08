@@ -1,13 +1,15 @@
 "use client";
+import { LoadingState } from "@/components/ui/loading-indicator";
 
 import { useMemo, useState } from "react";
 import { useApiLoad } from "@/hooks/use-api-load";
 import { ProgramRecord } from "@/types/academic";
 import { ProgramsTable } from "./programs-table";
+import { AdminCrudPageHero, AdminCrudSearch } from "@/components/admin/admin-entity-crud";
 import { StatCard, StudentSection } from "@/components/student-management/ui";
 
 export function AllProgramsList() {
-  const { data, loading, error } = useApiLoad<{ programs: ProgramRecord[] }>("/api/programs", {
+  const { data, loading, error, reload } = useApiLoad<{ programs: ProgramRecord[] }>("/api/programs", {
     errorTitle: "Could not load programs",
   });
   const programs = data?.programs ?? [];
@@ -27,9 +29,7 @@ export function AllProgramsList() {
 
   if (loading) {
     return (
-      <div className="flex min-h-[200px] items-center justify-center rounded-2xl border border-slate-200/80 bg-white p-8">
-        <p className="text-sm text-slate-500">Loading programs…</p>
-      </div>
+      <LoadingState message="Loading programs…" panel minHeight={200} />
     );
   }
 
@@ -41,6 +41,14 @@ export function AllProgramsList() {
 
   return (
     <StudentSection>
+      <AdminCrudPageHero
+        entity="program"
+        title="Manage programs"
+        description="Define degree programs under each department. Edit details or remove programs that no longer have enrolled students."
+        addHref="/admin/programs/add"
+        addLabel="Add program"
+      />
+
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard label="Total Programs" value={programs.length} tone="amber" />
         <StatCard label="Active" value={active} tone="blue" />
@@ -51,14 +59,12 @@ export function AllProgramsList() {
       <ProgramsTable
         programs={filtered}
         title="All programs"
-        actions="view"
+        onRefresh={() => void reload()}
         toolbar={
-          <input
-            type="search"
-            placeholder="Search by program, department, or duration…"
+          <AdminCrudSearch
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none transition focus:border-yellow-500/50 focus:ring-2 focus:ring-yellow-500/15 sm:max-w-md"
+            onChange={setSearch}
+            placeholder="Search by program, department, or duration…"
           />
         }
       />

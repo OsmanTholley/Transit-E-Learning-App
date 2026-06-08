@@ -67,10 +67,13 @@ export function useLectureNotesLibrary() {
   );
 
   const setReadingProgress = useCallback((noteId: string, percent: number) => {
+    const clamped = Math.min(100, Math.max(0, percent));
     setProgress((prev) => {
+      const existing = prev[noteId];
+      if (existing?.percent === clamped) return prev;
       const next = {
         ...prev,
-        [noteId]: { noteId, percent: Math.min(100, Math.max(0, percent)), lastReadAt: new Date().toISOString() },
+        [noteId]: { noteId, percent: clamped, lastReadAt: new Date().toISOString() },
       };
       localStorage.setItem(KEYS.progress, JSON.stringify(next));
       return next;

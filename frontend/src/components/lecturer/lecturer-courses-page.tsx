@@ -1,4 +1,5 @@
 "use client";
+import { LoadingState } from "@/components/ui/loading-indicator";
 
 import { FormEvent, useState } from "react";
 import { useApiLoad } from "@/hooks/use-api-load";
@@ -19,7 +20,7 @@ export function LecturerCoursesPage() {
   const [saving, setSaving] = useState(false);
 
   if (loading && !data) {
-    return <p className="text-sm text-slate-500">Loading courses…</p>;
+    return <LoadingState message="Loading courses…" layout="inline" />;
   }
 
   if (!data) return null;

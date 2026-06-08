@@ -2,8 +2,9 @@
 
 import { motion } from "framer-motion";
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useCourseBookmarks } from "@/hooks/use-course-bookmarks";
+import { useApiLoad } from "@/hooks/use-api-load";
 import { ContentEngagementPanel } from "@/components/content/content-engagement-panel";
 import { AssignmentSubmitCard } from "@/components/student/courses/assignment-submit-card";
 import {
@@ -41,33 +42,18 @@ function statusColor(status: AssignmentItem["status"]) {
 }
 
 export function MaterialsPage({ type }: { type: MaterialType }) {
-  const [items, setItems] = useState<unknown[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { data, loading, reload } = useApiLoad<{ items?: unknown[] }>(
+    `/api/student/courses/materials?type=${type}`,
+    { errorTitle: `Could not load ${pageMeta[type].title.toLowerCase()}` }
+  );
+  const items = data?.items ?? [];
   const [search, setSearch] = useState("");
   const { toggleBookmark, isBookmarked } = useCourseBookmarks();
   const meta = pageMeta[type];
 
-  const loadItems = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await fetch(`/api/student/courses/materials?type=${type}`, { credentials: "include" });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error ?? "Failed to load");
-      setItems(json.items ?? []);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load");
-    } finally {
-      setLoading(false);
-    }
-  }, [type]);
-
-  useEffect(() => {
-    Promise.resolve().then(() => {
-      void loadItems();
-    });
-  }, [loadItems]);
+  async function loadItems() {
+    await reload();
+  }
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -76,11 +62,6 @@ export function MaterialsPage({ type }: { type: MaterialType }) {
   }, [items, search]);
 
   if (loading) return <LoadingGrid />;
-  if (error) {
-    return (
-      <div className="rounded-2xl bg-rose-50 px-4 py-3 text-sm text-rose-700 ring-1 ring-rose-200">{error}</div>
-    );
-  }
 
   return (
     <div className="space-y-6">
@@ -174,13 +155,8 @@ export function MaterialsPage({ type }: { type: MaterialType }) {
                   <h3 className="font-semibold text-slate-900">{video.title}</h3>
                   <p className="text-sm text-slate-500">{video.courseTitle}</p>
                   {video.deletionNotice ? (
-                    <p className="mt-2 rounded-lg bg-amber-50 px-2 py-1.5 text-xs text-amber-900 ring-1 ring-amber-200">
+                    <p className="mt-2 rounded-lg bg-slate-50 px-2 py-1.5 text-xs text-slate-700 ring-1 ring-slate-200">
                       {video.deletionNotice}
-                    </p>
-                  ) : null}
-                  {video.expiresAt ? (
-                    <p className="mt-1 text-xs text-slate-500">
-                      Available until {new Date(video.expiresAt).toLocaleString()}
                     </p>
                   ) : null}
                   <a

@@ -1,13 +1,11 @@
-/** Default departments created by `prisma/seed.js` — excluded from admin-managed pickers. */
-export const SEED_DEPARTMENT_NAMES = [
-  "Computing Sciences",
-  "Public Health",
-  "Business",
-  "Agriculture",
-  "Mass Communication",
-] as const;
+/**
+ * Previously held seed/demo department names that were pre-populated.
+ * All hardcoded seed departments have been removed — the admin creates
+ * all departments through the UI. This file is kept only for compatibility.
+ */
+export const SEED_DEPARTMENT_NAMES: readonly string[] = [];
 
 export function isSeedDepartmentName(name: string): boolean {
-  const normalized = name.trim().toLowerCase();
-  return SEED_DEPARTMENT_NAMES.some((seed) => seed.toLowerCase() === normalized);
+  void name;
+  return false;
 }

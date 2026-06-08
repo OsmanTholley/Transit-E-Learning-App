@@ -5,7 +5,7 @@ import { AdminDashboard } from "@/components/admin/admin-dashboard";
 export default async function AdminDashboardPage() {
   const admin = await requireAdminUser();
   if (!admin) {
-    redirect("/login");
+    redirect("/login?role=staff");
   }
 
   return <AdminDashboard adminName={admin.fullName} />;

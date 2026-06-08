@@ -1,45 +1,38 @@
 "use client";
+import { LoadingState } from "@/components/ui/loading-indicator";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useStudentSession } from "@/contexts/student-session-context";
 import { getQuizzesViewTitle } from "@/components/student/quizzes/quizzes-nav-config";
 import { CircularProgress, DashboardStat, QuizCard, QuizFilters } from "@/components/student/quizzes/quiz-ui";
+import { readStudentPreference } from "@/hooks/use-student-preference";
+import { requestApi } from "@/lib/fetch-api";
+import { STUDENT_PREF_KEYS } from "@/lib/student-preference-keys";
 import type { LeaderboardEntry, StudentQuizSummary } from "@/types/student-quizzes";
 
 type Props = { segment?: string[] };
-
-const LS_DRAFT = "transit.quizzes.draft.v1";
-
-function safeParse<T>(value: string | null, fallback: T): T {
-  if (!value) return fallback;
-  try {
-    return JSON.parse(value) as T;
-  } catch {
-    return fallback;
-  }
-}
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
 }
 
 function getDraftQuizIds(): string[] {
-  if (typeof window === "undefined") return [];
-  const drafts = safeParse<Record<string, unknown>>(localStorage.getItem(LS_DRAFT), {});
+  const drafts = readStudentPreference<Record<string, unknown>>(STUDENT_PREF_KEYS.quizDrafts, {});
   return Object.keys(drafts);
 }
 
 export function QuizzesHub({ segment }: Props) {
   const view = segment?.[0] ?? "";
   const title = getQuizzesViewTitle(view);
-  const { data: session, loading: sessionLoading, error: sessionError } = useStudentSession();
+  const { data: session, loading: sessionLoading } = useStudentSession();
 
   const [quizzes, setQuizzes] = useState<StudentQuizSummary[] | null>(null);
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[] | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const mountedRef = useRef(true);
+  const loadRef = useRef<(() => Promise<void>) | null>(null);
 
   const [query, setQuery] = useState("");
   const [courseCode, setCourseCode] = useState("");
@@ -47,37 +40,54 @@ export function QuizzesHub({ segment }: Props) {
   const [scoreRange, setScoreRange] = useState("");
 
   useEffect(() => {
-    let cancelled = false;
-    async function load() {
-      setLoading(true);
-      setError(null);
-      try {
-        const draftIds = getDraftQuizIds();
-        const qRes = await fetch(
-          `/api/student/quizzes${draftIds.length ? `?inProgress=${draftIds.join(",")}` : ""}`
-        );
-        const qJson = await qRes.json();
-        if (!qRes.ok) throw new Error(qJson?.error ?? "Failed to load quizzes.");
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
 
-        if (!cancelled) setQuizzes(qJson);
+  const load = useCallback(async () => {
+    setLoading(true);
+    let waitingForConnection = false;
+    const draftIds = getDraftQuizIds();
+    const quizUrl = `/api/student/quizzes${draftIds.length ? `?inProgress=${draftIds.join(",")}` : ""}`;
 
-        if (view === "leaderboard") {
-          const lRes = await fetch("/api/student/quizzes/leaderboard");
-          const lJson = await lRes.json();
-          if (!lRes.ok) throw new Error(lJson?.error ?? "Failed to load leaderboard.");
-          if (!cancelled) setLeaderboard(lJson);
-        }
-      } catch (e) {
-        if (!cancelled) setError(e instanceof Error ? e.message : "Failed to load quizzes.");
-      } finally {
-        if (!cancelled) setLoading(false);
+    const quizResult = await requestApi<StudentQuizSummary[]>(quizUrl, {
+      errorTitle: "Could not load quizzes",
+      onRecovered: () => {
+        if (mountedRef.current) void loadRef.current?.();
+      },
+    });
+
+    if (!mountedRef.current) return;
+
+    if (quizResult.offline) {
+      waitingForConnection = true;
+    } else if (quizResult.ok) {
+      setQuizzes(quizResult.data);
+    } else {
+      setQuizzes(null);
+    }
+
+    if (view === "leaderboard" && !quizResult.offline) {
+      const leaderboardResult = await requestApi<LeaderboardEntry[]>("/api/student/quizzes/leaderboard", {
+        errorTitle: "Could not load leaderboard",
+      });
+      if (mountedRef.current && leaderboardResult.ok) {
+        setLeaderboard(leaderboardResult.data);
       }
     }
-    load();
-    return () => {
-      cancelled = true;
-    };
+
+    if (!waitingForConnection && mountedRef.current) {
+      setLoading(false);
+    }
   }, [view]);
+
+  loadRef.current = load;
+
+  useEffect(() => {
+    void load();
+  }, [load]);
 
   const courses = useMemo(() => {
     const list = session?.courses ?? [];
@@ -121,13 +131,7 @@ export function QuizzesHub({ segment }: Props) {
   }, [quizzes]);
 
   if (sessionLoading) {
-    return <p className="text-sm text-slate-500">Loading your quizzes...</p>;
-  }
-
-  if (sessionError) {
-    return (
-      <div className="rounded-2xl bg-rose-50 px-4 py-3 text-sm text-rose-700 ring-1 ring-rose-200">{sessionError}</div>
-    );
+    return <LoadingState message="Loading your quizzes..." layout="inline" />;
   }
 
   return (
@@ -199,19 +203,15 @@ export function QuizzesHub({ segment }: Props) {
         />
       </section>
 
-      {error ? (
-        <div className="rounded-2xl bg-rose-50 px-4 py-3 text-sm text-rose-700 ring-1 ring-rose-200">{error}</div>
-      ) : null}
-
       <AnimatePresence>
         {loading ? (
           <motion.div
             initial={{ opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0 }}
-            className="rounded-2xl bg-white p-4 text-sm text-slate-500 shadow-sm ring-1 ring-slate-200/80"
+            className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200/80"
           >
-            Loading quizzes…
+            <LoadingState message="Loading quizzes…" layout="inline" />
           </motion.div>
         ) : null}
       </AnimatePresence>

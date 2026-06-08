@@ -4,6 +4,7 @@ export type ProgramRecord = {
   id: string;
   name: string;
   department: string;
+  departmentId?: string | null;
   duration: string;
   totalStudents: number;
   totalCourses: number;
@@ -21,6 +22,7 @@ export type CourseRecord = {
   semester: string;
   totalStudents: number;
   status: AcademicStatus;
+  description?: string | null;
 };
 
 export type ContentItem = {
@@ -34,6 +36,8 @@ export type ContentItem = {
   status: "Approved" | "Pending" | "Rejected" | "Archived";
   /** For materials/videos with comments & likes */
   socialTarget?: "lecture-note" | "video";
+  /** Admin CRUD target slug */
+  contentTarget?: "lecture-note" | "video" | "assignment" | "quiz" | "discussion";
 };
 
 export type ReportedContent = {

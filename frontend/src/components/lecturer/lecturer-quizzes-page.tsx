@@ -1,4 +1,5 @@
 "use client";
+import { LoadingState } from "@/components/ui/loading-indicator";
 
 import { FormEvent, useState } from "react";
 import { useApiLoad } from "@/hooks/use-api-load";
@@ -225,7 +226,7 @@ export function LecturerQuizzesPage() {
 
       <Panel title="Your quizzes">
         {loading && !data ? (
-          <p className="text-sm text-slate-500">Loading…</p>
+          <LoadingState message="Loading…" layout="inline" />
         ) : quizzes.length === 0 ? (
           <p className="text-sm text-slate-500">No quizzes yet. Create one to get started.</p>
         ) : (

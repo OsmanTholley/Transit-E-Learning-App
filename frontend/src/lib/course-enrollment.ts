@@ -16,6 +16,10 @@ export async function syncCourseEnrollments(courseId: string) {
   if (!course) return 0;
 
   const students = await prisma.student.findMany({
+    where: {
+      ...(course.departmentId ? { departmentId: course.departmentId } : {}),
+      ...(course.programId ? { programId: course.programId } : {}),
+    },
     select: {
       id: true,
       departmentId: true,
@@ -36,9 +40,55 @@ export async function syncCourseEnrollments(courseId: string) {
   return matching.length;
 }
 
+/** Remove enrollments that no longer match a student's department/program profile. */
+export async function pruneStaleEnrollmentsForStudents(studentIds: string[]) {
+  if (studentIds.length === 0) return 0;
+
+  const students = await prisma.student.findMany({
+    where: { id: { in: studentIds } },
+    select: {
+      id: true,
+      departmentId: true,
+      programId: true,
+      level: true,
+      semester: true,
+      courseStudents: {
+        select: {
+          id: true,
+          course: {
+            select: {
+              id: true,
+              departmentId: true,
+              programId: true,
+              level: true,
+              semester: true,
+            },
+          },
+        },
+      },
+    },
+  });
+
+  const staleIds: string[] = [];
+  for (const student of students) {
+    for (const enrollment of student.courseStudents) {
+      if (!courseMatchesStudentProfile(enrollment.course, student)) {
+        staleIds.push(enrollment.id);
+      }
+    }
+  }
+
+  if (staleIds.length === 0) return 0;
+
+  await prisma.courseStudent.deleteMany({ where: { id: { in: staleIds } } });
+  return staleIds.length;
+}
+
 /** Re-sync enrollments for every course that matches updated student profiles. */
 export async function syncEnrollmentsForStudents(studentIds: string[]) {
   if (studentIds.length === 0) return;
+
+  await pruneStaleEnrollmentsForStudents(studentIds);
 
   const students = await prisma.student.findMany({
     where: { id: { in: studentIds } },
@@ -51,7 +101,16 @@ export async function syncEnrollmentsForStudents(studentIds: string[]) {
     },
   });
 
+  const departmentIds = [...new Set(students.map((s) => s.departmentId).filter(Boolean))] as string[];
+  const programIds = [...new Set(students.map((s) => s.programId).filter(Boolean))] as string[];
+
   const courses = await prisma.course.findMany({
+    where: {
+      OR: [
+        ...(departmentIds.length ? [{ departmentId: { in: departmentIds } }] : []),
+        ...(programIds.length ? [{ programId: { in: programIds } }] : []),
+      ],
+    },
     select: {
       id: true,
       departmentId: true,

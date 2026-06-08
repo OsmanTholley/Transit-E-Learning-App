@@ -1,4 +1,5 @@
 "use client";
+import { LoadingState } from "@/components/ui/loading-indicator";
 
 import Link from "next/link";
 import { FormEvent, useEffect, useMemo, useState } from "react";
@@ -166,7 +167,7 @@ export function AssignCourseForm() {
   if (loading) {
     return (
       <Panel title="Assign Course">
-        <p className="text-sm text-slate-500">Loading courses, lecturers, and programs…</p>
+        <LoadingState message="Loading courses, lecturers, and programs…" layout="inline" />
       </Panel>
     );
   }

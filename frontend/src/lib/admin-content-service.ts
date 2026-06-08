@@ -14,6 +14,7 @@ type ContentRow = {
   lecturer: string;
   uploadedAt: string;
   socialTarget?: "lecture-note" | "video";
+  contentTarget?: "lecture-note" | "video" | "assignment" | "quiz" | "discussion";
 };
 
 function toContentItem(row: ContentRow): ContentItem {
@@ -74,6 +75,7 @@ export async function buildAdminContentData() {
       lecturer: n.lecturer?.user.fullName ?? "—",
       uploadedAt: formatDate(n.createdAt),
       socialTarget: "lecture-note",
+      contentTarget: "lecture-note",
     })
   );
 
@@ -87,6 +89,7 @@ export async function buildAdminContentData() {
       lecturer: v.lecturer?.user.fullName ?? "—",
       uploadedAt: formatDate(v.createdAt),
       socialTarget: "video",
+      contentTarget: "video",
     })
   );
 
@@ -99,6 +102,7 @@ export async function buildAdminContentData() {
       department: a.course.department?.departmentName ?? "—",
       lecturer: a.lecturer?.user.fullName ?? "—",
       uploadedAt: formatDate(a.createdAt),
+      contentTarget: "assignment",
     })
   );
 
@@ -111,6 +115,7 @@ export async function buildAdminContentData() {
       department: q.course.department?.departmentName ?? "—",
       lecturer: q.lecturer?.user.fullName ?? "—",
       uploadedAt: formatDate(q.createdAt),
+      contentTarget: "quiz",
     })
   );
 
@@ -123,6 +128,7 @@ export async function buildAdminContentData() {
       department: d.course?.department?.departmentName ?? "—",
       lecturer: d.student?.user.fullName ?? "—",
       uploadedAt: formatDate(d.createdAt),
+      contentTarget: "discussion",
     })
   );
 

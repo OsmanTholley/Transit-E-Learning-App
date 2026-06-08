@@ -1,4 +1,5 @@
 "use client";
+import { LoadingState } from "@/components/ui/loading-indicator";
 
 import Link from "next/link";
 import { courseCategories } from "@/services/academic-data";
@@ -51,7 +52,7 @@ export function ArchivedCoursesPage() {
 }
 
 export function ProgramsPage() {
-  const { programs, loading } = usePrograms();
+  const { programs, loading, refetch } = usePrograms();
 
   return (
     <div className="space-y-6">
@@ -59,9 +60,9 @@ export function ProgramsPage() {
         <PrimaryButton>Add Program</PrimaryButton>
       </Link>
       {loading ? (
-        <p className="text-sm text-slate-500">Loading programs…</p>
+        <LoadingState message="Loading programs…" layout="inline" />
       ) : (
-        <ProgramsTable programs={programs} title="Academic programs" />
+        <ProgramsTable programs={programs} title="Academic programs" onRefresh={() => void refetch()} />
       )}
     </div>
   );
@@ -78,7 +79,7 @@ export function CategoriesPage() {
   const categories = data?.categories ?? courseCategories.map((name) => ({ name, count: 0 }));
 
   if (loading && !data) {
-    return <p className="text-sm text-slate-500">Loading categories…</p>;
+    return <LoadingState message="Loading categories…" layout="inline" />;
   }
 
   return (
@@ -99,7 +100,7 @@ export function LevelsPage() {
   const { data, loading } = useAcademicOverview();
 
   if (loading && !data) {
-    return <p className="text-sm text-slate-500">Loading course years…</p>;
+    return <LoadingState message="Loading course years…" layout="inline" />;
   }
 
   return (
@@ -122,7 +123,7 @@ export function SemestersPage() {
   const { data, loading } = useAcademicOverview();
 
   if (loading && !data) {
-    return <p className="text-sm text-slate-500">Loading semesters…</p>;
+    return <LoadingState message="Loading semesters…" layout="inline" />;
   }
 
   return (
@@ -158,7 +159,7 @@ export function CourseAnalyticsPage() {
   const { data, loading } = useAcademicOverview();
 
   if (loading && !data) {
-    return <p className="text-sm text-slate-500">Loading analytics…</p>;
+    return <LoadingState message="Loading analytics…" layout="inline" />;
   }
 
   const top = data?.topCourses ?? [];
@@ -211,7 +212,7 @@ export function CourseReportsPage() {
   ];
 
   if (loading && !data) {
-    return <p className="text-sm text-slate-500">Loading reports…</p>;
+    return <LoadingState message="Loading reports…" layout="inline" />;
   }
 
   const stats = data?.stats;

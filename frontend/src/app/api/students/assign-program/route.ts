@@ -8,7 +8,7 @@ export async function POST(request: NextRequest) {
     if (!admin) return unauthorized();
 
     const body = await request.json();
-    const { studentIds, departmentId, programId, level, semester, admissionYear } = body;
+    const { studentIds, departmentId, programId, level, gender, admissionYear } = body;
 
     if (!Array.isArray(studentIds) || studentIds.length === 0) {
       return NextResponse.json({ error: "Select at least one student." }, { status: 400 });
@@ -18,7 +18,7 @@ export async function POST(request: NextRequest) {
       departmentId,
       programId,
       level,
-      semester,
+      gender,
       admissionYear,
     });
 

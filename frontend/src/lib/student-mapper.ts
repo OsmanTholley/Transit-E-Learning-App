@@ -5,7 +5,7 @@ type StudentWithRelations = {
   id: string;
   studentId: string;
   level: string | null;
-  semester: string | null;
+  gender?: string | null;
   admissionYear: string | null;
   createdAt: Date;
   user: {
@@ -41,7 +41,7 @@ export function mapStudentToRecord(student: StudentWithRelations): StudentRecord
     department: student.department?.departmentName ?? "—",
     program: student.program?.programName ?? "—",
     year: formatAcademicYear(student.level),
-    semester: student.semester ?? "—",
+    gender: student.gender ?? "—",
     admissionYear: student.admissionYear ?? "—",
     status,
     registeredAt: student.createdAt.toISOString().slice(0, 10),

@@ -7,6 +7,7 @@ import {
   onDatabaseRecovered,
   pingDatabaseHealth,
 } from "@/lib/db-offline-client";
+import { flushOfflineSyncQueue } from "@/lib/offline-sync";
 import { markSwalReady } from "@/lib/swal-queue";
 import { showInternetCheck } from "@/lib/swal";
 
@@ -29,7 +30,9 @@ export function AppProviders({ children }: { children: ReactNode }) {
     const onOnline = () => {
       void pingDatabaseHealth().then((healthy) => {
         if (healthy) {
-          router.refresh();
+          void flushOfflineSyncQueue().finally(() => {
+            router.refresh();
+          });
         } else {
           refreshWhenHealthy();
         }

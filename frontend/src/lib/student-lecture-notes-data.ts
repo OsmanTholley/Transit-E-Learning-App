@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { courseMatchesStudentProfile, formatDisplayDate } from "@/lib/student-courses-service";
-import { getEnrolledCoursesForStudent } from "@/lib/student-courses-data";
+import { getAccessibleCoursesForStudent } from "@/lib/student-courses-data";
 import type { LectureNoteRecord, LectureNotesListResponse } from "@/types/student-lecture-notes";
 
 function estimateFileSize(fileType: string | null) {
@@ -21,7 +21,7 @@ function normalizeFileType(fileType: string | null) {
 export async function getLectureNotesForStudent(
   student: NonNullable<Awaited<ReturnType<typeof import("@/lib/student-auth").requireStudent>>>
 ): Promise<LectureNotesListResponse> {
-  const courses = (await getEnrolledCoursesForStudent(student.id)).filter((c) =>
+  const courses = (await getAccessibleCoursesForStudent(student.id, student)).filter((c) =>
     courseMatchesStudentProfile(c, student)
   );
 

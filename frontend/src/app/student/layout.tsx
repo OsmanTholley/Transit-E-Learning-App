@@ -17,7 +17,7 @@ export default async function StudentLayout({ children }: { children: ReactNode 
   }
 
   if (!user) {
-    redirect("/login");
+    redirect("/login?role=student");
   }
 
   return (

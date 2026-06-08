@@ -38,6 +38,8 @@ async function main() {
 
   const passwordHash = await bcrypt.hash(ADMIN_PASSWORD, 10);
 
+  // Create the super admin account only.
+  // Departments, programs, and courses are created through the admin portal.
   const adminUser = await prisma.user.create({
     data: {
       fullName: "Osman Tholley",
@@ -55,47 +57,9 @@ async function main() {
     },
   });
 
-  const catalog = [
-    {
-      departmentName: "Computing Sciences",
-      programs: ["BSc Computer Science", "BSc Information Technology"],
-    },
-    {
-      departmentName: "Public Health",
-      programs: ["BSc Public Health", "BSc Community Health"],
-    },
-    {
-      departmentName: "Business",
-      programs: ["BSc Accounting", "BSc Business Administration"],
-    },
-    {
-      departmentName: "Agriculture",
-      programs: ["BSc Agriculture", "BSc Agribusiness"],
-    },
-    {
-      departmentName: "Mass Communication",
-      programs: ["BSc Mass Communication", "BSc Journalism"],
-    },
-  ];
-
-  for (const entry of catalog) {
-    const department = await prisma.department.create({
-      data: { departmentName: entry.departmentName },
-    });
-    for (const programName of entry.programs) {
-      await prisma.program.create({
-        data: {
-          departmentId: department.id,
-          programName,
-          duration: "4 years",
-        },
-      });
-    }
-  }
-
   console.log("Seed completed successfully.");
   console.log("Admin email:", ADMIN_EMAIL);
-  console.log("All other users removed. Add students and lecturers via the admin portal.");
+  console.log("All other users removed. Add departments, programs, and students via the admin portal.");
 }
 
 main()

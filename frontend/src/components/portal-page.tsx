@@ -22,18 +22,15 @@ import { DiscussionsHub } from "@/components/student/discussions/discussions-hub
 import { UserNotificationsHub } from "@/components/notifications/user-notifications-hub";
 import { StudentNotificationsHub } from "@/components/student/notifications/student-notifications-hub";
 import { AdminSectionView } from "@/components/admin/admin-section-view";
+import { AdminAnnouncementsPage } from "@/components/admin/system/admin-announcements-page";
+import { AdminNotificationsPage } from "@/components/admin/system/admin-notifications-page";
+import { AdminSettingsPage } from "@/components/admin/system/admin-settings-page";
+import { AdminActivityLogsPage } from "@/components/admin/system/admin-activity-logs-page";
+import { AdminYouTubeViewsPage } from "@/components/admin/system/admin-youtube-views-page";
 import { getSectionContent } from "@/services/mock-data";
 import { AppRole } from "@/types/app";
 
-const adminDbSections = new Set([
-  "assignments",
-  "quizzes",
-  "discussions",
-  "announcements",
-  "reports",
-  "settings",
-  "activity-logs",
-]);
+const adminDbSections = new Set(["assignments", "quizzes", "discussions"]);
 
 type Props = {
   role: AppRole;
@@ -62,7 +59,6 @@ export function PortalPage({ role, section }: Props) {
     }
     const coursesRedirects: Record<string, string> = {
       videos: "videos",
-      assignments: "assignments",
     };
     if (coursesRedirects[section]) {
       return <CoursesHub segment={[coursesRedirects[section]]} />;
@@ -94,8 +90,20 @@ export function PortalPage({ role, section }: Props) {
     if (section === "profile") {
       return <AdminProfilePage />;
     }
+    if (section === "announcements") {
+      return <AdminAnnouncementsPage />;
+    }
     if (section === "notifications") {
-      return <UserNotificationsHub title={content.title} subtitle={content.subtitle} />;
+      return <AdminNotificationsPage />;
+    }
+    if (section === "settings") {
+      return <AdminSettingsPage />;
+    }
+    if (section === "activity-logs") {
+      return <AdminActivityLogsPage />;
+    }
+    if (section === "youtube-views") {
+      return <AdminYouTubeViewsPage />;
     }
     if (adminDbSections.has(section)) {
       return (
@@ -120,74 +128,34 @@ export function PortalPage({ role, section }: Props) {
 
   if (role === "lecturer") {
     if (section === "dashboard") {
-      return (
-        <AppShell role={role} pageTitle={content.title} subtitle={content.subtitle}>
-          <LecturerDashboard />
-        </AppShell>
-      );
+      return <LecturerDashboard />;
     }
     if (section === "courses") {
-      return (
-        <AppShell role={role} pageTitle={content.title} subtitle={content.subtitle}>
-          <LecturerCoursesPage />
-        </AppShell>
-      );
+      return <LecturerCoursesPage />;
     }
     if (section === "profile") {
-      return (
-        <AppShell role={role} pageTitle={content.title} subtitle={content.subtitle}>
-          <LecturerProfilePage />
-        </AppShell>
-      );
+      return <LecturerProfilePage />;
     }
     if (section === "quizzes") {
-      return (
-        <AppShell role={role} pageTitle={content.title} subtitle={content.subtitle}>
-          <LecturerQuizzesPage />
-        </AppShell>
-      );
+      return <LecturerQuizzesPage />;
     }
     if (section === "assignments") {
-      return (
-        <AppShell role={role} pageTitle={content.title} subtitle={content.subtitle}>
-          <LecturerAssignmentsPage />
-        </AppShell>
-      );
+      return <LecturerAssignmentsPage />;
     }
     if (section === "materials" || section === "upload-note") {
-      return (
-        <AppShell role={role} pageTitle={content.title} subtitle={content.subtitle}>
-          <LecturerMaterialsPage />
-        </AppShell>
-      );
+      return <LecturerMaterialsPage />;
     }
     if (section === "videos") {
-      return (
-        <AppShell role={role} pageTitle={content.title} subtitle={content.subtitle}>
-          <LecturerVideosPage />
-        </AppShell>
-      );
+      return <LecturerVideosPage />;
     }
     if (section === "students") {
-      return (
-        <AppShell role={role} pageTitle={content.title} subtitle={content.subtitle}>
-          <LecturerStudentsPage />
-        </AppShell>
-      );
+      return <LecturerStudentsPage />;
     }
     if (section === "ai") {
-      return (
-        <AppShell role={role} pageTitle="AI Assistant" subtitle="Local Ollama-powered academic AI">
-          <LecturerAiPage />
-        </AppShell>
-      );
+      return <LecturerAiPage />;
     }
     if (section === "notifications") {
-      return (
-        <AppShell role={role} pageTitle={content.title} subtitle={content.subtitle}>
-          <UserNotificationsHub title={content.title} subtitle={content.subtitle} />
-        </AppShell>
-      );
+      return <UserNotificationsHub title={content.title} subtitle={content.subtitle} />;
     }
   }
 

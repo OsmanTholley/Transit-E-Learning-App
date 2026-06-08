@@ -7,8 +7,11 @@ import {
   DashboardStatCard,
   DashboardStatsGrid,
 } from "@/components/ui/dashboard-stat-card";
+import { LoadingDashboardSkeleton } from "@/components/ui/loading-indicator";
+import { PortalBarChart, PortalDonutChart, PortalLineTrend } from "@/components/ui/portal-charts";
 import type { StatIconName } from "@/components/ui/stat-icon";
 import { useApiLoad } from "@/hooks/use-api-load";
+import { DASHBOARD_REFRESH_MS } from "@/lib/silent-refresh";
 import type { AdminDashboardData } from "@/types/admin-dashboard";
 
 type StatCard = {
@@ -38,13 +41,15 @@ function Panel({
   title,
   right,
   children,
+  id,
 }: {
   title: string;
   right?: React.ReactNode;
   children: ReactNode;
+  id?: string;
 }) {
   return (
-    <section className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm">
+    <section id={id} className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm">
       <div className="flex items-center justify-between gap-3 border-b border-slate-100 px-5 py-4">
         <h2 className="text-sm font-bold text-slate-900">{title}</h2>
         {right}
@@ -61,16 +66,13 @@ type AdminDashboardProps = {
 export function AdminDashboard({ adminName }: AdminDashboardProps) {
   const { data, loading } = useApiLoad<AdminDashboardData>("/api/admin/dashboard", {
     errorTitle: "Could not load dashboard",
+    refreshIntervalMs: DASHBOARD_REFRESH_MS,
   });
 
   const firstName = adminName.split(" ")[0] ?? "Admin";
 
   if (loading && !data) {
-    return (
-      <div className="flex min-h-[320px] items-center justify-center rounded-2xl border border-slate-200/80 bg-white">
-        <p className="text-sm text-slate-500">Loading dashboard…</p>
-      </div>
-    );
+    return <LoadingDashboardSkeleton />;
   }
 
   if (!data) {
@@ -98,18 +100,13 @@ export function AdminDashboard({ adminName }: AdminDashboardProps) {
       value: data.stats.activeUsers.toLocaleString(),
       tone: "violet",
     },
-    {
-      label: "Pending Approvals",
-      value: data.stats.pendingApprovals.toLocaleString(),
-      tone: "slate",
-    },
   ];
 
   const quickActions = [
-    { label: "Add Student", href: "/admin/students/add", desc: "Register admitted learners" },
-    { label: "Verify Students", href: "/admin/students/verify", desc: "Approve ID registrations" },
-    { label: "Add Lecturer", href: "/admin/lecturers/add", desc: "Onboard teaching staff" },
-    { label: "Content Approval", href: "/admin/content/approval", desc: "Review uploaded materials" },
+    { label: "Add Department", href: "/admin/departments/add", desc: "Create academic departments" },
+    { label: "Add Program", href: "/admin/programs/add", desc: "Define degree programs" },
+    { label: "Add Course", href: "/admin/courses/add", desc: "Create courses for departments" },
+    { label: "Assign Course", href: "/admin/courses/assign", desc: "Assign lecturers to courses" },
   ];
 
   return (
@@ -131,16 +128,16 @@ export function AdminDashboard({ adminName }: AdminDashboardProps) {
               Manage students
             </Link>
             <Link
-              href="/admin/reports"
+              href="/admin/announcements"
               className="rounded-lg bg-white/10 px-4 py-2 text-sm font-semibold text-white ring-1 ring-white/20 hover:bg-white/15"
             >
-              View reports
+              Post announcement
             </Link>
           </div>
         </div>
       </section>
 
-      <DashboardStatsGrid columns={5}>
+      <DashboardStatsGrid columns={4}>
         {stats.map((stat) => (
           <DashboardStatCard
             key={stat.label}
@@ -152,6 +149,51 @@ export function AdminDashboard({ adminName }: AdminDashboardProps) {
           />
         ))}
       </DashboardStatsGrid>
+
+      <section className="grid gap-6 xl:grid-cols-2">
+        <article className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm">
+          <h2 className="text-sm font-bold text-slate-900">Student enrollment trend</h2>
+          <p className="mt-1 text-xs text-slate-500">New registrations — last 6 months</p>
+          <div className="mt-4">
+            <PortalLineTrend data={data.charts.enrollmentTrend} />
+          </div>
+        </article>
+        <article className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm">
+          <h2 className="text-sm font-bold text-slate-900">Students by gender</h2>
+          <p className="mt-1 text-xs text-slate-500">Male, female, and other — total headcount</p>
+          <div className="mt-4">
+            <PortalDonutChart data={data.charts.studentsByGender} />
+          </div>
+        </article>
+        <article className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm">
+          <h2 className="text-sm font-bold text-slate-900">Users by role</h2>
+          <p className="mt-1 text-xs text-slate-500">Active accounts across the platform</p>
+          <div className="mt-4">
+            <PortalDonutChart data={data.charts.usersByRole} />
+          </div>
+        </article>
+        <article className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm">
+          <h2 className="text-sm font-bold text-slate-900">Students by department</h2>
+          <p className="mt-1 text-xs text-slate-500">Top departments by enrollment</p>
+          <div className="mt-4">
+            <PortalBarChart data={data.charts.studentsByDepartment} />
+          </div>
+        </article>
+        <article className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm">
+          <h2 className="text-sm font-bold text-slate-900">Content library</h2>
+          <p className="mt-1 text-xs text-slate-500">Notes, videos, quizzes, and assignments</p>
+          <div className="mt-4">
+            <PortalDonutChart data={data.charts.contentOverview} size={160} />
+          </div>
+        </article>
+        <article className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm">
+          <h2 className="text-sm font-bold text-slate-900">Courses by academic year</h2>
+          <p className="mt-1 text-xs text-slate-500">Assigned courses per level</p>
+          <div className="mt-4">
+            <PortalBarChart data={data.charts.coursesByLevel} />
+          </div>
+        </article>
+      </section>
 
       <Panel
         title="Course years overview"
@@ -177,6 +219,29 @@ export function AdminDashboard({ adminName }: AdminDashboardProps) {
       </Panel>
 
       <LecturerPerformanceOverview performance={data.lecturerPerformance} />
+
+      <Panel title="Platform engagement" id="platform-engagement">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <article className="rounded-xl border border-slate-200/80 bg-slate-50/50 p-4">
+            <p className="text-xs text-slate-500">Discussions</p>
+            <p className="mt-1 text-2xl font-bold text-slate-900">{data.engagement.discussions}</p>
+          </article>
+          <article className="rounded-xl border border-slate-200/80 bg-slate-50/50 p-4">
+            <p className="text-xs text-slate-500">Notifications sent</p>
+            <p className="mt-1 text-2xl font-bold text-slate-900">{data.engagement.notifications}</p>
+            <p className="mt-1 text-xs text-amber-700">{data.engagement.unreadNotifications} unread</p>
+          </article>
+          <article className="rounded-xl border border-slate-200/80 bg-slate-50/50 p-4">
+            <p className="text-xs text-slate-500">Announcements</p>
+            <p className="mt-1 text-2xl font-bold text-slate-900">{data.engagement.announcements}</p>
+          </article>
+          <article className="rounded-xl border border-slate-200/80 bg-slate-50/50 p-4">
+            <p className="text-xs text-slate-500">Engagement index</p>
+            <p className="mt-1 text-2xl font-bold text-teal-700">{data.engagement.engagementIndex}</p>
+            <p className="mt-1 text-xs text-slate-500">Discussions + quizzes + assignments</p>
+          </article>
+        </div>
+      </Panel>
 
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {quickActions.map((action) => (

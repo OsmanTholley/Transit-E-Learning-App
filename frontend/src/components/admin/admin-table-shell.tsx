@@ -29,8 +29,8 @@ export function AdminTableShell({
         </span>
       }
     >
-      {toolbar ? <div className="border-b border-slate-100 px-4 py-3 sm:px-5">{toolbar}</div> : null}
-      <div className={variant === "detailed" ? "max-w-full overflow-x-auto" : "w-full min-w-0"}>{children}</div>
+      {toolbar ? <div className="border-b border-slate-100 bg-slate-50/40 px-4 py-3 sm:px-5">{toolbar}</div> : null}
+      <div className="max-w-full overflow-x-auto">{children}</div>
       <div className="flex flex-col gap-2 border-t border-slate-100 px-4 py-3 text-xs text-slate-500 sm:flex-row sm:items-center sm:justify-between sm:px-5">
         <span>
           Showing <strong className="font-semibold text-slate-700">{count}</strong> {countLabel}

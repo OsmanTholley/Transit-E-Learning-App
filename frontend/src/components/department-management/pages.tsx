@@ -1,4 +1,5 @@
 "use client";
+import { LoadingState } from "@/components/ui/loading-indicator";
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -99,7 +100,7 @@ export function ProgramsPage() {
         <PrimaryButton>Add Program</PrimaryButton>
       </Link>
       {loading ? (
-        <p className="text-sm text-slate-500">Loading programs…</p>
+        <LoadingState message="Loading programs…" layout="inline" />
       ) : (
         <Panel title="Academic Programs by Department">
           <table className="min-w-full text-sm">
@@ -143,8 +144,8 @@ export function DepartmentCoursesPage() {
       </Link>
       <Panel title="Courses by Department">
         {loading ? (
-          <p className="text-sm text-slate-500">Loading courses…</p>
-        ) : (
+        <LoadingState message="Loading courses…" layout="inline" />
+      ) : (
           <table className="min-w-full text-sm">
             <thead className="bg-slate-50">
               <tr>
@@ -213,8 +214,8 @@ export function DepartmentStudentsPage() {
         <tbody className="divide-y divide-slate-100">
           {loading ? (
             <tr>
-              <td colSpan={5} className="px-3 py-6 text-center text-sm text-slate-500">
-                Loading students...
+              <td colSpan={5} className="px-3 py-6">
+                <LoadingState message="Loading students..." layout="compact" />
               </td>
             </tr>
           ) : null}
@@ -275,8 +276,8 @@ export function DepartmentLecturersPage() {
         <tbody className="divide-y divide-slate-100">
           {loading ? (
             <tr>
-              <td colSpan={5} className="px-3 py-6 text-center text-sm text-slate-500">
-                Loading lecturers...
+              <td colSpan={5} className="px-3 py-6">
+                <LoadingState message="Loading lecturers..." layout="compact" />
               </td>
             </tr>
           ) : null}
@@ -322,7 +323,7 @@ export function DepartmentNotificationsPage() {
       </Panel>
       <Panel title="Recent Notifications">
         {loading && !data ? (
-          <p className="text-sm text-slate-500">Loading notifications…</p>
+          <LoadingState message="Loading notifications…" layout="inline" />
         ) : notifications.length === 0 ? (
           <p className="text-sm text-slate-500">No broadcasts sent yet.</p>
         ) : (
@@ -380,7 +381,7 @@ export function DepartmentReportsPage() {
   return (
     <StudentSection>
       {loading ? (
-        <p className="text-sm text-slate-500">Loading department analytics…</p>
+        <LoadingState message="Loading department analytics…" layout="inline" />
       ) : (
         <>
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -524,7 +525,7 @@ export function DepartmentProfilePage({ id }: { id: string }) {
   }, [id]);
 
   if (loading) {
-    return <p className="text-sm text-slate-500">Loading department…</p>;
+    return <LoadingState message="Loading department…" layout="inline" />;
   }
 
   if (!payload) {

@@ -3,7 +3,6 @@ export type AdminDashboardStats = {
   totalLecturers: number;
   activeCourses: number;
   activeUsers: number;
-  pendingApprovals: number;
 };
 
 export type AdminCourseYearCount = {
@@ -40,6 +39,29 @@ export type AdminLecturerPerformance = {
   topLecturers: { name: string; courseCount: number }[];
 };
 
+export type AdminChartPoint = {
+  label: string;
+  value: number;
+  color?: string;
+};
+
+export type AdminDashboardCharts = {
+  enrollmentTrend: AdminChartPoint[];
+  studentsByGender: AdminChartPoint[];
+  studentsByDepartment: AdminChartPoint[];
+  contentOverview: AdminChartPoint[];
+  coursesByLevel: AdminChartPoint[];
+  usersByRole: AdminChartPoint[];
+};
+
+export type AdminEngagementMetrics = {
+  discussions: number;
+  notifications: number;
+  unreadNotifications: number;
+  announcements: number;
+  engagementIndex: number;
+};
+
 export type AdminDashboardData = {
   stats: AdminDashboardStats;
   coursesByLevel: AdminCourseYearCount[];
@@ -47,4 +69,6 @@ export type AdminDashboardData = {
   activities: AdminActivityItem[];
   userDistribution: AdminUserDistribution[];
   lecturerPerformance: AdminLecturerPerformance;
+  engagement: AdminEngagementMetrics;
+  charts: AdminDashboardCharts;
 };

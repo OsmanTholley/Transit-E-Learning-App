@@ -1,8 +1,10 @@
 "use client";
+import { LoadingState } from "@/components/ui/loading-indicator";
 
 import { FormEvent, useState } from "react";
 import { useApiLoad } from "@/hooks/use-api-load";
 import { requestApi } from "@/lib/fetch-api";
+import { publishLecturerMaterial } from "@/lib/lecturer-ui-mutation";
 import { LecturerSubTabs } from "@/components/lecturer/lecturer-sub-tabs";
 import {
   CourseSelect,
@@ -36,6 +38,7 @@ export function LecturerMaterialsPage() {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [fileUrl, setFileUrl] = useState("");
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -50,14 +53,22 @@ export function LecturerMaterialsPage() {
 
   async function onFileChange(file: File | null, forEdit = false) {
     if (!file) return;
+    if (!forEdit) setPendingFile(file);
     setUploading(true);
     try {
       const uploaded = await uploadFile(file);
       if (forEdit) setEditFileUrl(uploaded.url);
-      else setFileUrl(uploaded.url);
+      else {
+        setFileUrl(uploaded.url);
+        setPendingFile(null);
+      }
       if (!forEdit && !title) setTitle(file.name.replace(/\.[^.]+$/, ""));
     } catch (e) {
-      await lecturerError("Upload failed", e instanceof Error ? e.message : "Try again.");
+      if (!forEdit && (typeof navigator !== "undefined" && !navigator.onLine || (e instanceof Error && /fetch|network/i.test(e.message)))) {
+        setFileUrl("");
+      } else {
+        await lecturerError("Upload failed", e instanceof Error ? e.message : "Try again.");
+      }
     } finally {
       setUploading(false);
     }
@@ -66,21 +77,29 @@ export function LecturerMaterialsPage() {
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setSaving(true);
-    const result = await requestApi<{ note: LecturerNoteRow; message?: string }>(
-      "/api/lecturer/lecture-notes",
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ courseId, title, description, fileUrl, fileType: "PDF" }),
-        errorTitle: "Could not save note",
-      }
-    );
-    if (result.ok) {
+    const result = await publishLecturerMaterial({
+      courseId,
+      title,
+      description,
+      fileUrl,
+      fileType: "PDF",
+      pendingFile,
+    });
+    if (result.status === "published") {
       setData({ notes: [result.data.note, ...notes] });
       setTitle("");
       setDescription("");
       setFileUrl("");
+      setPendingFile(null);
+      setCourseId("");
       await lecturerSuccess(result.data.message ?? "Material published with auto-generated cover.");
+      setActiveTab("manage");
+    } else if (result.status === "queued") {
+      setTitle("");
+      setDescription("");
+      setFileUrl("");
+      setPendingFile(null);
+      setCourseId("");
       setActiveTab("manage");
     }
     setSaving(false);
@@ -178,8 +197,11 @@ export function LecturerMaterialsPage() {
               />
               {uploading ? <p className="mt-1 text-xs text-slate-500">Uploading…</p> : null}
               {fileUrl ? <p className="mt-1 text-xs text-emerald-600">File ready</p> : null}
+              {pendingFile && !fileUrl ? (
+                <p className="mt-1 text-xs text-amber-700">File selected — will upload when you publish or reconnect.</p>
+              ) : null}
             </label>
-            <PrimaryButton type="submit" disabled={saving || !fileUrl || courses.length === 0}>
+            <PrimaryButton type="submit" disabled={saving || (!fileUrl && !pendingFile) || courses.length === 0}>
               {saving ? "Publishing…" : "Publish to students"}
             </PrimaryButton>
           </div>
@@ -245,7 +267,7 @@ export function LecturerMaterialsPage() {
             }
           >
             {loading && !data ? (
-              <p className="text-sm text-slate-500">Loading…</p>
+              <LoadingState message="Loading…" layout="inline" />
             ) : notes.length === 0 ? (
               <p className="text-sm text-slate-500">No materials yet. Use Upload to add one.</p>
             ) : (

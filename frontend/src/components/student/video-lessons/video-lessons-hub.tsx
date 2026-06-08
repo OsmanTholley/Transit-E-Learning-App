@@ -1,4 +1,5 @@
 "use client";
+import { LoadingState } from "@/components/ui/loading-indicator";
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
@@ -6,7 +7,10 @@ import { AnimatePresence, motion } from "framer-motion";
 import { useStudentSession } from "@/contexts/student-session-context";
 import { VideoLesson } from "@/types/video-lessons";
 import { getVideoLessonsViewTitle } from "@/components/student/video-lessons/video-lessons-nav-config";
+import { useStudentPreference } from "@/hooks/use-student-preference";
+import { STUDENT_PREF_KEYS } from "@/lib/student-preference-keys";
 import { VideoCard } from "@/components/student/video-lessons/video-ui";
+import { YouTubeSuggestions } from "@/components/student/youtube-suggestions";
 
 type Props = {
   segment?: string[];
@@ -24,22 +28,6 @@ type HistoryEntry = {
   secondsWatched: number;
   durationSeconds: number;
 };
-
-const LS_KEYS = {
-  progress: "transit.videoLessons.progress.v1",
-  bookmarks: "transit.videoLessons.bookmarks.v1",
-  downloads: "transit.videoLessons.downloads.v1",
-  history: "transit.videoLessons.history.v1",
-} as const;
-
-function safeParse<T>(value: string | null, fallback: T): T {
-  if (!value) return fallback;
-  try {
-    return JSON.parse(value) as T;
-  } catch {
-    return fallback;
-  }
-}
 
 function formatDate(iso: string) {
   const d = new Date(iso);
@@ -235,35 +223,22 @@ export function VideoLessonsHub({ segment }: Props) {
   const [status, setStatus] = useState<"all" | "completed" | "in-progress" | "unwatched">("all");
   const [lecturer, setLecturer] = useState("");
 
-  const [progressById, setProgressById] = useState<Record<string, ProgressSnapshot>>(() =>
-    safeParse<Record<string, ProgressSnapshot>>(typeof window === "undefined" ? null : localStorage.getItem(LS_KEYS.progress), {})
+  const [progressById, setProgressById] = useStudentPreference<Record<string, ProgressSnapshot>>(
+    STUDENT_PREF_KEYS.videoProgress,
+    {}
   );
-  const [bookmarks, setBookmarks] = useState<Record<string, true>>(() =>
-    safeParse<Record<string, true>>(typeof window === "undefined" ? null : localStorage.getItem(LS_KEYS.bookmarks), {})
+  const [bookmarks, setBookmarks] = useStudentPreference<Record<string, true>>(
+    STUDENT_PREF_KEYS.videoBookmarks,
+    {}
   );
-  const [downloads, setDownloads] = useState<Record<string, { savedAt: string }>>(() =>
-    safeParse<Record<string, { savedAt: string }>>(typeof window === "undefined" ? null : localStorage.getItem(LS_KEYS.downloads), {})
+  const [downloads, setDownloads] = useStudentPreference<Record<string, { savedAt: string }>>(
+    STUDENT_PREF_KEYS.videoDownloads,
+    {}
   );
-  const [history, setHistory] = useState<HistoryEntry[]>(() =>
-    safeParse<HistoryEntry[]>(typeof window === "undefined" ? null : localStorage.getItem(LS_KEYS.history), [])
+  const [history, setHistory] = useStudentPreference<HistoryEntry[]>(
+    STUDENT_PREF_KEYS.videoHistory,
+    []
   );
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    localStorage.setItem(LS_KEYS.progress, JSON.stringify(progressById));
-  }, [progressById]);
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    localStorage.setItem(LS_KEYS.bookmarks, JSON.stringify(bookmarks));
-  }, [bookmarks]);
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    localStorage.setItem(LS_KEYS.downloads, JSON.stringify(downloads));
-  }, [downloads]);
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    localStorage.setItem(LS_KEYS.history, JSON.stringify(history));
-  }, [history]);
 
   useEffect(() => {
     let cancelled = false;
@@ -408,7 +383,7 @@ export function VideoLessonsHub({ segment }: Props) {
           : computed.filtered;
 
   if (sessionLoading) {
-    return <p className="text-sm text-slate-500">Loading your video lessons...</p>;
+    return <LoadingState message="Loading your video lessons..." layout="inline" />;
   }
 
   if (sessionError) {
@@ -505,9 +480,9 @@ export function VideoLessonsHub({ segment }: Props) {
             initial={{ opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -6 }}
-            className="rounded-2xl bg-white p-4 text-sm text-slate-500 shadow-sm ring-1 ring-slate-200/80"
+            className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200/80"
           >
-            Loading your videos…
+            <LoadingState message="Loading your videos…" layout="inline" />
           </motion.div>
         ) : null}
       </AnimatePresence>
@@ -588,6 +563,12 @@ export function VideoLessonsHub({ segment }: Props) {
               </Link>
             </div>
           </section>
+
+          {/* YouTube Suggestions */}
+          <YouTubeSuggestions
+            courseQueries={courses.slice(0, 5).map((c) => `${c.code} ${c.title}`)}
+            courseLabels={courses.slice(0, 5).map((c) => c.code)}
+          />
         </>
       )}
     </div>

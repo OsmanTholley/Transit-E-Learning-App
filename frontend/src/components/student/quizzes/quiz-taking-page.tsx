@@ -1,12 +1,15 @@
 "use client";
+import { LoadingState } from "@/components/ui/loading-indicator";
 
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import type { QuizQuestionView, QuizSubmitResult, StudentQuizDetail } from "@/types/student-quizzes";
 
-const LS_DRAFT = "transit.quizzes.draft.v1";
-const LS_LAST_RESULT = "transit.quizzes.lastResult.v1";
+import { readStudentPreference, updateStudentPreferenceRecord } from "@/hooks/use-student-preference";
+import { requestApi } from "@/lib/fetch-api";
+import { STUDENT_PREF_KEYS } from "@/lib/student-preference-keys";
+import { studentMutation } from "@/lib/student-ui";
 
 type Draft = {
   answers: Record<string, string>;
@@ -15,33 +18,23 @@ type Draft = {
 };
 
 function loadDraft(quizId: string): Draft | null {
-  if (typeof window === "undefined") return null;
-  try {
-    const all = JSON.parse(localStorage.getItem(LS_DRAFT) ?? "{}") as Record<string, Draft>;
-    return all[quizId] ?? null;
-  } catch {
-    return null;
-  }
+  const all = readStudentPreference<Record<string, Draft>>(STUDENT_PREF_KEYS.quizDrafts, {});
+  return all[quizId] ?? null;
 }
 
 function saveDraft(quizId: string, draft: Draft) {
-  try {
-    const all = JSON.parse(localStorage.getItem(LS_DRAFT) ?? "{}") as Record<string, Draft>;
-    all[quizId] = draft;
-    localStorage.setItem(LS_DRAFT, JSON.stringify(all));
-  } catch {
-    /* ignore */
-  }
+  updateStudentPreferenceRecord<Record<string, Draft>>(STUDENT_PREF_KEYS.quizDrafts, (all) => ({
+    ...all,
+    [quizId]: draft,
+  }));
 }
 
 function clearDraft(quizId: string) {
-  try {
-    const all = JSON.parse(localStorage.getItem(LS_DRAFT) ?? "{}") as Record<string, Draft>;
-    delete all[quizId];
-    localStorage.setItem(LS_DRAFT, JSON.stringify(all));
-  } catch {
-    /* ignore */
-  }
+  updateStudentPreferenceRecord<Record<string, Draft>>(STUDENT_PREF_KEYS.quizDrafts, (all) => {
+    const next = { ...all };
+    delete next[quizId];
+    return next;
+  });
 }
 
 function formatTime(seconds: number) {
@@ -104,7 +97,7 @@ export function QuizTakingPage({ quizId }: { quizId: string }) {
 
   const [quiz, setQuiz] = useState<StudentQuizDetail | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [loadFailed, setLoadFailed] = useState(false);
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [currentIndex, setCurrentIndex] = useState(0);
   const [showSubmitModal, setShowSubmitModal] = useState(false);
@@ -113,44 +106,63 @@ export function QuizTakingPage({ quizId }: { quizId: string }) {
 
   const startedAtRef = useRef(0);
   const autoSubmittedRef = useRef(false);
+  const mountedRef = useRef(true);
+  const loadRef = useRef<(() => Promise<void>) | null>(null);
 
   const durationSeconds = (quiz?.durationMinutes ?? 20) * 60;
   const [remaining, setRemaining] = useState(durationSeconds);
 
   useEffect(() => {
-    let cancelled = false;
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
+
+  useEffect(() => {
     async function load() {
       setLoading(true);
-      try {
-        const res = await fetch(`/api/student/quizzes/${quizId}`);
-        const json = await res.json();
-        if (!res.ok) throw new Error(json?.error ?? "Failed to load quiz");
-        if (!cancelled) {
-          if (!practiceMode && json.attemptCount >= json.attemptLimit && json.status === "completed") {
-            router.replace(`/student/quizzes/review/${quizId}`);
-            return;
-          }
-          setQuiz(json);
-          const draft = loadDraft(quizId);
-          if (draft) {
-            setAnswers(draft.answers);
-            setCurrentIndex(draft.currentIndex);
-            startedAtRef.current = draft.startedAt;
-          } else {
-            startedAtRef.current = Date.now();
-          }
-          setRemaining((json.durationMinutes ?? 20) * 60);
+      setLoadFailed(false);
+      let waitingForConnection = false;
+
+      const result = await requestApi<StudentQuizDetail>(`/api/student/quizzes/${quizId}`, {
+        errorTitle: "Could not load quiz",
+        onRecovered: () => {
+          if (mountedRef.current) void loadRef.current?.();
+        },
+      });
+
+      if (!mountedRef.current) return;
+
+      if (result.offline) {
+        waitingForConnection = true;
+      } else if (result.ok) {
+        const json = result.data;
+        if (!practiceMode && json.attemptCount >= json.attemptLimit && json.status === "completed") {
+          router.replace(`/student/quizzes/review/${quizId}`);
+          return;
         }
-      } catch (e) {
-        if (!cancelled) setError(e instanceof Error ? e.message : "Failed to load quiz");
-      } finally {
-        if (!cancelled) setLoading(false);
+        setQuiz(json);
+        const draft = loadDraft(quizId);
+        if (draft) {
+          setAnswers(draft.answers);
+          setCurrentIndex(draft.currentIndex);
+          startedAtRef.current = draft.startedAt;
+        } else {
+          startedAtRef.current = Date.now();
+        }
+        setRemaining((json.durationMinutes ?? 20) * 60);
+      } else {
+        setLoadFailed(true);
+      }
+
+      if (!waitingForConnection && mountedRef.current) {
+        setLoading(false);
       }
     }
-    load();
-    return () => {
-      cancelled = true;
-    };
+
+    loadRef.current = load;
+    void load();
   }, [quizId, practiceMode, router]);
 
   const submitQuiz = useCallback(async () => {
@@ -162,30 +174,28 @@ export function QuizTakingPage({ quizId }: { quizId: string }) {
       timeUsedSeconds: timeUsed,
       practiceMode,
     };
+    const body = JSON.stringify(payload);
 
-    try {
-      const res = await fetch(`/api/student/quizzes/${quizId}/submit`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json?.error ?? "Submit failed");
+    const result = await studentMutation<QuizSubmitResult>(`/api/student/quizzes/${quizId}/submit`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body,
+      errorTitle: "Submit failed",
+      offlineLabel: "Quiz submission",
+      offlineDetail: "Your quiz answers are saved locally and will submit when you reconnect.",
+    });
 
+    if (result.ok) {
       clearDraft(quizId);
-      const result = json as QuizSubmitResult;
-      try {
-        const stored = JSON.parse(localStorage.getItem(LS_LAST_RESULT) ?? "{}") as Record<string, QuizSubmitResult>;
-        stored[quizId] = result;
-        localStorage.setItem(LS_LAST_RESULT, JSON.stringify(stored));
-      } catch {
-        /* ignore */
-      }
+      updateStudentPreferenceRecord<Record<string, QuizSubmitResult>>(
+        STUDENT_PREF_KEYS.quizLastResults,
+        (stored) => ({ ...stored, [quizId]: result.data })
+      );
       router.push(`/student/quizzes/review/${quizId}${practiceMode ? "?practice=1" : ""}`);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Submit failed");
-      setSubmitting(false);
+      return;
     }
+
+    setSubmitting(false);
   }, [quiz, submitting, answers, quizId, practiceMode, router]);
 
   useEffect(() => {
@@ -220,16 +230,18 @@ export function QuizTakingPage({ quizId }: { quizId: string }) {
   );
 
   if (loading) {
-    return <p className="text-sm text-slate-500">Preparing quiz environment…</p>;
+    return <LoadingState message="Preparing quiz environment…" layout="inline" />;
   }
 
-  if (error && !quiz) {
+  if (loadFailed || !quiz) {
     return (
-      <div className="rounded-2xl bg-rose-50 p-6 text-sm text-rose-700 ring-1 ring-rose-200">{error}</div>
+      <div className="rounded-2xl bg-white p-8 text-center text-sm text-slate-500 ring-1 ring-slate-200/80">
+        Quiz not found or unavailable.
+      </div>
     );
   }
 
-  if (!quiz || !current) {
+  if (!current) {
     return (
       <div className="rounded-2xl bg-white p-8 text-center text-sm text-slate-500 ring-1 ring-slate-200/80">
         This quiz has no questions yet.

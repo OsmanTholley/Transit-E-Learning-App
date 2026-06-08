@@ -7,6 +7,7 @@ type CourseWithRelations = {
   courseTitle: string;
   level: string | null;
   semester: string | null;
+  description?: string | null;
   lecturerId: string | null;
   department: { departmentName: string } | null;
   program: { programName: string } | null;
@@ -30,5 +31,6 @@ export function mapCourseToRecord(course: CourseWithRelations): CourseRecord {
     semester: course.semester ?? "—",
     totalStudents: course._count.courseStudents,
     status: deriveCourseStatus(course.lecturerId),
+    description: course.description ?? null,
   };
 }

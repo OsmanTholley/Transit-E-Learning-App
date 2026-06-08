@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { isValidStudentId, normalizeStudentId } from "@/lib/student-id";
+import { isValidStudentId, normalizeStudentId, studentIdLookupCandidates, STUDENT_ID_FORMAT_HINT } from "@/lib/student-id";
 
 export async function resolveDepartmentProgramIds(departmentName?: string, programName?: string) {
   let departmentId: string | null = null;
@@ -35,18 +35,20 @@ export async function findAdmittedStudentForRegistration(studentIdInput: string)
   const normalizedStudentId = normalizeStudentId(studentIdInput);
 
   if (!isValidStudentId(normalizedStudentId)) {
-    return { error: "Student ID must use the format TCSL/001." as const };
+    return { error: `Student ID must use the format ${STUDENT_ID_FORMAT_HINT}.` as const };
   }
 
-  const existingAccount = await prisma.student.findUnique({
-    where: { studentId: normalizedStudentId },
+  const candidates = studentIdLookupCandidates(normalizedStudentId);
+
+  const existingAccount = await prisma.student.findFirst({
+    where: { studentId: { in: candidates } },
   });
   if (existingAccount) {
     return { error: "This student ID already has an active account. Please sign in instead." as const };
   }
 
-  const admitted = await prisma.admittedStudent.findUnique({
-    where: { studentId: normalizedStudentId },
+  const admitted = await prisma.admittedStudent.findFirst({
+    where: { studentId: { in: candidates } },
     include: { department: true, program: true },
   });
 
@@ -61,5 +63,5 @@ export async function findAdmittedStudentForRegistration(studentIdInput: string)
     return { error: "This student ID has already completed registration. Please sign in." as const };
   }
 
-  return { admitted, normalizedStudentId };
+  return { admitted, normalizedStudentId: admitted.studentId };
 }

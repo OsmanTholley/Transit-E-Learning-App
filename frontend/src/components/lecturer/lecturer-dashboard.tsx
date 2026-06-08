@@ -2,19 +2,22 @@
 
 import Link from "next/link";
 import { useApiLoad } from "@/hooks/use-api-load";
+import { DASHBOARD_REFRESH_MS } from "@/lib/silent-refresh";
 import {
   DashboardStatCard,
   DashboardStatsGrid,
 } from "@/components/ui/dashboard-stat-card";
+import { LoadingDashboardSkeleton } from "@/components/ui/loading-indicator";
 import type { LecturerDashboardData } from "@/types/lecturer-portal";
 
 export function LecturerDashboard() {
   const { data, loading } = useApiLoad<LecturerDashboardData>("/api/lecturer/dashboard", {
     errorTitle: "check your internet connection and try again",
+    refreshIntervalMs: DASHBOARD_REFRESH_MS,
   });
 
   if (loading && !data) {
-    return <p className="text-sm text-slate-500">Loading lecturer dashboard!…</p>;
+    return <LoadingDashboardSkeleton />;
   }
 
   if (!data) return null;
@@ -31,25 +34,23 @@ export function LecturerDashboard() {
 
   return (
     <div className="space-y-6">
-      <section className="relative overflow-hidden rounded-2xl border border-slate-200/80 bg-gradient-to-br from-[#0B3D91] via-[#0a357f] to-[#072d6b] p-6 text-white shadow-lg sm:p-8">
-        <div className="pointer-events-none absolute -right-8 -top-8 h-40 w-40 rounded-full bg-[#FFC107]/20 blur-2xl" />
-        <p className="text-xs font-bold uppercase tracking-widest text-[#FFC107]">Lecturer portal</p>
-        <h1 className="mt-2 text-2xl font-bold sm:text-3xl">Welcome, {firstName}</h1>
-        <p className="mt-2 max-w-xl text-sm text-blue-100">
-          Monitor your classes, publish content, and grade student work from one place.
+      <section className="portal-card relative overflow-hidden p-6 sm:p-8">
+        <div className="pointer-events-none absolute -right-8 -top-8 h-40 w-40 rounded-full bg-[#0B3D91]/10 blur-2xl" />
+        <div className="pointer-events-none absolute -left-4 -bottom-4 h-32 w-32 rounded-full bg-[#FFC107]/10 blur-2xl" />
+        <p className="text-xs font-bold uppercase tracking-widest" style={{ color: "#0B3D91" }}>Lecturer Classroom</p>
+        <h1 className="mt-2 text-2xl font-bold text-slate-900 sm:text-3xl">Welcome, {firstName}</h1>
+        <p className="mt-2 max-w-xl text-sm text-slate-600">
+          Publish materials, run assessments, and track learner progress from your teaching hub.
         </p>
         <div className="mt-5 flex flex-wrap gap-2">
-          <Link
-            href="/lecturer/courses"
-            className="inline-flex rounded-xl bg-[#FFC107] px-4 py-2.5 text-sm font-semibold text-[#0B3D91] shadow-md hover:bg-[#ffd54f]"
-          >
+          <Link href="/lecturer/courses" className="portal-accent-btn inline-flex rounded-xl px-4 py-2.5 text-sm font-semibold shadow-sm">
             My courses
           </Link>
           {quickLinks.map((link) => (
             <Link
               key={link.href}
               href={link.href}
-              className="inline-flex rounded-xl border border-white/25 bg-white/10 px-4 py-2.5 text-sm font-semibold backdrop-blur-sm hover:bg-white/20"
+              className="inline-flex rounded-xl border border-[#dce6f4] bg-white px-4 py-2.5 text-sm font-semibold text-[#0B3D91] hover:bg-[#f0f4fb]"
             >
               {link.label}
             </Link>

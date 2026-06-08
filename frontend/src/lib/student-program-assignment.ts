@@ -7,7 +7,7 @@ export type AssignProgramInput = {
   departmentId: string;
   programId: string;
   level: string;
-  semester: string;
+  gender?: string | null;
   admissionYear?: string | null;
 };
 
@@ -15,7 +15,7 @@ type ValidatedAssignment = {
   departmentId: string;
   programId: string;
   level: string;
-  semester: string;
+  gender: string | null;
   admissionYear: string | null;
 };
 
@@ -23,7 +23,6 @@ export async function validateProgramAssignment(
   input: AssignProgramInput,
 ): Promise<{ error: string } | { data: ValidatedAssignment }> {
   const level = normalizeAcademicYear(input.level);
-  const semester = input.semester?.trim();
 
   if (!input.departmentId) {
     return { error: "Department is required." as const };
@@ -33,9 +32,6 @@ export async function validateProgramAssignment(
   }
   if (!level) {
     return { error: "Year is required." as const };
-  }
-  if (!semester) {
-    return { error: "Semester is required." as const };
   }
 
   const department = await prisma.department.findUnique({
@@ -60,7 +56,7 @@ export async function validateProgramAssignment(
       departmentId: input.departmentId,
       programId: input.programId,
       level,
-      semester,
+      gender: input.gender?.trim() || null,
       admissionYear: input.admissionYear?.trim() || null,
     },
   };

@@ -1,4 +1,5 @@
 "use client";
+import { LoadingState } from "@/components/ui/loading-indicator";
 
 import { AnimatePresence, motion } from "framer-motion";
 import Link from "next/link";
@@ -74,7 +75,7 @@ export function NoteViewerPage({ noteId }: { noteId: string }) {
     }
   }
 
-  if (loading) return <p className="text-sm text-slate-500">Opening document...</p>;
+  if (loading) return <LoadingState message="Opening document..." layout="inline" />;
   if (error || !note) {
     return (
       <div className="rounded-2xl bg-rose-50 px-4 py-3 text-sm text-rose-700">

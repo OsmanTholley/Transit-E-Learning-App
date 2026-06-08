@@ -4,11 +4,7 @@ import { handleRouteDatabaseError } from "@/lib/db-errors";
 import { getLecturerCourseOrThrow } from "@/lib/lecturer/course-access";
 import { notifyContentPublished } from "@/lib/content-notify";
 import { prisma } from "@/lib/prisma";
-import {
-  defaultVideoDeletionNotice,
-  getVideoExpiryDate,
-  purgeExpiredVideos,
-} from "@/lib/video-expiry";
+import { clearLegacyVideoExpiry } from "@/lib/video-expiry";
 
 function mapVideo(v: {
   id: string;
@@ -39,7 +35,7 @@ export async function GET() {
     const lecturer = await requireLecturer();
     if (!lecturer) return unauthorized();
 
-    await purgeExpiredVideos();
+    await clearLegacyVideoExpiry();
 
     const videos = await prisma.video.findMany({
       where: { lecturerId: lecturer.id },
@@ -83,8 +79,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Course not found." }, { status: 404 });
     }
 
-    const expiresAt = getVideoExpiryDate();
-    const deletionNotice = customNotice || defaultVideoDeletionNotice(expiresAt);
+    const expiresAt = null;
+    const deletionNotice = customNotice;
 
     const video = await prisma.video.create({
       data: {
@@ -111,7 +107,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(
       {
-        message: `Video published. ${notified.students} student(s) and ${notified.admins} admin(s) notified. Available for 7 days.`,
+        message: `Video published. ${notified.students} student(s) and ${notified.admins} admin(s) notified.`,
         video: mapVideo(video),
       },
       { status: 201 }

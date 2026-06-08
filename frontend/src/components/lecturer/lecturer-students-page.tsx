@@ -1,4 +1,5 @@
 "use client";
+import { LoadingState } from "@/components/ui/loading-indicator";
 
 import { useState } from "react";
 import { useApiLoad } from "@/hooks/use-api-load";
@@ -35,8 +36,7 @@ export function LecturerStudentsPage() {
       <section className="rounded-2xl bg-gradient-to-br from-[#0B3D91] to-[#072d6b] p-6 text-white shadow-sm">
         <h2 className="text-xl font-bold">My students</h2>
         <p className="mt-2 text-sm text-blue-100">
-          Students enrolled in your courses (matched by program, department, year, and semester when
-          admin assigns courses).
+          Students enrolled in your courses from the database.
         </p>
       </section>
 
@@ -59,7 +59,7 @@ export function LecturerStudentsPage() {
           </label>
         </div>
         {loading && !data ? (
-          <p className="text-sm text-slate-500">Loading…</p>
+          <LoadingState message="Loading…" layout="inline" />
         ) : students.length === 0 ? (
           <p className="text-sm text-slate-500">
             No enrolled students yet. Ensure admin assigned your course with program/year/semester and

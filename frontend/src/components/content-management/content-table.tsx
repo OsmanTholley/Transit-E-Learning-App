@@ -3,7 +3,8 @@
 import { Fragment, useState } from "react";
 import { ContentItem } from "@/types/academic";
 import { ContentEngagementPanel } from "@/components/content/content-engagement-panel";
-import { AdminTableShell, ViewActionLink } from "@/components/admin/admin-table-shell";
+import { AdminContentActions } from "@/components/content-management/admin-content-actions";
+import { AdminTableShell } from "@/components/admin/admin-table-shell";
 import { StatusBadge } from "@/components/student-management/ui";
 import type { ReactNode } from "react";
 
@@ -13,6 +14,7 @@ type Props = {
   toolbar?: ReactNode;
   showApproval?: boolean;
   onItemDeleted?: () => void;
+  onItemUpdated?: () => void;
 };
 
 export function ContentTable({
@@ -21,26 +23,20 @@ export function ContentTable({
   toolbar,
   showApproval = false,
   onItemDeleted,
+  onItemUpdated,
 }: Props) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
   return (
-    <AdminTableShell title={title} count={items.length} countLabel="items" toolbar={toolbar}>
-      <table className="w-full table-fixed text-sm">
-        <colgroup>
-          <col />
-          <col className="hidden md:table-column" />
-          <col className="w-[88px] lg:w-[100px]" />
-          <col className="hidden xl:table-column w-[88px]" />
-          <col className="w-[120px]" />
-        </colgroup>
+    <AdminTableShell title={title} count={items.length} countLabel="items" toolbar={toolbar} variant="detailed">
+      <table className="admin-crud-table">
         <thead className="bg-slate-50/80 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
           <tr>
             <th className="px-3 py-2.5 sm:px-4">Title</th>
             <th className="hidden px-3 py-2.5 md:table-cell md:px-4">Details</th>
             <th className="px-3 py-2.5 sm:px-4">Status</th>
             <th className="hidden px-3 py-2.5 xl:table-cell xl:px-4">Uploaded</th>
-            <th className="px-3 py-2.5 text-right sm:px-4">Actions</th>
+            <th className="admin-crud-table-actions-head px-3 py-2.5 sm:px-4">Actions</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-slate-100">
@@ -53,7 +49,7 @@ export function ContentTable({
           ) : (
             items.map((item) => (
               <Fragment key={item.id}>
-                <tr className="bg-white transition-colors hover:bg-slate-50/80">
+                <tr className="admin-crud-table-row bg-white transition-colors hover:bg-slate-50/80">
                   <td className="px-3 py-3 sm:px-4">
                     <p className="truncate font-medium text-slate-900" title={item.title}>
                       {item.title}
@@ -72,22 +68,27 @@ export function ContentTable({
                   <td className="hidden px-3 py-3 text-xs text-slate-500 xl:table-cell xl:px-4">
                     {item.uploadedAt}
                   </td>
-                  <td className="px-3 py-3 text-right sm:px-4">
-                    {item.socialTarget ? (
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setExpandedId(expandedId === item.id ? null : item.id)
-                        }
-                        className="text-xs font-semibold text-[#0B3D91]"
-                      >
-                        {expandedId === item.id ? "Hide" : "Comments"}
-                      </button>
-                    ) : showApproval && item.status === "Pending" ? (
-                      <ViewActionLink href="/admin/content/approval" label="Review" />
-                    ) : (
-                      <ViewActionLink href="/admin/content/files" label="View" />
-                    )}
+                  <td className="admin-crud-table-actions-cell px-3 py-3 sm:px-4">
+                    <div className="flex flex-col items-end gap-1">
+                      {item.contentTarget ? (
+                        <AdminContentActions
+                          item={item}
+                          onDeleted={onItemDeleted}
+                          onUpdated={onItemUpdated}
+                        />
+                      ) : null}
+                      {item.socialTarget ? (
+                        <button
+                          type="button"
+                          onClick={() => setExpandedId(expandedId === item.id ? null : item.id)}
+                          className="text-[10px] font-semibold text-[#0B3D91]"
+                        >
+                          {expandedId === item.id ? "Hide comments" : "Comments"}
+                        </button>
+                      ) : showApproval && item.status === "Pending" ? (
+                        <span className="text-[10px] text-amber-700">Pending review</span>
+                      ) : null}
+                    </div>
                   </td>
                 </tr>
                 {item.socialTarget && expandedId === item.id ? (

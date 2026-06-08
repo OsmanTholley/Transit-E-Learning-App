@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireLecturer, unauthorized } from "@/lib/auth";
 import { handleRouteDatabaseError } from "@/lib/db-errors";
+import { notifyContentPublished } from "@/lib/content-notify";
 import { getLecturerCourseOrThrow } from "@/lib/lecturer/course-access";
 import { prisma } from "@/lib/prisma";
 
@@ -111,9 +112,12 @@ export async function POST(request: NextRequest) {
       },
     });
 
+    const courseLabel = `${quiz.course.courseCode} – ${quiz.course.courseTitle}`;
+    const notified = await notifyContentPublished(courseId, courseLabel, title, "quiz");
+
     return NextResponse.json(
       {
-        message: "Quiz created.",
+        message: `Quiz created. ${notified.students} student(s) and ${notified.admins} admin(s) notified.`,
         quiz: {
           id: quiz.id,
           title: quiz.title ?? "Quiz",

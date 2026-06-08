@@ -70,9 +70,9 @@ const sectionIcons: Record<string, string> = {
   "AI Assistant": "ai",
   Announcements: "announcements",
   Notifications: "notifications",
-  "Reports & Analytics": "reports",
   "System Settings": "settings",
   "Activity Logs": "logs",
+  "YouTube Views": "youtube",
 };
 
 function mapChildren(children?: { label: string; href: string }[]) {

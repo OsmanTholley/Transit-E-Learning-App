@@ -1,25 +1,25 @@
 "use client";
+import { LoadingState } from "@/components/ui/loading-indicator";
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useStudents } from "@/hooks/use-students";
 import { requestApi } from "@/lib/fetch-api";
 import { showError, showSuccess } from "@/lib/swal";
 import { StudentRecord } from "@/types/student";
-import { FieldLabel, Panel, PrimaryButton, SecondaryButton, SelectInput, StudentSection, TextInput } from "./ui";
+import { FieldLabel, Panel, PrimaryButton, SecondaryButton, SelectInput, StatCard, StudentSection, TextInput } from "./ui";
+import { StudentCrudPageHero } from "./student-crud-hero";
 import { StudentsTable } from "./students-table";
 
 type FormOptions = {
   departments: { id: string; name: string }[];
   programs: { id: string; name: string; departmentId: string | null }[];
   years: string[];
-  semesters: string[];
 };
 
 type AssignmentFields = {
   departmentId: string;
   programId: string;
   level: string;
-  semester: string;
   admissionYear: string;
 };
 
@@ -27,7 +27,6 @@ const emptyFields: AssignmentFields = {
   departmentId: "",
   programId: "",
   level: "",
-  semester: "",
   admissionYear: "",
 };
 
@@ -132,7 +131,6 @@ export function AssignProgramForm() {
       departmentId: dept?.id ?? prev.departmentId,
       programId: prog?.id ?? prev.programId,
       level: student.year !== "—" ? student.year : prev.level,
-      semester: student.semester !== "—" ? student.semester : prev.semester,
       admissionYear: student.admissionYear !== "—" ? student.admissionYear : prev.admissionYear,
     }));
   }
@@ -150,8 +148,8 @@ export function AssignProgramForm() {
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
 
-    if (!fields.departmentId || !fields.programId || !fields.level || !fields.semester) {
-      await showError("Missing fields", "Department, program, year, and semester are required.");
+    if (!fields.departmentId || !fields.programId || !fields.level) {
+      await showError("Missing fields", "Department, program, and year are required.");
       return;
     }
 
@@ -159,7 +157,6 @@ export function AssignProgramForm() {
       departmentId: fields.departmentId,
       programId: fields.programId,
       level: fields.level,
-      semester: fields.semester,
       admissionYear: fields.admissionYear || null,
     };
 
@@ -205,9 +202,7 @@ export function AssignProgramForm() {
 
   if (loading || loadingOptions) {
     return (
-      <div className="flex min-h-[200px] items-center justify-center rounded-2xl border border-slate-200/80 bg-white p-8">
-        <p className="text-sm text-slate-500">Loading students and programs…</p>
-      </div>
+      <LoadingState message="Loading students and programs…" panel minHeight={200} />
     );
   }
 
@@ -281,15 +276,7 @@ export function AssignProgramForm() {
           placeholder="Select year"
         />
       </div>
-      <div>
-        <FieldLabel>Semester</FieldLabel>
-        <SelectInput
-          options={options.semesters}
-          value={fields.semester}
-          onChange={(e) => updateField("semester", e.target.value)}
-          placeholder="Select semester"
-        />
-      </div>
+
       <div className="sm:col-span-2">
         <FieldLabel>Admission year (optional)</FieldLabel>
         <TextInput
@@ -307,19 +294,12 @@ export function AssignProgramForm() {
 
   return (
     <StudentSection>
+      <StudentCrudPageHero section="programs" />
+
       <div className="grid gap-4 sm:grid-cols-3">
-        <article className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm border-l-4 border-l-yellow-500">
-          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Registered students</p>
-          <p className="mt-2 text-2xl font-bold text-slate-900">{students.length}</p>
-        </article>
-        <article className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm border-l-4 border-l-amber-500">
-          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Without program</p>
-          <p className="mt-2 text-2xl font-bold text-slate-900">{unassignedCount}</p>
-        </article>
-        <article className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm border-l-4 border-l-blue-600">
-          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Selected for bulk</p>
-          <p className="mt-2 text-2xl font-bold text-slate-900">{selectedIds.size}</p>
-        </article>
+        <StatCard label="Registered students" value={students.length} tone="amber" />
+        <StatCard label="Without program" value={unassignedCount} tone="blue" />
+        <StatCard label="Selected for bulk" value={selectedIds.size} tone="slate" />
       </div>
 
       <div className="flex flex-wrap gap-2">
@@ -370,8 +350,7 @@ export function AssignProgramForm() {
               </select>
               {singleStudent ? (
                 <p className="mt-2 text-xs text-slate-500">
-                  Current: {singleStudent.department} · {singleStudent.program} · {singleStudent.year} ·{" "}
-                  {singleStudent.semester}
+                  Current: {singleStudent.department} · {singleStudent.program} · {singleStudent.year}
                 </p>
               ) : null}
             </div>
@@ -470,8 +449,7 @@ export function AssignProgramForm() {
       <StudentsTable
         students={students}
         title="Current assignments"
-        variant="directory"
-        showActions={false}
+        onRefresh={() => void refetch()}
       />
     </StudentSection>
   );

@@ -1,4 +1,5 @@
 "use client";
+import { LoadingState } from "@/components/ui/loading-indicator";
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -138,7 +139,7 @@ export function AddCourseForm() {
   if (loadingOptions) {
     return (
       <Panel title="Create Course">
-        <p className="text-sm text-slate-500">Loading departments, programs, and lecturers…</p>
+        <LoadingState message="Loading departments, programs, and lecturers…" layout="inline" />
       </Panel>
     );
   }

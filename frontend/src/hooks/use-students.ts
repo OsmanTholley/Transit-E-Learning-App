@@ -19,7 +19,7 @@ export function useStudents() {
     };
   }, []);
 
-  const loadStudentsRef = useRef<() => Promise<void>>(async () => {});
+  const loadStudentsRef = useRef<(() => Promise<void>) | null>(null);
 
   const loadStudents = useCallback(async () => {
     setLoading(true);
@@ -30,7 +30,7 @@ export function useStudents() {
       errorTitle: "Could not load students",
       onRecovered: () => {
         if (mountedRef.current) {
-          void loadStudentsRef.current();
+          void loadStudentsRef.current?.();
           router.refresh();
         }
       },
@@ -55,14 +55,10 @@ export function useStudents() {
     }
   }, [router]);
 
-  useEffect(() => {
-    loadStudentsRef.current = loadStudents;
-  }, [loadStudents]);
+  loadStudentsRef.current = loadStudents;
 
   useEffect(() => {
-    Promise.resolve().then(() => {
-      void loadStudents();
-    });
+    void loadStudents();
   }, [loadStudents]);
 
   return { students, loading, error, refetch: loadStudents, setStudents };

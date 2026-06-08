@@ -64,7 +64,10 @@ export function middleware(request: NextRequest) {
   }
 
   if (!hasSession) {
-    return NextResponse.redirect(new URL("/login", request.url));
+    const portal = matchedPrefix === "student" ? "student" : "staff";
+    const loginUrl = new URL("/login", request.url);
+    loginUrl.searchParams.set("role", portal);
+    return NextResponse.redirect(loginUrl);
   }
 
   if (role !== matchedPrefix) {

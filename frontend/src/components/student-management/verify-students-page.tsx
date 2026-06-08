@@ -1,10 +1,15 @@
 "use client";
+import { LoadingState } from "@/components/ui/loading-indicator";
 
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { AdminRowActions, AdminCrudSearch, confirmAndDelete } from "@/components/admin/admin-entity-crud";
+import { AdminTableShell } from "@/components/admin/admin-table-shell";
 import { ADMITTED_STUDENTS_CSV_TEMPLATE } from "@/lib/parse-admitted-csv";
 import { showError, showSuccess } from "@/lib/swal";
-import { FieldLabel, Panel, PrimaryButton, SecondaryButton, StatusBadge, StudentSection } from "./ui";
+import { AdmittedEditModal } from "./admitted-edit-modal";
+import { StudentCrudPageHero } from "./student-crud-hero";
+import { Panel, PrimaryButton, SecondaryButton, StatusBadge, StudentSection } from "./ui";
 
 type AdmittedRow = {
   id: string;
@@ -30,6 +35,7 @@ export function VerifyStudentsPage() {
   const [dragOver, setDragOver] = useState(false);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "pending" | "registered">("all");
+  const [editing, setEditing] = useState<AdmittedRow | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const loadAdmitted = useCallback(async () => {
@@ -163,27 +169,10 @@ export function VerifyStudentsPage() {
     if (file) uploadFile(file);
   }
 
-  async function removeAdmitted(row: AdmittedRow) {
-    if (row.status === "Registered") {
-      await showError("Cannot remove", "This student has already completed registration.");
-      return;
-    }
-
-    const res = await fetch(`/api/students/admitted/${row.id}`, {
-      method: "DELETE",
-      credentials: "include",
-    });
-    const data = await res.json();
-    if (!res.ok) {
-      await showError("Remove failed", data.error ?? "Could not remove student.");
-      return;
-    }
-    await showSuccess("Removed", data.message);
-    await loadAdmitted();
-  }
-
   return (
     <StudentSection>
+      <StudentCrudPageHero section="verify" />
+
       <div className="grid gap-4 sm:grid-cols-3">
         <article className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm border-l-4 border-l-yellow-500">
           <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Admitted registry</p>
@@ -262,30 +251,14 @@ export function VerifyStudentsPage() {
         </Panel>
       </div>
 
-      <Panel
+      <AdminTableShell
         title="Admitted students registry"
-        noPadding
-        action={
-          <Link
-            href="/admin/students/add"
-            className="rounded-lg bg-yellow-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-yellow-400"
-          >
-            Add one student
-          </Link>
-        }
-      >
-        <div className="border-b border-slate-100 px-4 py-3 sm:px-5">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-            <div className="flex-1 max-w-md">
-              <FieldLabel>Search</FieldLabel>
-              <input
-                type="search"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="ID, name, department…"
-                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-yellow-500/50 focus:ring-2 focus:ring-yellow-500/15"
-              />
-            </div>
+        count={filtered.length}
+        countLabel="students"
+        variant="detailed"
+        toolbar={
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+            <AdminCrudSearch value={search} onChange={setSearch} placeholder="ID, name, department…" />
             <div className="flex flex-wrap gap-2">
               {(
                 [
@@ -306,12 +279,18 @@ export function VerifyStudentsPage() {
                   {label}
                 </button>
               ))}
+              <Link
+                href="/admin/students/add"
+                className="rounded-lg bg-yellow-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-yellow-400"
+              >
+                Add one
+              </Link>
             </div>
           </div>
-        </div>
-
+        }
+      >
         {loading ? (
-          <p className="p-6 text-sm text-slate-500">Loading admitted students…</p>
+          <LoadingState message="Loading admitted students…" layout="compact" className="p-6" />
         ) : filtered.length === 0 ? (
           <p className="p-6 text-sm text-slate-500">
             {admitted.length === 0
@@ -319,49 +298,58 @@ export function VerifyStudentsPage() {
               : "No students match your filters."}
           </p>
         ) : (
-          <div className="max-w-full overflow-x-auto">
-            <table className="min-w-full text-sm">
-              <thead className="bg-slate-50/80 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
-                <tr>
-                  {["Student ID", "Name", "Department", "Program", "Status", "Actions"].map((h) => (
-                    <th key={h} className="px-3 py-2.5 sm:px-4">
-                      {h}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {filtered.map((row) => (
-                  <tr key={row.id} className="bg-white hover:bg-slate-50/80">
-                    <td className="px-3 py-3 font-mono text-xs font-semibold text-yellow-800 sm:px-4">
-                      {row.studentId}
-                    </td>
-                    <td className="px-3 py-3 sm:px-4">{row.fullName}</td>
-                    <td className="px-3 py-3 text-slate-600 sm:px-4">{row.department}</td>
-                    <td className="px-3 py-3 text-slate-600 sm:px-4">{row.program}</td>
-                    <td className="px-3 py-3 sm:px-4">
-                      <StatusBadge status={row.status === "Registered" ? "Registered" : "Pending"} />
-                    </td>
-                    <td className="px-3 py-3 sm:px-4">
-                      {row.status === "Pending" ? (
-                        <button
-                          type="button"
-                          onClick={() => removeAdmitted(row)}
-                          className="rounded-lg px-2 py-1 text-xs font-medium text-rose-600 hover:bg-rose-50"
-                        >
-                          Remove
-                        </button>
-                      ) : (
-                        <span className="text-xs text-slate-400">—</span>
-                      )}
-                    </td>
-                  </tr>
+          <table className="admin-crud-table">
+            <thead className="bg-slate-50/80 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+              <tr>
+                {["Student ID", "Name", "Department", "Program", "Status", "Actions"].map((h) => (
+                  <th key={h} className="px-3 py-2.5 sm:px-4">
+                    {h}
+                  </th>
                 ))}
-              </tbody>
-            </table>
-          </div>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {filtered.map((row) => (
+                <tr key={row.id} className="admin-crud-table-row bg-white hover:bg-slate-50/80">
+                  <td className="px-3 py-3 font-mono text-xs font-semibold text-yellow-800 sm:px-4">
+                    {row.studentId}
+                  </td>
+                  <td className="px-3 py-3 sm:px-4">{row.fullName}</td>
+                  <td className="px-3 py-3 text-slate-600 sm:px-4">{row.department}</td>
+                  <td className="px-3 py-3 text-slate-600 sm:px-4">{row.program}</td>
+                  <td className="px-3 py-3 sm:px-4">
+                    <StatusBadge status={row.status === "Registered" ? "Registered" : "Pending"} />
+                  </td>
+                  <td className="admin-crud-table-actions-cell px-3 py-3 sm:px-4">
+                    {row.status === "Pending" ? (
+                      <AdminRowActions
+                        onEdit={() => setEditing(row)}
+                        onDelete={() =>
+                          void confirmAndDelete(
+                            `/api/students/admitted/${row.id}`,
+                            "This student will be removed from the admitted registry.",
+                            () => void loadAdmitted(),
+                          )
+                        }
+                      />
+                    ) : (
+                      <span className="text-xs text-slate-400">Registered</span>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         )}
-      </Panel>
+      </AdminTableShell>
+
+      {editing ? (
+        <AdmittedEditModal
+          row={editing}
+          onClose={() => setEditing(null)}
+          onSaved={() => void loadAdmitted()}
+        />
+      ) : null}
     </StudentSection>
   );
 }

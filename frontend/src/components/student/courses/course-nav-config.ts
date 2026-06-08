@@ -23,7 +23,6 @@ export const myCoursesSubmenu = [
     href: "/student/courses/videos",
     slug: "videos",
   },
-  { label: "Assignments", href: "/student/courses/assignments", slug: "assignments" },
   { label: "Quizzes", href: "/student/courses/quizzes", slug: "quizzes" },
   { label: "Discussions", href: "/student/courses/discussions", slug: "discussions" },
   { label: "Bookmarks", href: "/student/courses/bookmarks", slug: "bookmarks" },

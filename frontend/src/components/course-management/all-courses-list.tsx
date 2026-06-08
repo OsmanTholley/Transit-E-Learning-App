@@ -1,10 +1,12 @@
 "use client";
+import { LoadingState } from "@/components/ui/loading-indicator";
 
 import { useMemo, useState } from "react";
 import { useApiLoad } from "@/hooks/use-api-load";
 import { CourseRecord } from "@/types/academic";
 import { CourseFilters, CourseFilterValues } from "./course-filters";
 import { CoursesTable } from "./courses-table";
+import { AdminCrudPageHero } from "@/components/admin/admin-entity-crud";
 import { StatCard, StudentSection } from "@/components/student-management/ui";
 
 const emptyFilters: CourseFilterValues = {
@@ -35,7 +37,7 @@ export function AllCoursesList({
   statusFilter?: CourseRecord["status"];
   title?: string;
 }) {
-  const { data, loading, error } = useApiLoad<{ courses: CourseRecord[] }>("/api/courses", {
+  const { data, loading, error, reload } = useApiLoad<{ courses: CourseRecord[] }>("/api/courses", {
     errorTitle: "Could not load courses",
   });
   const courses = data?.courses ?? [];
@@ -71,9 +73,7 @@ export function AllCoursesList({
 
   if (loading) {
     return (
-      <div className="flex min-h-[200px] items-center justify-center rounded-2xl border border-slate-200/80 bg-white p-8">
-        <p className="text-sm text-slate-500">Loading courses…</p>
-      </div>
+      <LoadingState message="Loading courses…" panel minHeight={200} />
     );
   }
 
@@ -85,6 +85,14 @@ export function AllCoursesList({
 
   return (
     <StudentSection>
+      <AdminCrudPageHero
+        entity="course"
+        title={statusFilter === "Archived" ? "Archived courses" : "Manage courses"}
+        description="Maintain the course catalog — update codes, titles, year levels, and semesters, or remove courses from the system."
+        addHref="/admin/courses/add"
+        addLabel="Add course"
+      />
+
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard label="Total Courses" value={courses.length} tone="amber" />
         <StatCard label="Active" value={active} tone="blue" />
@@ -95,7 +103,7 @@ export function AllCoursesList({
       <CoursesTable
         courses={filtered}
         title={title}
-        actions="view"
+        onRefresh={() => void reload()}
         toolbar={
           <CourseFilters
             inline

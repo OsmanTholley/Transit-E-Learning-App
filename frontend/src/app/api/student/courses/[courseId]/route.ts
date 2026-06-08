@@ -4,7 +4,6 @@ import {
   buildCourseDetail,
   getAccessibleCoursesForStudent,
 } from "@/lib/student-courses-data";
-import { courseMatchesStudentProfile } from "@/lib/student-courses-service";
 
 export async function GET(
   _request: Request,
@@ -23,10 +22,6 @@ export async function GET(
     }
 
     const course = courses[index];
-    if (!courseMatchesStudentProfile(course, student)) {
-      return NextResponse.json({ error: "Course not available for your program." }, { status: 403 });
-    }
-
     return NextResponse.json(buildCourseDetail(student, course, index));
   } catch (error) {
     console.error("GET /api/student/courses/[courseId]:", error);

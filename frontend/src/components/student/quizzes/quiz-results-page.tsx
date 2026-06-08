@@ -1,4 +1,5 @@
 "use client";
+import { LoadingState } from "@/components/ui/loading-indicator";
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
@@ -7,16 +8,15 @@ import { motion } from "framer-motion";
 import type { QuizSubmitResult, StudentQuizSummary } from "@/types/student-quizzes";
 import { CircularProgress } from "@/components/student/quizzes/quiz-ui";
 
-const LS_LAST_RESULT = "transit.quizzes.lastResult.v1";
+import { readStudentPreference } from "@/hooks/use-student-preference";
+import { STUDENT_PREF_KEYS } from "@/lib/student-preference-keys";
 
 function loadResult(quizId: string): QuizSubmitResult | null {
-  if (typeof window === "undefined") return null;
-  try {
-    const all = JSON.parse(localStorage.getItem(LS_LAST_RESULT) ?? "{}") as Record<string, QuizSubmitResult>;
-    return all[quizId] ?? null;
-  } catch {
-    return null;
-  }
+  const all = readStudentPreference<Record<string, QuizSubmitResult>>(
+    STUDENT_PREF_KEYS.quizLastResults,
+    {}
+  );
+  return all[quizId] ?? null;
 }
 
 export function QuizResultsPage({ quizId }: { quizId: string }) {
@@ -78,7 +78,7 @@ export function QuizResultsPage({ quizId }: { quizId: string }) {
   }
 
   if (loading) {
-    return <p className="text-sm text-slate-500">Loading results…</p>;
+    return <LoadingState message="Loading results…" layout="inline" />;
   }
 
   const percentage = result?.percentage ?? quiz?.bestScore ?? 0;

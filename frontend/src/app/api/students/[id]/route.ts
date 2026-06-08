@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAdminUser, unauthorized } from "@/lib/auth";
 import { assignProgramToStudents } from "@/lib/student-program-assignment";
 import { updateStudentAccount } from "@/lib/student-update";
+import { deleteStudentAccount } from "@/lib/student-delete";
 import { prisma } from "@/lib/prisma";
 import { mapStudentToRecord } from "@/lib/student-mapper";
 
@@ -44,7 +45,6 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       body.departmentId &&
       body.programId &&
       body.level &&
-      body.semester &&
       body.fullName === undefined &&
       body.email === undefined &&
       body.phone === undefined &&
@@ -64,7 +64,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
         departmentId: body.departmentId,
         programId: body.programId,
         level: body.level,
-        semester: body.semester,
+        gender: body.gender,
         admissionYear: body.admissionYear,
       });
 
@@ -78,7 +78,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       });
     }
 
-    const result = await updateStudentAccount(id, body);
+    const result = await updateStudentAccount(id, { ...body, actorId: admin.id });
     if ("error" in result) {
       return NextResponse.json({ error: result.error }, { status: 400 });
     }
@@ -90,5 +90,23 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   } catch (error) {
     console.error("PATCH /api/students/[id]:", error);
     return NextResponse.json({ error: "Failed to update student." }, { status: 500 });
+  }
+}
+
+export async function DELETE(_request: Request, { params }: { params: Promise<{ id: string }> }) {
+  try {
+    const admin = await requireAdminUser();
+    if (!admin) return unauthorized();
+
+    const { id } = await params;
+    const result = await deleteStudentAccount(id, admin.id);
+    if ("error" in result) {
+      return NextResponse.json({ error: result.error }, { status: 400 });
+    }
+
+    return NextResponse.json({ message: result.message });
+  } catch (error) {
+    console.error("DELETE /api/students/[id]:", error);
+    return NextResponse.json({ error: "Failed to delete student." }, { status: 500 });
   }
 }

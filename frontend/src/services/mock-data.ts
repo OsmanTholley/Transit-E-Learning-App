@@ -15,9 +15,7 @@ export const navigation: Record<"student" | "lecturer", NavItem[]> = {
     { label: "Quizzes", href: "/student/quizzes" },
     { label: "Discussions", href: "/student/discussions" },
     { label: "AI Tutor", href: "/student/ai-tutor" },
-    { label: "Notifications", href: "/student/notifications" },
     { label: "Profile", href: "/student/profile" },
-    { label: "Settings", href: "/student/settings" },
   ],
   lecturer: [
     { label: "Dashboard", href: "/lecturer/dashboard" },
@@ -28,7 +26,6 @@ export const navigation: Record<"student" | "lecturer", NavItem[]> = {
     { label: "Assignments", href: "/lecturer/assignments" },
     { label: "Students", href: "/lecturer/students" },
     { label: "AI Assistant", href: "/lecturer/ai" },
-    { label: "Notifications", href: "/lecturer/notifications" },
     { label: "Profile", href: "/lecturer/profile" },
   ],
 };
@@ -77,9 +74,6 @@ export const adminNavigation: AdminNavigation = {
     {
       label: "Learning",
       items: [
-        { label: "Assignments", href: "/admin/assignments" },
-        { label: "Quizzes", href: "/admin/quizzes" },
-        { label: "Discussions", href: "/admin/discussions" },
         { label: "AI Assistant", href: "/admin/ai" },
       ],
     },
@@ -87,10 +81,9 @@ export const adminNavigation: AdminNavigation = {
       label: "System",
       items: [
         { label: "Announcements", href: "/admin/announcements" },
-        { label: "Notifications", href: "/admin/notifications" },
-        { label: "Reports & Analytics", href: "/admin/reports" },
         { label: "System Settings", href: "/admin/settings" },
         { label: "Activity Logs", href: "/admin/activity-logs" },
+        { label: "YouTube Views", href: "/admin/youtube-views" },
       ],
     },
   ],
@@ -351,11 +344,6 @@ const adminSections: Record<string, SectionContent> = {
     subtitle: "Review system notifications delivered to users.",
     bullets: ["Audit notification templates.", "Monitor delivery volume."],
   },
-  reports: {
-    title: "Reports & Analytics",
-    subtitle: "Track platform usage and performance.",
-    bullets: ["User growth trends.", "Course and content engagement."],
-  },
   profile: {
     title: "My Profile",
     subtitle: "Your administrator account, access level, and contact details.",
@@ -369,6 +357,11 @@ const adminSections: Record<string, SectionContent> = {
     title: "Activity Logs",
     subtitle: "Audit admin actions and important events.",
     bullets: ["Review admin activity.", "Export audit records."],
+  },
+  "youtube-views": {
+    title: "YouTube Views",
+    subtitle: "Track which YouTube videos students are watching inside the portal.",
+    bullets: ["See most-watched videos.", "View per-student activity."],
   },
 };
 

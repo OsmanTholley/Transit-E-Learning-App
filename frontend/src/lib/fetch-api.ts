@@ -9,6 +9,7 @@ import {
   beginDatabaseOfflineRecovery,
   isDatabaseOfflineResponse,
 } from "@/lib/db-offline-client";
+import { flushOfflineSyncQueue } from "@/lib/offline-sync";
 import { showError } from "@/lib/swal";
 
 export type ApiErrorBody = { error?: string; code?: string; message?: string };
@@ -59,7 +60,9 @@ export async function requestApi<T>(
 
     if (isDatabaseOfflineResponse(response, data)) {
       beginDatabaseOfflineRecovery(() => {
-        onRecovered?.();
+        void flushOfflineSyncQueue().finally(() => {
+          onRecovered?.();
+        });
       });
       return { ok: false, offline: true };
     }
@@ -74,6 +77,16 @@ export async function requestApi<T>(
 
     return { ok: true, data, offline: false };
   } catch {
+    const offline = typeof navigator !== "undefined" && !navigator.onLine;
+    if (offline) {
+      beginDatabaseOfflineRecovery(() => {
+        void flushOfflineSyncQueue().finally(() => {
+          onRecovered?.();
+        });
+      });
+      return { ok: false, offline: true };
+    }
+
     if (!silent) {
       await showError(errorTitle, DATABASE_OFFLINE_MESSAGE);
     }

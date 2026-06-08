@@ -1,9 +1,11 @@
 "use client";
+import { LoadingState } from "@/components/ui/loading-indicator";
 
 import { useMemo, useState } from "react";
 import { LecturerRecord } from "@/types/lecturer";
 import { useLecturers } from "@/hooks/use-lecturers";
 import { LecturerFilters, LecturerFilterValues } from "./lecturer-filters";
+import { LecturerCrudPageHero } from "./lecturer-crud-hero";
 import { LecturersTable } from "./lecturers-table";
 import { StatCard, StudentSection } from "@/components/student-management/ui";
 
@@ -27,7 +29,7 @@ function matchesFilters(lecturer: LecturerRecord, filters: LecturerFilterValues)
 }
 
 export function AllLecturersList() {
-  const { lecturers, loading, error } = useLecturers();
+  const { lecturers, loading, error, refetch } = useLecturers();
   const [filters, setFilters] = useState<LecturerFilterValues>(emptyFilters);
 
   const departmentOptions = useMemo(() => {
@@ -51,9 +53,7 @@ export function AllLecturersList() {
 
   if (loading) {
     return (
-      <div className="flex min-h-[200px] items-center justify-center rounded-2xl border border-slate-200/80 bg-white p-8">
-        <p className="text-sm text-slate-500">Loading lecturers…</p>
-      </div>
+      <LoadingState message="Loading lecturers…" panel minHeight={200} />
     );
   }
 
@@ -65,6 +65,8 @@ export function AllLecturersList() {
 
   return (
     <StudentSection>
+      <LecturerCrudPageHero section="all" />
+
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard label="Total Lecturers" value={lecturers.length} tone="amber" />
         <StatCard label="Active" value={active} tone="blue" />
@@ -75,7 +77,7 @@ export function AllLecturersList() {
       <LecturersTable
         lecturers={filtered}
         title="All lecturers"
-        actions="view"
+        onRefresh={() => void refetch()}
         toolbar={
           <LecturerFilters
             inline

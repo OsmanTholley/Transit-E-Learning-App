@@ -30,6 +30,7 @@ export async function listActiveNotifications(userId: string) {
       id: true,
       title: true,
       message: true,
+      targetUrl: true,
       isRead: true,
       readAt: true,
       createdAt: true,
@@ -40,6 +41,7 @@ export async function listActiveNotifications(userId: string) {
     id: n.id,
     title: n.title ?? "Notice",
     message: n.message ?? "",
+    targetUrl: n.targetUrl ?? null,
     isRead: n.isRead,
     readAt: n.readAt?.toISOString() ?? null,
     sentAt: n.createdAt.toLocaleString("en-GB", {
@@ -84,4 +86,12 @@ export async function markAllNotificationsRead(userId: string) {
     data: { isRead: true, readAt: now },
   });
   return result.count;
+}
+
+/** Users may remove a notice only after it has been read. */
+export async function deleteNotification(userId: string, id: string) {
+  const result = await prisma.notification.deleteMany({
+    where: { id, userId, isRead: true },
+  });
+  return result.count > 0;
 }

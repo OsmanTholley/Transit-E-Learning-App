@@ -197,16 +197,22 @@ export async function getDiscussionForStudent(
     student.id
   );
 
-  const comments: DiscussionComment[] = d.comments.map((c, i) => ({
-    id: c.id,
-    authorName: c.user?.fullName ?? "User",
-    authorInitials: initials(c.user?.fullName ?? "U"),
-    authorRole:
-      c.user?.role === "LECTURER" ? "lecturer" : c.user?.role === "ADMIN" ? "admin" : "student",
-    comment: c.comment,
-    createdAt: c.createdAt.toISOString(),
-    isPinned: i === 0 && c.user?.role === "LECTURER",
-  }));
+  const comments: DiscussionComment[] = d.comments
+    .map((c) => ({
+      id: c.id,
+      authorName: c.user?.fullName ?? "User",
+      authorInitials: initials(c.user?.fullName ?? "U"),
+      authorRole:
+        c.user?.role === "LECTURER" ? "lecturer" : c.user?.role === "ADMIN" ? "admin" : "student",
+      comment: c.comment,
+      createdAt: c.createdAt.toISOString(),
+      isPinned: c.user?.role === "LECTURER",
+    }))
+    .sort((a, b) => {
+      if (a.isPinned !== b.isPinned) return a.isPinned ? -1 : 1;
+      return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+    })
+    .map((c, i) => ({ ...c, isPinned: i === 0 && c.authorRole === "lecturer" }));
 
   return { ...summary, comments };
 }

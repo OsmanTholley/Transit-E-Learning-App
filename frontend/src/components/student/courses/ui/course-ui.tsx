@@ -3,6 +3,7 @@
 import { motion } from "framer-motion";
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { LoadingGrid as SharedLoadingGrid } from "@/components/ui/loading-indicator";
 
 export function PageHeader({
   title,
@@ -170,11 +171,5 @@ export function EmptyState({ title, message }: { title: string; message: string 
 }
 
 export function LoadingGrid() {
-  return (
-    <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-      {[1, 2, 3].map((i) => (
-        <div key={i} className="h-64 animate-pulse rounded-2xl bg-slate-200/60" />
-      ))}
-    </div>
-  );
+  return <SharedLoadingGrid />;
 }

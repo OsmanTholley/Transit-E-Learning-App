@@ -1,9 +1,12 @@
 "use client";
+import { LoadingState } from "@/components/ui/loading-indicator";
 
 import { FormEvent, useState } from "react";
 import { useApiLoad } from "@/hooks/use-api-load";
 import { requestApi } from "@/lib/fetch-api";
+import { publishLecturerVideo } from "@/lib/lecturer-ui-mutation";
 import { LecturerSubTabs } from "@/components/lecturer/lecturer-sub-tabs";
+import { LecturerVideoAnalyticsPanel } from "@/components/lecturer/lecturer-video-analytics-panel";
 import {
   CourseSelect,
   FieldLabel,
@@ -15,20 +18,17 @@ import {
   lecturerSuccess,
   lecturerError,
 } from "@/components/lecturer/lecturer-ui";
-import { ContentEngagementPanel } from "@/components/content/content-engagement-panel";
+import { YoutubeStyleVideoPlayer } from "@/components/video/youtube-style-video-player";
+import type { VideoPlayState } from "@/components/video/youtube-style-video-player";
+import { YoutubeVideoCard } from "@/components/video/youtube-video-card";
 import { Panel, PrimaryButton } from "@/components/student-management/ui";
 import type { LecturerVideoRow } from "@/types/lecturer-content";
-import { VIDEO_RETENTION_DAYS } from "@/lib/video-expiry";
 
 const tabs = [
   { id: "upload", label: "Publish video" },
-  { id: "manage", label: "Manage videos" },
+  { id: "library", label: "Video library" },
+  { id: "manage", label: "Manage & analytics" },
 ];
-
-function formatExpiry(iso: string | null) {
-  if (!iso) return "—";
-  return new Date(iso).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
-}
 
 export function LecturerVideosPage() {
   const [activeTab, setActiveTab] = useState("upload");
@@ -44,6 +44,7 @@ export function LecturerVideosPage() {
   const [duration, setDuration] = useState("");
   const [deletionNotice, setDeletionNotice] = useState("");
   const [useLink, setUseLink] = useState(true);
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -53,12 +54,17 @@ export function LecturerVideosPage() {
   const [editVideoUrl, setEditVideoUrl] = useState("");
   const [editCourseId, setEditCourseId] = useState("");
   const [editNotice, setEditNotice] = useState("");
+  const [libraryVideo, setLibraryVideo] = useState<LecturerVideoRow | null>(null);
+  const [manageVideo, setManageVideo] = useState<LecturerVideoRow | null>(null);
+  const [playState, setPlayState] = useState<VideoPlayState>("paused");
 
   const courses = coursesData?.courses ?? [];
   const videos = data?.videos ?? [];
+  const libraryPlaying = playState === "playing";
 
   async function onFileChange(file: File | null, forEdit = false) {
     if (!file) return;
+    if (!forEdit) setPendingFile(file);
     setUploading(true);
     try {
       const uploaded = await uploadFile(file, { kind: "video" });
@@ -66,10 +72,16 @@ export function LecturerVideosPage() {
       else {
         setVideoUrl(uploaded.url);
         setUseLink(false);
+        setPendingFile(null);
       }
       if (!forEdit && !title) setTitle(file.name.replace(/\.[^.]+$/, ""));
     } catch (e) {
-      await lecturerError("Upload failed", e instanceof Error ? e.message : "Try again.");
+      if (!forEdit && (typeof navigator !== "undefined" && !navigator.onLine || (e instanceof Error && /fetch|network/i.test(e.message)))) {
+        setVideoUrl("");
+        setUseLink(false);
+      } else {
+        await lecturerError("Upload failed", e instanceof Error ? e.message : "Try again.");
+      }
     } finally {
       setUploading(false);
     }
@@ -78,38 +90,40 @@ export function LecturerVideosPage() {
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setSaving(true);
-    const result = await requestApi<{ video: LecturerVideoRow; message?: string }>(
-      "/api/lecturer/videos",
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          courseId,
-          title,
-          videoUrl,
-          duration,
-          deletionNotice: deletionNotice || undefined,
-        }),
-        errorTitle: "Could not publish video",
-      }
-    );
-    if (result.ok) {
+    const result = await publishLecturerVideo({
+      courseId,
+      title,
+      videoUrl,
+      duration,
+      deletionNotice: deletionNotice || undefined,
+      pendingFile,
+      useLink,
+    });
+    if (result.status === "published") {
       setData({ videos: [result.data.video, ...videos] });
       setTitle("");
       setVideoUrl("");
       setDuration("");
       setDeletionNotice("");
-      await lecturerSuccess(
-        result.data.message ??
-          `Video published. Students are notified it will be removed in ${VIDEO_RETENTION_DAYS} days.`
-      );
-      setActiveTab("manage");
+      setPendingFile(null);
+      setCourseId("");
+      await lecturerSuccess(result.data.message ?? "Video published. Students have been notified.");
+      setActiveTab("library");
+    } else if (result.status === "queued") {
+      setTitle("");
+      setVideoUrl("");
+      setDuration("");
+      setDeletionNotice("");
+      setPendingFile(null);
+      setCourseId("");
+      setActiveTab("library");
     }
     setSaving(false);
   }
 
   function startEdit(v: LecturerVideoRow) {
     setEditing(v);
+    setManageVideo(null);
     setEditTitle(v.title);
     setEditDuration(v.duration ?? "");
     setEditVideoUrl(v.videoUrl);
@@ -152,19 +166,29 @@ export function LecturerVideosPage() {
     if (result.ok) {
       setData({ videos: videos.filter((v) => v.id !== id) });
       if (editing?.id === id) setEditing(null);
+      if (manageVideo?.id === id) setManageVideo(null);
+      if (libraryVideo?.id === id) setLibraryVideo(null);
       await lecturerSuccess("Video deleted.");
     }
   }
 
+  function selectLibraryVideo(v: LecturerVideoRow) {
+    setLibraryVideo(v);
+    setPlayState("paused");
+  }
+
   return (
     <div className="space-y-6">
-      <section className="rounded-2xl bg-gradient-to-br from-[#0B3D91] to-[#072d6b] p-6 text-white shadow-sm">
+      <section className="hidden rounded-2xl bg-gradient-to-br from-[#0B3D91] to-[#072d6b] p-6 text-white shadow-sm sm:block">
         <h2 className="text-xl font-bold">Video lessons</h2>
         <p className="mt-2 text-sm text-blue-100">
-          Upload up to about 30 minutes of video (max 500 MB). Each video is available for{" "}
-          {VIDEO_RETENTION_DAYS}{" "}
-          days; enrolled students receive a notification to download before it is removed.
+          Upload up to about 30 minutes of video (max 500 MB). Videos stay available until you or an admin
+          deletes them; students are notified when you publish.
         </p>
+      </section>
+
+      <section className="sm:hidden">
+        <h2 className="text-lg font-bold text-slate-900">Video lessons</h2>
       </section>
 
       <LecturerSubTabs tabs={tabs} active={activeTab} onChange={setActiveTab} />
@@ -191,7 +215,7 @@ export function LecturerVideosPage() {
                 value={deletionNotice}
                 onChange={(e) => setDeletionNotice(e.target.value)}
                 rows={2}
-                placeholder={`Leave blank for default ${VIDEO_RETENTION_DAYS}-day removal notice`}
+                placeholder="Optional message shown to students with this video"
                 className={textareaClass}
               />
             </label>
@@ -239,13 +263,72 @@ export function LecturerVideosPage() {
                 />
                 {uploading ? <p className="mt-1 text-xs text-slate-500">Uploading…</p> : null}
                 {videoUrl ? <p className="mt-1 text-xs text-emerald-600">Ready to publish</p> : null}
+                {pendingFile && !videoUrl ? (
+                  <p className="mt-1 text-xs text-amber-700">Video selected — will upload when you publish or reconnect.</p>
+                ) : null}
               </label>
             )}
-            <PrimaryButton type="submit" disabled={saving || !videoUrl}>
+            <PrimaryButton
+              type="submit"
+              disabled={saving || courses.length === 0 || (!useLink && !videoUrl && !pendingFile) || (useLink && !videoUrl)}
+            >
               {saving ? "Publishing…" : "Publish video"}
             </PrimaryButton>
           </div>
         </form>
+      ) : activeTab === "library" ? (
+        <div className="space-y-4 sm:space-y-6">
+          {libraryVideo ? (
+            <div className="space-y-3">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <h3 className="text-base font-bold text-slate-900 sm:text-lg">{libraryVideo.title}</h3>
+                  <p className="text-sm text-slate-500">{libraryVideo.course}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setLibraryVideo(null);
+                    setPlayState("paused");
+                  }}
+                  className="shrink-0 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50"
+                >
+                  Close
+                </button>
+              </div>
+              <YoutubeStyleVideoPlayer
+                key={libraryVideo.id}
+                src={libraryVideo.videoUrl}
+                title={libraryVideo.title}
+                onPlayStateChange={setPlayState}
+                className="w-full"
+              />
+            </div>
+          ) : null}
+
+          {!libraryPlaying ? (
+            <Panel title="Your video library">
+              {loading && !data ? (
+                <LoadingState message="Loading…" layout="inline" />
+              ) : videos.length === 0 ? (
+                <p className="text-sm text-slate-500">Publish a video to build your library.</p>
+              ) : (
+                <div className="grid grid-cols-1 gap-x-4 gap-y-6 sm:grid-cols-2 xl:grid-cols-3">
+                  {videos.map((v) => (
+                    <YoutubeVideoCard
+                      key={v.id}
+                      title={v.title}
+                      subtitle={v.course}
+                      duration={v.duration}
+                      active={libraryVideo?.id === v.id}
+                      onClick={() => selectLibraryVideo(v)}
+                    />
+                  ))}
+                </div>
+              )}
+            </Panel>
+          ) : null}
+        </div>
       ) : (
         <div className="space-y-6">
           {editing ? (
@@ -300,58 +383,88 @@ export function LecturerVideosPage() {
                 </div>
               </div>
             </form>
-          ) : null}
-
-          <Panel title="Published videos">
-            {loading && !data ? (
-              <p className="text-sm text-slate-500">Loading…</p>
-            ) : videos.length === 0 ? (
-              <p className="text-sm text-slate-500">No videos yet.</p>
-            ) : (
-              <ul className="space-y-3">
-                {videos.map((v) => (
-                  <li
-                    key={v.id}
-                    className="rounded-xl border border-slate-200 bg-slate-50/50 p-4 text-sm"
+          ) : manageVideo ? (
+            <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+              <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+                <p className="text-sm font-bold text-slate-900">Manage & analytics</p>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => startEdit(manageVideo)}
+                    className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
                   >
-                    <p className="font-semibold text-slate-900">{v.title}</p>
-                    <p className="text-xs text-slate-500">{v.course}</p>
-                    <p className="mt-1 text-xs text-amber-700">
-                      Removes on: {formatExpiry(v.expiresAt)}
-                    </p>
-                    {v.deletionNotice ? (
-                      <p className="mt-1 text-xs text-slate-600 line-clamp-2">{v.deletionNotice}</p>
-                    ) : null}
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      <a
-                        href={v.videoUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="text-xs font-semibold text-[#0B3D91]"
-                      >
-                        Open
-                      </a>
-                      <button
-                        type="button"
-                        onClick={() => startEdit(v)}
-                        className="text-xs font-semibold text-slate-700"
-                      >
-                        Edit
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => void removeVideo(v.id)}
-                        className="text-xs font-semibold text-rose-600"
-                      >
-                        Delete
-                      </button>
-                    </div>
-                    <ContentEngagementPanel targetType="video" targetId={v.id} compact />
-                  </li>
-                ))}
-              </ul>
-            )}
-          </Panel>
+                    Edit
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void removeVideo(manageVideo.id)}
+                    className="rounded-lg border border-rose-200 px-3 py-1.5 text-xs font-semibold text-rose-600 hover:bg-rose-50"
+                  >
+                    Delete
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setManageVideo(null)}
+                    className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50"
+                  >
+                    Back to list
+                  </button>
+                </div>
+              </div>
+              <LecturerVideoAnalyticsPanel video={manageVideo} />
+            </div>
+          ) : (
+            <Panel title="Published videos">
+              {loading && !data ? (
+                <LoadingState message="Loading…" layout="inline" />
+              ) : videos.length === 0 ? (
+                <p className="text-sm text-slate-500">No videos yet.</p>
+              ) : (
+                <ul className="space-y-3">
+                  {videos.map((v) => (
+                    <li
+                      key={v.id}
+                      className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-slate-50/50 p-4 text-sm sm:flex-row sm:items-center sm:justify-between"
+                    >
+                      <div className="min-w-0">
+                        <p className="font-semibold text-slate-900">{v.title}</p>
+                        <p className="text-xs text-slate-500">{v.course}</p>
+                        {v.deletionNotice ? (
+                          <p className="mt-1 text-xs text-slate-600 line-clamp-2">{v.deletionNotice}</p>
+                        ) : null}
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEditing(null);
+                            setManageVideo(v);
+                          }}
+                          className="rounded-lg bg-[#0B3D91] px-3 py-1.5 text-xs font-bold text-white hover:bg-[#0a3580]"
+                        >
+                          Manage & analytics
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => startEdit(v)}
+                          className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-white"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => void removeVideo(v.id)}
+                          className="rounded-lg border border-rose-200 px-3 py-1.5 text-xs font-semibold text-rose-600 hover:bg-rose-50"
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </Panel>
+          )}
         </div>
       )}
     </div>

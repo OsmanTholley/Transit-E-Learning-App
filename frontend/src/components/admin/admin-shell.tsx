@@ -2,12 +2,16 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { ReactNode, useEffect, useState } from "react";
+import { ReactNode, Suspense, useState } from "react";
 import { TransitLogo } from "@/components/brand/transit-logo";
-import { NotificationBell } from "@/components/layout/notification-bell";
-import { TopbarUserMenu } from "@/components/layout/topbar-user-menu";
+import { NavigationProgress } from "@/components/layout/navigation-progress";
+import { OfflineSyncBanner } from "@/components/layout/offline-sync-banner";
+import { PortalTopbar } from "@/components/layout/portal-topbar";
 import { MobileNavOverlay, MobileTopBar } from "@/components/layout/mobile-top-bar";
 import { avatarInitials } from "@/lib/user-profile-helpers";
+import { logout } from "@/services/auth";
+import { adminNavSections } from "@/services/admin-dashboard-data";
+import { useMobileNav } from "@/hooks/use-mobile-nav";
 
 function sectionBaseHref(href: string) {
   if (href.includes("/content/")) return "/admin/content";
@@ -16,8 +20,6 @@ function sectionBaseHref(href: string) {
   if (parts.length >= 2) return `/${parts[0]}/${parts[1]}`;
   return href;
 }
-import { logout } from "@/services/auth";
-import { adminNavSections } from "@/services/admin-dashboard-data";
 
 function NavIcon({ name }: { name: string }) {
   const cls = "h-5 w-5 shrink-0";
@@ -91,6 +93,12 @@ function NavIcon({ name }: { name: string }) {
           <path d="M9 14h6M10 18h4" />
         </svg>
       );
+    case "youtube":
+      return (
+        <svg viewBox="0 0 24 24" className={cls} fill="currentColor">
+          <path d="M23.5 6.19a3.02 3.02 0 0 0-2.12-2.14C19.54 3.5 12 3.5 12 3.5s-7.54 0-9.38.55A3.02 3.02 0 0 0 .5 6.19 31.8 31.8 0 0 0 0 12a31.8 31.8 0 0 0 .5 5.81 3.02 3.02 0 0 0 2.12 2.14c1.84.55 9.38.55 9.38.55s7.54 0 9.38-.55a3.02 3.02 0 0 0 2.12-2.14A31.8 31.8 0 0 0 24 12a31.8 31.8 0 0 0-.5-5.81zM9.75 15.02V8.98L15.5 12l-5.75 3.02z" />
+        </svg>
+      );
     default:
       return (
         <svg viewBox="0 0 24 24" className={cls} fill="none" stroke="currentColor" strokeWidth="2">
@@ -112,7 +120,6 @@ export function AdminShell({ adminName, adminEmail, profileImage, children }: Pr
   const pathname = usePathname();
   const router = useRouter();
 
-  const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [openMenus, setOpenMenus] = useState<Record<string, boolean>>(() => {
     const initial: Record<string, boolean> = {};
     for (const section of adminNavSections) {
@@ -122,6 +129,8 @@ export function AdminShell({ adminName, adminEmail, profileImage, children }: Pr
     }
     return initial;
   });
+
+  const { mobileNavOpen, openMobileNav, closeMobileNav } = useMobileNav(pathname);
 
   const initials = avatarInitials(adminName);
 
@@ -134,12 +143,6 @@ export function AdminShell({ adminName, adminEmail, profileImage, children }: Pr
     router.push("/login");
   };
 
-  useEffect(() => {
-    Promise.resolve().then(() => {
-      setMobileNavOpen(false);
-    });
-  }, [pathname]);
-
   const isItemActive = (href: string, hasChildren: boolean) => {
     if (pathname === href) return true;
     if (hasChildren) {
@@ -151,7 +154,10 @@ export function AdminShell({ adminName, adminEmail, profileImage, children }: Pr
 
   return (
     <div className="flex min-h-screen bg-slate-100">
-      <MobileNavOverlay open={mobileNavOpen} onClose={() => setMobileNavOpen(false)} />
+      <Suspense fallback={null}>
+        <NavigationProgress />
+      </Suspense>
+      <MobileNavOverlay open={mobileNavOpen} onClose={closeMobileNav} />
       <aside
         className={[
           "fixed inset-y-0 left-0 z-50 flex w-[min(100vw,17.5rem)] flex-col border-r border-white/5 bg-[#003B8E] text-white shadow-xl transition-transform duration-200 lg:z-30 lg:translate-x-0 lg:shadow-none",
@@ -164,7 +170,7 @@ export function AdminShell({ adminName, adminEmail, profileImage, children }: Pr
             type="button"
             className="rounded-lg p-2 text-white/80 hover:bg-white/10 lg:hidden"
             aria-label="Close menu"
-            onClick={() => setMobileNavOpen(false)}
+            onClick={closeMobileNav}
           >
             <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M6 6l12 12M6 18L18 6" />
@@ -273,42 +279,23 @@ export function AdminShell({ adminName, adminEmail, profileImage, children }: Pr
         </div>
       </aside>
       <div className="flex min-h-screen w-full flex-1 flex-col lg:ml-[17.5rem]">
-        <MobileTopBar onMenuClick={() => setMobileNavOpen(true)} />
-        <header className="sticky top-0 z-20 hidden border-b border-blue-200 bg-blue-50 px-4 py-4 sm:px-6 lg:block">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-            <div className="relative flex-1 max-w-xl">
-              <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
-                <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2">
-                  <circle cx="11" cy="11" r="7" />
-                  <path d="M20 20l-3.5-3.5" />
-                </svg>
-              </span>
-              <input
-                type="search"
-                placeholder="Search students, lecturers, courses..."
-                className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 pl-11 pr-4 text-sm outline-none transition focus:border-yellow-500/40 focus:bg-white focus:ring-2 focus:ring-yellow-500/15"
-              />
-            </div>
+        <MobileTopBar onMenuClick={openMobileNav} />
+        <PortalTopbar
+          role="admin"
+          variant="admin"
+          roleBadge="Administrator"
+          searchPlaceholder="Search students, lecturers, courses..."
+          fullName={adminName}
+          subtitle={adminEmail || "Administrator"}
+          profileImage={profileImage}
+          initials={initials}
+          profileHref="/admin/profile"
+        />
 
-            <div className="flex items-center justify-end gap-3">
-              <span className="hidden rounded-full bg-yellow-50 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-yellow-800 ring-1 ring-yellow-200 sm:inline">
-                Administrator
-              </span>
-              <NotificationBell role="admin" variant="admin" />
-              <TopbarUserMenu
-                role="admin"
-                variant="admin"
-                fullName={adminName}
-                subtitle={adminEmail || "Administrator"}
-                profileImage={profileImage}
-                initials={initials}
-                profileHref="/admin/profile"
-              />
-            </div>
-          </div>
-        </header>
-
-        <main className="safe-pb flex-1 px-4 py-4 sm:px-6 sm:py-6">{children}</main>
+        <main className="safe-pb flex-1 px-4 py-4 sm:px-6 sm:py-6">
+          <OfflineSyncBanner />
+          {children}
+        </main>
       </div>
     </div>
   );

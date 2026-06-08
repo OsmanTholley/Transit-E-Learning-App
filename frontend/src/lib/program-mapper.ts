@@ -4,6 +4,7 @@ type ProgramWithRelations = {
   id: string;
   programName: string;
   duration: string | null;
+  departmentId: string | null;
   createdAt: Date;
   department: { departmentName: string } | null;
   _count: { students: number; courses: number };
@@ -21,6 +22,7 @@ export function mapProgramToRecord(program: ProgramWithRelations): ProgramRecord
     id: program.id,
     name: program.programName,
     department: program.department?.departmentName ?? "—",
+    departmentId: program.departmentId,
     duration: program.duration ?? "—",
     totalStudents: program._count.students,
     totalCourses: program._count.courses,

@@ -1,4 +1,5 @@
 "use client";
+import { LoadingState } from "@/components/ui/loading-indicator";
 
 import { FormEvent, useState } from "react";
 import { useApiLoad } from "@/hooks/use-api-load";
@@ -326,7 +327,7 @@ export function LecturerAssignmentsPage() {
 
       <Panel title="Assignments">
         {loading && !data ? (
-          <p className="text-sm text-slate-500">Loading…</p>
+          <LoadingState message="Loading…" layout="inline" />
         ) : assignments.length === 0 ? (
           <p className="text-sm text-slate-500">No assignments yet.</p>
         ) : (
@@ -368,7 +369,7 @@ export function LecturerAssignmentsPage() {
                 {gradingId === a.id ? (
                   <div className="border-t border-slate-100 bg-slate-50/80 px-4 py-3">
                     {loadingSubs ? (
-                      <p className="text-sm text-slate-500">Loading submissions…</p>
+                      <LoadingState message="Loading submissions…" layout="inline" />
                     ) : submissions.length === 0 ? (
                       <p className="text-sm text-slate-500">
                         No submissions yet for {gradingTitle}.

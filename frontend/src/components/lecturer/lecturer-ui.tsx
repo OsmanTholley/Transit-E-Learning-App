@@ -1,7 +1,6 @@
 "use client";
 
 import { useApiLoad } from "@/hooks/use-api-load";
-import { requestApi } from "@/lib/fetch-api";
 import type { LecturerCourseOption } from "@/types/lecturer-content";
 
 export function useLecturerCourses() {

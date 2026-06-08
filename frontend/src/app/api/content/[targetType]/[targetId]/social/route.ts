@@ -8,6 +8,12 @@ import {
   parseSocialTarget,
   toggleContentLike,
 } from "@/lib/content-social";
+import { createHash } from "crypto";
+
+function getUuidFromYoutubeId(youtubeId: string): string {
+  const hash = createHash("md5").update(youtubeId).digest("hex");
+  return `${hash.slice(0, 8)}-${hash.slice(8, 12)}-${hash.slice(12, 16)}-${hash.slice(16, 20)}-${hash.slice(20, 32)}`;
+}
 
 type Params = { params: Promise<{ targetType: string; targetId: string }> };
 
@@ -20,12 +26,20 @@ export async function GET(_request: NextRequest, { params }: Params) {
     }
 
     const user = await getValidatedUser(["student", "lecturer", "admin"]);
-    const exists = await assertContentTargetExists(targetType, targetId);
-    if (!exists) {
-      return NextResponse.json({ error: "Content not found." }, { status: 404 });
+
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(targetId);
+    let dbTargetId = targetId;
+
+    if (targetType === "VIDEO" && !isUuid) {
+      dbTargetId = getUuidFromYoutubeId(targetId);
+    } else {
+      const exists = await assertContentTargetExists(targetType, targetId);
+      if (!exists) {
+        return NextResponse.json({ error: "Content not found." }, { status: 404 });
+      }
     }
 
-    const engagement = await getContentEngagement(targetType, targetId, user?.id ?? null);
+    const engagement = await getContentEngagement(targetType, dbTargetId, user?.id ?? null);
     return NextResponse.json(engagement);
   } catch (error) {
     console.error("GET content social:", error);
@@ -48,9 +62,16 @@ export async function POST(request: NextRequest, { params }: Params) {
       return NextResponse.json({ error: "Invalid content type." }, { status: 400 });
     }
 
-    const exists = await assertContentTargetExists(targetType, targetId);
-    if (!exists) {
-      return NextResponse.json({ error: "Content not found." }, { status: 404 });
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(targetId);
+    let dbTargetId = targetId;
+
+    if (targetType === "VIDEO" && !isUuid) {
+      dbTargetId = getUuidFromYoutubeId(targetId);
+    } else {
+      const exists = await assertContentTargetExists(targetType, targetId);
+      if (!exists) {
+        return NextResponse.json({ error: "Content not found." }, { status: 404 });
+      }
     }
 
     const body = await request.json();
@@ -61,14 +82,14 @@ export async function POST(request: NextRequest, { params }: Params) {
       if (!text) {
         return NextResponse.json({ error: "Comment cannot be empty." }, { status: 400 });
       }
-      const comment = await addContentComment(targetType, targetId, user.id, text);
-      const engagement = await getContentEngagement(targetType, targetId, user.id);
+      const comment = await addContentComment(targetType, dbTargetId, user.id, text);
+      const engagement = await getContentEngagement(targetType, dbTargetId, user.id);
       return NextResponse.json({ comment, ...engagement });
     }
 
     if (action === "like") {
-      const like = await toggleContentLike(targetType, targetId, user.id);
-      const engagement = await getContentEngagement(targetType, targetId, user.id);
+      const like = await toggleContentLike(targetType, dbTargetId, user.id);
+      const engagement = await getContentEngagement(targetType, dbTargetId, user.id);
       return NextResponse.json({ ...like, ...engagement });
     }
 

@@ -2,6 +2,46 @@ import { NextResponse } from "next/server";
 import { unauthorized, validateStudentSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
+async function fetchYouTubeVideoDetails(videoId: string, apiKey: string) {
+  try {
+    const res = await fetch(`https://www.googleapis.com/youtube/v3/videos?part=snippet,contentDetails&id=${videoId}&key=${apiKey}`);
+    if (!res.ok) return null;
+    const data = await res.json();
+    const item = data.items?.[0];
+    if (!item) return null;
+
+    const durationISO = item.contentDetails?.duration || "";
+    let durationLabel = "Video";
+    const match = durationISO.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);
+    if (match) {
+      const hours = parseInt(match[1] || "0");
+      const minutes = parseInt(match[2] || "0");
+      const seconds = parseInt(match[3] || "0");
+      if (hours > 0) {
+        durationLabel = `${hours}:${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+      } else {
+        durationLabel = `${minutes}:${String(seconds).padStart(2, "0")}`;
+      }
+    }
+
+    return {
+      id: videoId,
+      courseId: "youtube",
+      courseCode: "YOUTUBE",
+      courseTitle: "YouTube Tutorial",
+      title: item.snippet.title,
+      lecturerName: item.snippet.channelTitle,
+      videoUrl: `https://www.youtube.com/watch?v=${videoId}`,
+      thumbnailUrl: item.snippet.thumbnails?.medium?.url || item.snippet.thumbnails?.default?.url || `https://i.ytimg.com/vi/${videoId}/mqdefault.jpg`,
+      durationLabel,
+      createdAt: item.snippet.publishedAt,
+    };
+  } catch (error) {
+    console.error("fetchYouTubeVideoDetails error:", error);
+    return null;
+  }
+}
+
 export async function GET(
   _req: Request,
   { params }: { params: Promise<{ videoId: string }> }
@@ -11,6 +51,29 @@ export async function GET(
     if (!user) return unauthorized();
 
     const { videoId } = await params;
+
+    const isYouTubeId = videoId.length === 11 || !videoId.includes("-");
+    if (isYouTubeId) {
+      const apiKey = process.env.YOUTUBE_API_KEY;
+      if (apiKey) {
+        const ytDetails = await fetchYouTubeVideoDetails(videoId, apiKey);
+        if (ytDetails) {
+          return NextResponse.json(ytDetails);
+        }
+      }
+      return NextResponse.json({
+        id: videoId,
+        courseId: "youtube",
+        courseCode: "YOUTUBE",
+        courseTitle: "YouTube Tutorial",
+        title: "YouTube Video Lesson",
+        lecturerName: "YouTube Creator",
+        videoUrl: `https://www.youtube.com/watch?v=${videoId}`,
+        thumbnailUrl: `https://i.ytimg.com/vi/${videoId}/mqdefault.jpg`,
+        durationLabel: "Video",
+        createdAt: new Date().toISOString(),
+      });
+    }
 
     const student = await prisma.student.findUnique({
       where: { userId: user.id },

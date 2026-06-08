@@ -167,6 +167,7 @@ export async function sendStudentMessage(input: SendStudentMessageInput) {
         userId,
         title,
         message,
+        targetUrl: "/student/notifications",
         isRead: false,
       })),
     });
@@ -214,6 +215,7 @@ export async function listStudentMessageBroadcasts(limit = 50) {
   return rows.map((row) => ({
     id: row.id,
     title: row.title,
+    message: row.message,
     audience: `${formatAudienceType(row.audienceType)}: ${row.audienceLabel}`,
     recipientCount: row.recipientCount,
     sentAt: row.createdAt.toLocaleString("en-GB", {

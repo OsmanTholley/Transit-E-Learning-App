@@ -1,7 +1,9 @@
 "use client";
+import { LoadingState } from "@/components/ui/loading-indicator";
 
 import Link from "next/link";
 import { FormEvent, useEffect, useMemo, useState } from "react";
+import { normalizeStudentId, STUDENT_ID_FORMAT_HINT } from "@/lib/student-id";
 import { showConfirm, showError, showPasswordPrompt, showSuccess } from "@/lib/swal";
 import { StudentRecord } from "@/types/student";
 import {
@@ -19,17 +21,30 @@ type FormOptions = {
   departments: { id: string; name: string }[];
   programs: { id: string; name: string; departmentId: string | null }[];
   years: string[];
-  semesters: string[];
+  genders: string[];
+};
+
+type StudentOverview = {
+  courses: { id: string; code: string; title: string; enrolledAt: string }[];
+  quizAverage: number | null;
+  quizCount: number;
+  submissions: { submitted: number; pending: number; total: number };
+  attendanceRate: number | null;
+  attendanceSessions: number;
+  unreadNotifications: number;
+  aiQuestions: number;
+  lastAiActiveAt: string | null;
 };
 
 type EditForm = {
+  studentId: string;
   fullName: string;
   email: string;
   phone: string;
   departmentId: string;
   programId: string;
   level: string;
-  semester: string;
+  gender: string;
   admissionYear: string;
 };
 
@@ -38,13 +53,14 @@ function buildEditForm(student: StudentRecord, options: FormOptions | null): Edi
   const prog = options?.programs.find((p) => p.name === student.program && (!dept || p.departmentId === dept.id));
 
   return {
+    studentId: student.studentId,
     fullName: student.fullName,
     email: student.email,
     phone: student.phone === "—" ? "" : student.phone,
     departmentId: dept?.id ?? "",
     programId: prog?.id ?? "",
     level: student.year === "—" ? "" : student.year,
-    semester: student.semester === "—" ? "" : student.semester,
+    gender: student.gender === "—" ? "" : student.gender,
     admissionYear: student.admissionYear === "—" ? "" : student.admissionYear,
   };
 }
@@ -56,7 +72,25 @@ export function StudentProfilePage({ id }: { id: string }) {
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
+  const [overview, setOverview] = useState<StudentOverview | null>(null);
+  const [overviewLoading, setOverviewLoading] = useState(true);
   const [form, setForm] = useState<EditForm | null>(null);
+
+  useEffect(() => {
+    async function loadOverview() {
+      setOverviewLoading(true);
+      try {
+        const res = await fetch(`/api/students/${id}/overview`, { credentials: "include" });
+        const data = await res.json();
+        if (res.ok) setOverview(data.overview);
+      } catch {
+        setOverview(null);
+      } finally {
+        setOverviewLoading(false);
+      }
+    }
+    loadOverview();
+  }, [id]);
 
   useEffect(() => {
     async function load() {
@@ -109,20 +143,21 @@ export function StudentProfilePage({ id }: { id: string }) {
         credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          studentId: form.studentId,
           fullName: form.fullName,
           email: form.email,
           phone: form.phone,
-          ...(form.departmentId && form.programId && form.level && form.semester
+          ...(form.departmentId && form.programId && form.level
             ? {
                 departmentId: form.departmentId,
                 programId: form.programId,
                 level: form.level,
-                semester: form.semester,
+                gender: form.gender || null,
                 admissionYear: form.admissionYear || null,
               }
             : {
                 level: form.level || null,
-                semester: form.semester || null,
+                gender: form.gender || null,
                 admissionYear: form.admissionYear || null,
               }),
         }),
@@ -133,6 +168,9 @@ export function StudentProfilePage({ id }: { id: string }) {
       setStudent(data.student);
       setForm(buildEditForm(data.student, options));
       setEditing(false);
+      const overviewRes = await fetch(`/api/students/${id}/overview`, { credentials: "include" });
+      const overviewData = await overviewRes.json();
+      if (overviewRes.ok) setOverview(overviewData.overview);
       await showSuccess("Student updated", data.message);
     } catch (err) {
       await showError("Update failed", err instanceof Error ? err.message : "Could not save changes.");
@@ -211,7 +249,7 @@ export function StudentProfilePage({ id }: { id: string }) {
   }
 
   if (loading) {
-    return <p className="text-sm text-slate-500">Loading student…</p>;
+    return <LoadingState message="Loading student…" layout="inline" />;
   }
 
   if (!student) {
@@ -281,6 +319,20 @@ export function StudentProfilePage({ id }: { id: string }) {
         <Panel title="Edit student">
           <form id="student-edit-form" className="grid gap-4 sm:grid-cols-2" onSubmit={handleSaveEdit}>
             <div>
+              <FieldLabel>Student ID</FieldLabel>
+              <TextInput
+                value={form.studentId}
+                onChange={(e) => updateField("studentId", e.target.value.toUpperCase())}
+                onBlur={(e) => {
+                  const normalized = normalizeStudentId(e.target.value);
+                  if (normalized) updateField("studentId", normalized);
+                }}
+                required
+                placeholder="TCSL/0001"
+              />
+              <p className="mt-1 text-xs text-slate-500">{STUDENT_ID_FORMAT_HINT}</p>
+            </div>
+            <div>
               <FieldLabel>Full name</FieldLabel>
               <TextInput
                 value={form.fullName}
@@ -348,11 +400,11 @@ export function StudentProfilePage({ id }: { id: string }) {
               />
             </div>
             <div>
-              <FieldLabel>Semester</FieldLabel>
+              <FieldLabel>Gender</FieldLabel>
               <SelectInput
-                options={options?.semesters ?? []}
-                value={form.semester}
-                onChange={(e) => updateField("semester", e.target.value)}
+                options={options?.genders ?? []}
+                value={form.gender}
+                onChange={(e) => updateField("gender", e.target.value)}
               />
             </div>
           </form>
@@ -363,6 +415,7 @@ export function StudentProfilePage({ id }: { id: string }) {
         <Panel title="Personal Information">
           <dl className="grid gap-2 text-sm sm:grid-cols-2">
             {[
+              ["Student ID", student.studentId],
               ["Email", student.email],
               ["Phone", student.phone],
               ["Admission Year", student.admissionYear],
@@ -381,7 +434,7 @@ export function StudentProfilePage({ id }: { id: string }) {
               ["Department", student.department],
               ["Program", student.program],
               ["Year", student.year],
-              ["Semester", student.semester],
+              ["Gender", student.gender],
             ].map(([k, v]) => (
               <div key={k}>
                 <dt className="text-xs text-slate-500">{k}</dt>
@@ -394,32 +447,78 @@ export function StudentProfilePage({ id }: { id: string }) {
 
       <div className="grid gap-6 lg:grid-cols-2">
         <Panel title="Enrolled Courses">
-          <ul className="space-y-2 text-sm">
-            <li className="flex justify-between rounded-lg bg-slate-50 px-3 py-2">
-              <span>CSC101 – Intro to Programming</span>
-              <span className="text-yellow-600">65%</span>
-            </li>
-            <li className="flex justify-between rounded-lg bg-slate-50 px-3 py-2">
-              <span>CSC102 – Database Systems</span>
-              <span className="text-yellow-600">48%</span>
-            </li>
-          </ul>
+          {overviewLoading ? (
+            <LoadingState message="Loading courses…" layout="inline" />
+          ) : !overview?.courses.length ? (
+            <p className="text-sm text-slate-500">No enrolled courses yet.</p>
+          ) : (
+            <ul className="space-y-2 text-sm">
+              {overview.courses.map((course) => (
+                <li key={course.id} className="flex justify-between rounded-lg bg-slate-50 px-3 py-2">
+                  <span>
+                    {course.code} – {course.title}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
         </Panel>
         <Panel title="Quiz Performance">
-          <p className="text-2xl font-bold text-yellow-700">78%</p>
-          <p className="text-xs text-slate-500">Average across 12 quizzes</p>
+          {overviewLoading ? (
+            <LoadingState message="Loading…" layout="inline" />
+          ) : overview?.quizAverage !== null && overview?.quizAverage !== undefined ? (
+            <>
+              <p className="text-2xl font-bold text-teal-700">{overview.quizAverage}%</p>
+              <p className="text-xs text-slate-500">Average across {overview.quizCount} quiz attempts</p>
+            </>
+          ) : (
+            <p className="text-sm text-slate-500">No quiz attempts recorded yet.</p>
+          )}
         </Panel>
         <Panel title="Assignment Submissions">
-          <p className="text-sm">8 submitted • 2 pending</p>
+          {overviewLoading ? (
+            <LoadingState message="Loading…" layout="inline" />
+          ) : overview ? (
+            <p className="text-sm">
+              {overview.submissions.submitted} submitted • {overview.submissions.pending} pending
+              {overview.submissions.total > 0 ? ` (${overview.submissions.total} total)` : ""}
+            </p>
+          ) : (
+            <p className="text-sm text-slate-500">No submission data.</p>
+          )}
         </Panel>
         <Panel title="Attendance">
-          <p className="text-sm">92% present rate this semester</p>
+          {overviewLoading ? (
+            <LoadingState message="Loading…" layout="inline" />
+          ) : overview?.attendanceRate !== null && overview?.attendanceRate !== undefined ? (
+            <p className="text-sm">
+              {overview.attendanceRate}% present rate ({overview.attendanceSessions} sessions recorded)
+            </p>
+          ) : (
+            <p className="text-sm text-slate-500">No attendance records yet.</p>
+          )}
         </Panel>
         <Panel title="Notifications">
-          <p className="text-sm text-slate-600">3 unread platform notifications</p>
+          {overviewLoading ? (
+            <LoadingState message="Loading…" layout="inline" />
+          ) : (
+            <p className="text-sm text-slate-600">
+              {overview?.unreadNotifications ?? 0} unread platform notification
+              {(overview?.unreadNotifications ?? 0) === 1 ? "" : "s"}
+            </p>
+          )}
         </Panel>
         <Panel title="AI Tutor Usage">
-          <p className="text-sm">24 questions asked • Last active May 27</p>
+          {overviewLoading ? (
+            <LoadingState message="Loading…" layout="inline" />
+          ) : (
+            <p className="text-sm">
+              {overview?.aiQuestions ?? 0} questions asked
+              {overview?.lastAiActiveAt
+                ? ` • Last active ${new Date(overview.lastAiActiveAt).toLocaleDateString()}`
+                : ""}
+            </p>
+          )}
         </Panel>
       </div>
     </StudentSection>

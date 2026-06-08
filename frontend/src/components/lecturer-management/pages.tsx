@@ -1,22 +1,31 @@
 "use client";
+import { LoadingState } from "@/components/ui/loading-indicator";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { useApiLoad } from "@/hooks/use-api-load";
 import { useLecturers } from "@/hooks/use-lecturers";
 import { requestApi } from "@/lib/fetch-api";
+import { showConfirm, showSuccess } from "@/lib/swal";
 import type { ContentItem } from "@/types/academic";
+import type { AdminContentTarget } from "@/types/admin-content";
 import type { LecturerAdminDetail } from "@/types/lecturer-portal";
+import { AdminRowActions, AdminCrudSearch, confirmAndDelete } from "@/components/admin/admin-entity-crud";
+import { AdminTableShell } from "@/components/admin/admin-table-shell";
 import { AllLecturersList } from "./all-lecturers-list";
 import { AddLecturerForm } from "./add-lecturer-form";
 import { AssignCoursesForm } from "./assign-courses-form";
 import { LecturerMessagesPage } from "./lecturer-messages-page";
+import { LecturerCrudPageHero } from "./lecturer-crud-hero";
 import { LecturersTable } from "./lecturers-table";
 import {
   Panel,
   PrimaryButton,
   SecondaryButton,
+  StatCard,
   StatusBadge,
+  StudentSection,
 } from "@/components/student-management/ui";
 
 export function AllLecturersPage() {
@@ -38,56 +47,106 @@ type AdminContentPayload = {
   quizzes: ContentItem[];
 };
 
+type MaterialRow = ContentItem & { kind: string; targetType: AdminContentTarget };
+
+const targetToContentPath: Record<AdminContentTarget, string> = {
+  "lecture-note": "/admin/content/lecture-notes",
+  video: "/admin/content/videos",
+  assignment: "/admin/content/assignments",
+  quiz: "/admin/content/quizzes",
+  discussion: "/admin/content/discussions",
+};
+
 export function UploadedMaterialsPage() {
-  const { data, loading } = useApiLoad<AdminContentPayload>("/api/admin/content", {
+  const router = useRouter();
+  const { data, loading, reload } = useApiLoad<AdminContentPayload>("/api/admin/content", {
     errorTitle: "Could not load materials",
   });
+  const [search, setSearch] = useState("");
 
-  const materials = [
-    ...(data?.lectureNotes ?? []).map((m) => ({ ...m, kind: "Lecture note" as const })),
-    ...(data?.videos ?? []).map((m) => ({ ...m, kind: "Video" as const })),
-    ...(data?.assignments ?? []).map((m) => ({ ...m, kind: "Assignment" as const })),
-    ...(data?.quizzes ?? []).map((m) => ({ ...m, kind: "Quiz" as const })),
+  const materials: MaterialRow[] = [
+    ...(data?.lectureNotes ?? []).map((m) => ({ ...m, kind: "Lecture note", targetType: "lecture-note" as const })),
+    ...(data?.videos ?? []).map((m) => ({ ...m, kind: "Video", targetType: "video" as const })),
+    ...(data?.assignments ?? []).map((m) => ({ ...m, kind: "Assignment", targetType: "assignment" as const })),
+    ...(data?.quizzes ?? []).map((m) => ({ ...m, kind: "Quiz", targetType: "quiz" as const })),
   ].sort((a, b) => b.uploadedAt.localeCompare(a.uploadedAt));
 
+  const filtered = materials.filter((m) => {
+    const q = search.trim().toLowerCase();
+    if (!q) return true;
+    return [m.title, m.lecturer, m.course, m.kind, m.department].join(" ").toLowerCase().includes(q);
+  });
+
+  if (loading && !data) {
+    return <LoadingState message="Loading materials…" panel minHeight={200} />;
+  }
+
   return (
-    <Panel title="Uploaded Materials Monitoring">
-      <p className="mb-4 text-sm text-slate-600">
-        Materials uploaded by lecturers across courses (from database).
-      </p>
-      {loading && !data ? (
-        <p className="text-sm text-slate-500">Loading materials…</p>
-      ) : materials.length === 0 ? (
-        <p className="text-sm text-slate-500">No uploaded materials yet.</p>
-      ) : (
-        <table className="min-w-full text-sm">
-          <thead className="bg-slate-50">
+    <StudentSection>
+      <LecturerCrudPageHero section="materials" />
+
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <StatCard label="Total items" value={materials.length} tone="amber" />
+        <StatCard label="Lecture notes" value={data?.lectureNotes.length ?? 0} tone="blue" />
+        <StatCard label="Videos" value={data?.videos.length ?? 0} tone="slate" />
+        <StatCard label="Quizzes & assignments" value={(data?.quizzes.length ?? 0) + (data?.assignments.length ?? 0)} tone="amber" />
+      </div>
+
+      <AdminTableShell
+        title="Uploaded materials"
+        count={filtered.length}
+        countLabel="items"
+        variant="detailed"
+        toolbar={<AdminCrudSearch value={search} onChange={setSearch} placeholder="Search title, lecturer, course…" />}
+      >
+        <table className="admin-crud-table">
+          <thead className="bg-slate-50/80 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
             <tr>
-              {["Lecturer", "Type", "Title", "Course", "Department", "Uploaded", "Status"].map((h) => (
-                <th key={h} className="px-3 py-2 text-left text-xs font-semibold text-slate-600">
+              {["Lecturer", "Type", "Title", "Course", "Uploaded", "Status", "Actions"].map((h) => (
+                <th key={h} className="px-3 py-2.5 sm:px-4">
                   {h}
                 </th>
               ))}
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
-            {materials.map((m) => (
-              <tr key={`${m.kind}-${m.id}`}>
-                <td className="px-3 py-2 font-medium">{m.lecturer}</td>
-                <td className="px-3 py-2">{m.kind}</td>
-                <td className="px-3 py-2">{m.title}</td>
-                <td className="px-3 py-2">{m.course}</td>
-                <td className="px-3 py-2">{m.department}</td>
-                <td className="px-3 py-2 text-slate-500">{m.uploadedAt}</td>
-                <td className="px-3 py-2">
-                  <StatusBadge status={m.status} />
+            {filtered.length === 0 ? (
+              <tr>
+                <td colSpan={7} className="px-4 py-12 text-center text-sm text-slate-500">
+                  No uploaded materials yet.
                 </td>
               </tr>
-            ))}
+            ) : (
+              filtered.map((m) => (
+                <tr key={`${m.kind}-${m.id}`} className="admin-crud-table-row bg-white hover:bg-slate-50/80">
+                  <td className="px-3 py-3 font-medium sm:px-4">{m.lecturer}</td>
+                  <td className="px-3 py-3 sm:px-4">{m.kind}</td>
+                  <td className="px-3 py-3 sm:px-4">{m.title}</td>
+                  <td className="px-3 py-3 text-slate-600 sm:px-4">{m.course}</td>
+                  <td className="px-3 py-3 text-slate-500 sm:px-4">{m.uploadedAt}</td>
+                  <td className="px-3 py-3 sm:px-4">
+                    <StatusBadge status={m.status} />
+                  </td>
+                  <td className="admin-crud-table-actions-cell px-3 py-3 sm:px-4">
+                    <AdminRowActions
+                      viewHref={targetToContentPath[m.targetType]}
+                      onEdit={() => router.push(targetToContentPath[m.targetType])}
+                      onDelete={() =>
+                        void confirmAndDelete(
+                          `/api/admin/content/${m.targetType}/${m.id}`,
+                          `Remove "${m.title}" from the platform?`,
+                          () => void reload(),
+                        )
+                      }
+                    />
+                  </td>
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
-      )}
-    </Panel>
+      </AdminTableShell>
+    </StudentSection>
   );
 }
 
@@ -96,53 +155,117 @@ export function LecturerNotificationsPage() {
 }
 
 export function SuspendedLecturersPage() {
-  const { lecturers, loading } = useLecturers();
+  const { lecturers, loading, refetch } = useLecturers();
   const suspended = lecturers.filter((l) => l.accountStatus === "Suspended");
+  const pending = lecturers.filter((l) => l.verificationStatus === "Pending").length;
+
+  if (loading) {
+    return <LoadingState message="Loading lecturers…" panel minHeight={200} />;
+  }
 
   return (
-    <Panel title="Discipline & Suspensions">
-      <p className="mb-4 text-sm text-slate-600">
-        Monitor inactive lecturers, misuse of platform, inappropriate content, and academic misconduct. Actions:
-        Warning • Temporary suspension • Permanent suspension.
-      </p>
-      {loading ? (
-        <p className="text-sm text-slate-500">Loading lecturers...</p>
-      ) : (
-        <LecturersTable lecturers={suspended} />
-      )}
-    </Panel>
+    <StudentSection>
+      <LecturerCrudPageHero section="suspended" />
+
+      <div className="grid gap-4 sm:grid-cols-3">
+        <StatCard label="Suspended" value={suspended.length} tone="rose" />
+        <StatCard label="Pending verification" value={pending} tone="amber" />
+        <StatCard label="Total lecturers" value={lecturers.length} tone="blue" />
+      </div>
+
+      <Panel title="Discipline policy">
+        <p className="text-sm text-slate-600">
+          Monitor inactive lecturers, misuse of platform, inappropriate content, and academic misconduct. Actions:
+          Warning • Temporary suspension • Permanent suspension.
+        </p>
+      </Panel>
+
+      <LecturersTable
+        lecturers={suspended}
+        title="Suspended lecturers"
+        onRefresh={() => void refetch()}
+      />
+    </StudentSection>
   );
 }
 
+type ReportRow = { id: string; name: string; formats: string[] };
+
+const defaultReports: ReportRow[] = [
+  { id: "lecturer-list", name: "Lecturer List", formats: ["PDF", "Excel", "CSV"] },
+  { id: "course-assignment", name: "Course Assignment Report", formats: ["PDF", "Excel"] },
+  { id: "materials", name: "Uploaded Materials Report", formats: ["PDF", "CSV"] },
+  { id: "quiz-activity", name: "Quiz Activity Report", formats: ["PDF", "Excel"] },
+  { id: "grading", name: "Assignment Grading Report", formats: ["PDF", "Excel", "CSV"] },
+  { id: "performance", name: "Performance Analytics", formats: ["PDF", "Excel"] },
+];
+
 export function LecturerReportsPage() {
-  const reports = [
-    { name: "Lecturer List", formats: ["PDF", "Excel", "CSV"] },
-    { name: "Course Assignment Report", formats: ["PDF", "Excel"] },
-    { name: "Uploaded Materials Report", formats: ["PDF", "CSV"] },
-    { name: "Quiz Activity Report", formats: ["PDF", "Excel"] },
-    { name: "Assignment Grading Report", formats: ["PDF", "Excel", "CSV"] },
-    { name: "Performance Analytics", formats: ["PDF", "Excel"] },
-  ];
+  const { lecturers, loading, refetch } = useLecturers();
+  const [reports, setReports] = useState<ReportRow[]>(defaultReports);
+  const active = lecturers.filter((l) => l.accountStatus === "Active").length;
+  const withCourses = lecturers.filter((l) => l.assignedCourses > 0).length;
+
+  if (loading) {
+    return <LoadingState message="Loading lecturer reports…" panel minHeight={200} />;
+  }
+
   return (
-    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-      {reports.map((r) => (
-        <article key={r.name} className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
-          <h3 className="font-semibold text-slate-900">{r.name}</h3>
-          <p className="mt-1 text-xs text-slate-500">Export: {r.formats.join(", ")}</p>
-          <div className="mt-4 flex flex-wrap gap-2">
-            {r.formats.map((f) => (
-              <button
-                key={f}
-                type="button"
-                className="rounded-lg bg-[#0B3D91] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#0a357f]"
-              >
-                {f}
-              </button>
+    <StudentSection>
+      <LecturerCrudPageHero section="reports" />
+
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <StatCard label="Total lecturers" value={lecturers.length} tone="amber" />
+        <StatCard label="Active" value={active} tone="blue" />
+        <StatCard label="With courses" value={withCourses} tone="slate" />
+        <StatCard label="Report types" value={reports.length} tone="amber" />
+      </div>
+
+      <AdminTableShell title="Export reports" count={reports.length} countLabel="reports" variant="detailed">
+        <table className="admin-crud-table">
+          <thead className="bg-slate-50/80 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+            <tr>
+              {["Report", "Formats", "Actions"].map((h) => (
+                <th key={h} className="px-3 py-2.5 sm:px-4">
+                  {h}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-100">
+            {reports.map((r) => (
+              <tr key={r.id} className="admin-crud-table-row bg-white hover:bg-slate-50/80">
+                <td className="px-3 py-3 font-medium sm:px-4">{r.name}</td>
+                <td className="px-3 py-3 text-slate-600 sm:px-4">{r.formats.join(", ")}</td>
+                <td className="admin-crud-table-actions-cell px-3 py-3 sm:px-4">
+                  <AdminRowActions
+                    viewHref="/admin/lecturers/all"
+                    onEdit={() =>
+                      void showSuccess("Export formats", `${r.name} can be exported as: ${r.formats.join(", ")}.`)
+                    }
+                    onDelete={() =>
+                      void (async () => {
+                        const ok = await showConfirm(
+                          "Remove report?",
+                          `Remove "${r.name}" from the report catalog?`,
+                        );
+                        if (ok) setReports((prev) => prev.filter((row) => row.id !== r.id));
+                      })()
+                    }
+                  />
+                </td>
+              </tr>
             ))}
-          </div>
-        </article>
-      ))}
-    </div>
+          </tbody>
+        </table>
+      </AdminTableShell>
+
+      <LecturersTable
+        lecturers={lecturers.slice(0, 10)}
+        title="Lecturer directory (for reports)"
+        onRefresh={() => void refetch()}
+      />
+    </StudentSection>
   );
 }
 
@@ -192,7 +315,7 @@ export function LecturerProfilePage({ id }: { id: string }) {
   }, [id]);
 
   if (loading) {
-    return <p className="text-sm text-slate-500">Loading lecturer…</p>;
+    return <LoadingState message="Loading lecturer…" layout="inline" />;
   }
 
   if (!detail) {

@@ -1,4 +1,5 @@
 "use client";
+import { LoadingState } from "@/components/ui/loading-indicator";
 
 import { useApiLoad } from "@/hooks/use-api-load";
 import { SectionContentView } from "@/components/section-content";
@@ -17,7 +18,7 @@ export function AdminSectionView({ section, fallbackTitle, fallbackSubtitle }: P
   );
 
   if (loading && !data) {
-    return <p className="text-sm text-slate-500">Loading from database…</p>;
+    return <LoadingState message="Loading from database…" layout="inline" />;
   }
 
   if (error && !data) {

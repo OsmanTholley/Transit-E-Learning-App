@@ -162,6 +162,7 @@ export async function sendLecturerMessage(input: SendLecturerMessageInput) {
         userId,
         title,
         message,
+        targetUrl: "/lecturer/notifications",
         isRead: false,
       })),
     });
@@ -210,6 +211,7 @@ export async function listLecturerMessageBroadcasts(limit = 50) {
   return rows.map((row: (typeof rows)[number]) => ({
     id: row.id,
     title: row.title,
+    message: row.message,
     audience: `${formatAudienceType(row.audienceType)}: ${row.audienceLabel}`,
     recipientCount: row.recipientCount,
     sentAt: row.createdAt.toLocaleString("en-GB", {

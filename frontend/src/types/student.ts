@@ -9,7 +9,7 @@ export type StudentRecord = {
   department: string;
   program: string;
   year: string;
-  semester: string;
+  gender: string;
   admissionYear: string;
   status: StudentAccountStatus;
   registeredAt: string;
