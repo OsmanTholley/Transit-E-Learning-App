@@ -101,11 +101,11 @@ export function AdminAnnouncementsPage() {
 
   return (
     <div className="space-y-6">
-      <div>
+      {/* <div>
         <p className="text-xs font-semibold uppercase tracking-wider text-teal-700">System</p>
         <h1 className="mt-1 text-2xl font-bold text-slate-900">Announcements</h1>
         <p className="mt-1 text-sm text-slate-500">Broadcast messages to students and lecturers — stored in the database.</p>
-      </div>
+      </div> */}
 
       <div className="grid gap-4 sm:grid-cols-3">
         <article className="portal-card p-4">
@@ -167,7 +167,7 @@ export function AdminAnnouncementsPage() {
                 value={targetId}
                 onChange={(e) => setTargetId(e.target.value)}
                 required
-                className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:border-teal-400"
+                className="mt-1 w-full rounded-xl border border-slate-200 bg-white text-black px-3 py-2 text-sm outline-none focus:border-teal-400"
               >
                 <option value="">Select department…</option>
                 {departments.map((d) => (

@@ -231,7 +231,7 @@ export function StudentMessagesPage() {
   async function saveEdit() {
     if (!editing) return;
     setSavingEdit(true);
-    const result = await requestApi(`/api/students/messages/${editing.id}`, {
+    const result = await requestApi<{ message?: string }>(`/api/students/messages/${editing.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ title: editTitle.trim(), message: editBody.trim() }),

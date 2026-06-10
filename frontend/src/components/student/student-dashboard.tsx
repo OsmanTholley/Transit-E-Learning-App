@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { DashboardCalendarWidget } from "@/components/academic-calendar/dashboard-calendar-widget";
 import { useStudentSession } from "@/contexts/student-session-context";
 import { LoadingDashboardSkeleton } from "@/components/ui/loading-indicator";
 import {
@@ -248,6 +249,10 @@ export function StudentDashboard() {
         <DashboardStatCard label="Quiz Average" value={`${stats.quizAverage}%`}       subtitle="This semester"   tone="amber" icon="quizzes" />
         <DashboardStatCard label="Notices"      value={stats.newNotifications}        subtitle="Unread — open bell icon" tone="rose"  icon="notifications" />
       </DashboardStatsGrid>
+
+      <div id="academic-calendar">
+        <DashboardCalendarWidget role="student" />
+      </div>
 
       {/* ── WHAT'S NEW ─────────────────────────────────────────── */}
       <NewUploadsSection uploads={newUploads ?? []} />

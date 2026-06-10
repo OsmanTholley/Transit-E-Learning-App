@@ -36,6 +36,17 @@ export async function getSystemSettings() {
   }));
 }
 
+export async function getSystemSettingValue(key: SystemSettingKey): Promise<unknown> {
+  await ensureSystemSettings();
+  const row = await prisma.systemSetting.findUnique({ where: { key } });
+  return row?.value ?? DEFAULTS.find((item) => item.key === key)?.value;
+}
+
+export async function isAnnouncementEmailAlertsEnabled(): Promise<boolean> {
+  const value = await getSystemSettingValue("announcement_email_alerts");
+  return value === true || value === "true";
+}
+
 export async function updateSystemSettings(
   updates: Record<string, unknown>,
   updatedBy?: string | null,

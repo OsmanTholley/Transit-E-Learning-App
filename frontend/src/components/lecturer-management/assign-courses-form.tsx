@@ -147,7 +147,7 @@ export function AssignCoursesForm() {
     );
   }
 
-  const assignedCount = lecturers.filter((l) => l.assignedCourses > 0).length;
+  const assignedCount = lecturers.filter((l) => Number(l.assignedCourses) > 0).length;
 
   return (
     <StudentSection>

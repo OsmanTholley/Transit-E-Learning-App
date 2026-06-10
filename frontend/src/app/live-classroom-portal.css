@@ -1,0 +1,26 @@
+/* Portal embed — hide Jitsi chrome & promos; keep video/audio light */
+.transit-jitsi-shell iframe {
+  border: 0 !important;
+}
+
+.transit-jitsi-shell [class*="watermark"],
+.transit-jitsi-shell [class*="promo"],
+.transit-jitsi-shell [class*="deep-link"],
+.transit-jitsi-shell [class*="app-promo"],
+.transit-jitsi-shell [id*="app-promo"],
+.transit-jitsi-shell [class*="subject"],
+.transit-jitsi-shell [class*="invite"],
+.transit-jitsi-shell [class*="recording"] {
+  display: none !important;
+  visibility: hidden !important;
+}
+
+/* Let our custom toolbar handle controls — hide Jitsi bottom bar */
+.transit-jitsi-shell [class*="toolbox"],
+.transit-jitsi-shell [class*="new-toolbox"] {
+  display: none !important;
+}
+
+.mirror {
+  transform: scaleX(-1);
+}

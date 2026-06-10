@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { DashboardCalendarWidget } from "@/components/academic-calendar/dashboard-calendar-widget";
 import { LecturerPerformanceOverview } from "@/components/admin/lecturer-performance-overview";
 import {
   DashboardStatCard,
@@ -149,6 +150,8 @@ export function AdminDashboard({ adminName }: AdminDashboardProps) {
           />
         ))}
       </DashboardStatsGrid>
+
+      <DashboardCalendarWidget role="admin" manageHref="/admin/academic-calendar" />
 
       <section className="grid gap-6 xl:grid-cols-2">
         <article className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm">

@@ -14,6 +14,8 @@ export const navigation: Record<"student" | "lecturer", NavItem[]> = {
     { label: "Assignments", href: "/student/assignments" },
     { label: "Quizzes", href: "/student/quizzes" },
     { label: "Discussions", href: "/student/discussions" },
+    { label: "Live Classes", href: "/student/live-classes" },
+    { label: "Billing", href: "/student/billing" },
     { label: "AI Tutor", href: "/student/ai-tutor" },
     { label: "Profile", href: "/student/profile" },
   ],
@@ -25,6 +27,7 @@ export const navigation: Record<"student" | "lecturer", NavItem[]> = {
     { label: "Quizzes", href: "/lecturer/quizzes" },
     { label: "Assignments", href: "/lecturer/assignments" },
     { label: "Students", href: "/lecturer/students" },
+    { label: "Live Classes", href: "/lecturer/live-classes" },
     { label: "AI Assistant", href: "/lecturer/ai" },
     { label: "Profile", href: "/lecturer/profile" },
   ],
@@ -74,7 +77,15 @@ export const adminNavigation: AdminNavigation = {
     {
       label: "Learning",
       items: [
+        { label: "Academic Calendar", href: "/admin/academic-calendar" },
+        { label: "Live Classes", href: "/admin/live-classes" },
         { label: "AI Assistant", href: "/admin/ai" },
+      ],
+    },
+    {
+      label: "Finance",
+      items: [
+        { label: "Finance & Fees", href: "/admin/finance" },
       ],
     },
     {

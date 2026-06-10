@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { DashboardCalendarWidget } from "@/components/academic-calendar/dashboard-calendar-widget";
 import { useApiLoad } from "@/hooks/use-api-load";
 import { DASHBOARD_REFRESH_MS } from "@/lib/silent-refresh";
 import {
@@ -102,6 +103,10 @@ export function LecturerDashboard() {
           icon="assignments"
         />
       </DashboardStatsGrid>
+
+      <div id="academic-calendar">
+        <DashboardCalendarWidget role="lecturer" />
+      </div>
 
       <section className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm">
         <div className="border-b border-slate-100 px-4 py-4 sm:px-5">

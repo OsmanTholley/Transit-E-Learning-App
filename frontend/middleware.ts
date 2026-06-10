@@ -3,12 +3,17 @@ import { AUTH_ROLE_COOKIE, AUTH_USER_COOKIE, isAppRole } from "@/lib/auth-consta
 
 const rolePrefixes = ["student", "lecturer", "admin"] as const;
 
-const publicPages = ["/", "/login", "/register", "/forgot-password"];
+const publicPages = ["/", "/login", "/register", "/forgot-password", "/reset-password"];
 
 const publicApiPaths = new Set([
   "/api/auth/login",
+  "/api/auth/google",
+  "/api/auth/google/callback",
+  "/api/auth/google/status",
   "/api/auth/register/verify-id",
   "/api/auth/register/complete",
+  "/api/auth/forgot-password",
+  "/api/auth/reset-password",
 ]);
 
 function isPublicPage(pathname: string) {

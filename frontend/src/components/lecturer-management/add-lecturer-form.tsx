@@ -57,8 +57,8 @@ export function AddLecturerForm() {
 
       <Panel title="Create lecturer account">
       <p className="mb-4 text-sm text-slate-600">
-        Create login credentials for the lecturer. After signing in, they can complete their profile with phone,
-        specialization, and other details.
+        Create login credentials for the lecturer. An invitation email with the temporary password is sent automatically
+        so they can sign in at the staff portal.
       </p>
       <form className="grid max-w-2xl gap-4 sm:grid-cols-2" onSubmit={handleSubmit}>
         <div className="sm:col-span-2">

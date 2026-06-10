@@ -1,4 +1,5 @@
 import { Prisma } from "@prisma/client";
+import { sendAnnouncementEmails } from "@/lib/announcement-email";
 import { prisma } from "@/lib/prisma";
 
 /** Prisma delegate after `npx prisma generate` + migrate */
@@ -17,6 +18,7 @@ const lecturerBroadcasts = (prisma as unknown as {
       {
         id: string;
         title: string;
+        message: string;
         audienceType: string;
         audienceLabel: string;
         recipientCount: number;
@@ -168,6 +170,13 @@ export async function sendLecturerMessage(input: SendLecturerMessageInput) {
     });
 
     return record;
+  });
+
+  void sendAnnouncementEmails({
+    userIds,
+    title,
+    message,
+    portalLabel: "Lecturers",
   });
 
   return {

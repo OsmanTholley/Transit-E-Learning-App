@@ -79,13 +79,13 @@ export default function RegisterPage() {
       const data = await res.json();
 
       if (!res.ok) {
-        throw new Error(data.error ?? "Registration failed.");
+        throw new Error(data.error ?? "Verification failed.");
       }
 
-      await showSuccess("Welcome!", data.message ?? "Registration successful.");
+      await showSuccess("Welcome!", data.message ?? "Verification successful.");
       window.location.href = "/student/dashboard";
     } catch (err) {
-      await showError("Registration failed", err instanceof Error ? err.message : "Please try again.");
+      await showError("Verification failed", err instanceof Error ? err.message : "Please try again.");
     } finally {
       setLoading(false);
     }
@@ -104,10 +104,10 @@ export default function RegisterPage() {
     <main className="flex min-h-screen items-center justify-center bg-slate-100 px-4 py-8">
       <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
         <div className="mb-6 flex items-center gap-3">
-          <TransitLogo size="md" variant="dark" subtitle="E-Learning" />
+          <TransitLogo size="md" variant="dark" subtitle="TCSL" />
           <div>
-            <h1 className="text-xl font-semibold text-slate-900">Student Registration</h1>
-            <p className="text-sm text-slate-600">Transit College S/L E-Learning</p>
+            <h1 className="text-xl font-semibold text-slate-900">Student Verification</h1>
+            <p className="text-sm text-slate-600">Transit College S/L E-Learning </p>
           </div>
         </div>
 
@@ -131,8 +131,7 @@ export default function RegisterPage() {
         {step === "verify" ? (
           <form className="space-y-4" onSubmit={handleVerify}>
             <p className="text-sm text-slate-600">
-              Enter your official Transit College S/L student ID. The system checks the admitted students database before
-              you can register.
+              Enter your official Transit College student ID. So you can be verified.
             </p>
             <label className="block">
               <span className="text-sm font-medium text-slate-700">Student ID *</span>
@@ -145,10 +144,10 @@ export default function RegisterPage() {
                   const normalized = normalizeStudentId(e.target.value);
                   if (normalized) setStudentIdInput(normalized);
                 }}
-                placeholder="e.g. TCSL/001"
+                placeholder="ID: TCSL/0000"
                 className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#0B3D91] focus:ring-2 focus:ring-[#0B3D91]/20"
               />
-              <span className="mt-1 block text-xs text-slate-500">Format: TCSL/001</span>
+              <span className="mt-1 block text-xs text-slate-500">Format: TCSL/0000</span>
             </label>
             <button
               type="submit"

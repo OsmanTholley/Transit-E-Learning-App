@@ -65,6 +65,54 @@ export async function login(input: LoginInput): Promise<LoginResult> {
   }
 }
 
+export async function requestPasswordReset(
+  email: string,
+): Promise<{ ok: boolean; message?: string; email?: string }> {
+  try {
+    const res = await fetch("/api/auth/forgot-password", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: email.trim().toLowerCase() }),
+    });
+    const data = await res.json();
+
+    if (!res.ok) {
+      return { ok: false, message: data.error ?? "Unable to send OTP code." };
+    }
+
+    return { ok: true, message: data.message, email: data.email };
+  } catch {
+    return { ok: false, message: "Unable to send OTP code." };
+  }
+}
+
+export async function resetPassword(input: {
+  email: string;
+  otp: string;
+  password: string;
+}): Promise<{ ok: boolean; message?: string }> {
+  try {
+    const res = await fetch("/api/auth/reset-password", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        email: input.email.trim().toLowerCase(),
+        otp: input.otp.trim(),
+        password: input.password,
+      }),
+    });
+    const data = await res.json();
+
+    if (!res.ok) {
+      return { ok: false, message: data.error ?? "Unable to reset password." };
+    }
+
+    return { ok: true, message: data.message };
+  } catch {
+    return { ok: false, message: "Unable to reset password." };
+  }
+}
+
 export async function logout(): Promise<{ ok: boolean; message?: string; offline?: boolean }> {
   try {
     const res = await fetch("/api/auth/logout", { method: "POST", credentials: "include" });

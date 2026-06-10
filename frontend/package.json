@@ -9,21 +9,25 @@
     "lint": "eslint",
     "db:generate": "npm run db:generate --prefix ..",
     "db:migrate": "npm run db:migrate --prefix ..",
-    "db:seed": "npm run db:seed --prefix .."
+    "db:seed": "npm run db:seed --prefix ..",
+    "test:smtp": "node scripts/test-smtp.mjs"
   },
   "dependencies": {
     "@prisma/client": "^6.9.0",
     "bcryptjs": "^3.0.3",
     "framer-motion": "^12.40.0",
     "next": "16.2.6",
+    "nodemailer": "^8.0.10",
     "react": "19.2.4",
     "react-dom": "19.2.4",
+    "resend": "^6.12.4",
     "sweetalert2": "^11.26.25"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
     "@types/bcryptjs": "^2.4.6",
     "@types/node": "^20",
+    "@types/nodemailer": "^8.0.0",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "call-bind-apply-helpers": "^1.0.2",

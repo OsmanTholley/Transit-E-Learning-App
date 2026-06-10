@@ -36,6 +36,9 @@ model User {
   student                   Student?
   activityLogs              ActivityLog[]              @relation("ActivityLogs")
   systemSettingUpdates      SystemSetting[]            @relation("SystemSettingUpdates")
+  passwordResetTokens       PasswordResetToken[]
+  recordedPayments          Payment[]              @relation("PaymentRecordedBy")
+  academicCalendarEvents    AcademicCalendarEvent[] @relation("CalendarEventCreator")
 
   @@map("users")
 }
@@ -77,7 +80,9 @@ model Student {
   discussions         Discussion[]
   liveClassAttendance LiveClassAttendanceLog[]
   liveClassHandRaises LiveClassHandRaise[]
+  liveClassLateAdmits LiveClassLateAdmission[]
   liveClassPollVotes  LiveClassPollVote[]
+  feeAccounts         StudentFeeAccount[]
   quizAttempts        QuizAttempt[]
   preferences         StudentPreference[]
   department          Department?              @relation(fields: [departmentId], references: [id])
@@ -152,6 +157,7 @@ model Program {
   createdAt        DateTime          @default(now()) @map("created_at")
   admittedStudents AdmittedStudent[]
   courses          Course[]
+  feeStructures    FeeStructure[]
   department       Department?       @relation(fields: [departmentId], references: [id])
   students         Student[]
 
@@ -435,6 +441,7 @@ model LiveClass {
   attendanceLogs LiveClassAttendanceLog[]
   chatMessages   LiveClassChatMessage[]
   handRaises     LiveClassHandRaise[]
+  lateAdmissions LiveClassLateAdmission[]
   polls          LiveClassPoll[]
   recordings     LiveClassRecording[]
   course         Course?                  @relation(fields: [courseId], references: [id])
@@ -533,6 +540,36 @@ model LiveClassRecording {
   @@map("live_class_recordings")
 }
 
+model LiveClassLateAdmission {
+  id          String    @id @default(uuid()) @db.Uuid
+  liveClassId String    @map("live_class_id") @db.Uuid
+  studentId   String    @map("student_id") @db.Uuid
+  approvedAt  DateTime  @default(now()) @map("approved_at")
+  liveClass   LiveClass @relation(fields: [liveClassId], references: [id], onDelete: Cascade)
+  student     Student   @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([liveClassId, studentId])
+  @@index([liveClassId], map: "idx_live_late_admit_class")
+  @@map("live_class_late_admissions")
+}
+
+model AcademicCalendarEvent {
+  id          String              @id @default(uuid()) @db.Uuid
+  title       String              @db.VarChar(255)
+  description String?
+  startAt     DateTime            @map("start_at")
+  endAt       DateTime?           @map("end_at")
+  eventType   CalendarEventType   @default(ACTIVITY) @map("event_type")
+  audience    CalendarAudience    @default(ALL)
+  location    String?             @db.VarChar(255)
+  createdById String?             @map("created_by_id") @db.Uuid
+  createdAt   DateTime            @default(now()) @map("created_at")
+  createdBy   User?               @relation("CalendarEventCreator", fields: [createdById], references: [id])
+
+  @@index([startAt], map: "idx_calendar_events_start")
+  @@map("academic_calendar_events")
+}
+
 model Attendance {
   id        String           @id @default(uuid()) @db.Uuid
   classId   String?          @map("class_id") @db.Uuid
@@ -573,6 +610,89 @@ model SystemSetting {
   @@map("system_settings")
 }
 
+model PasswordResetToken {
+  id        String    @id @default(uuid()) @db.Uuid
+  userId    String    @map("user_id") @db.Uuid
+  tokenHash String    @map("token_hash") @db.VarChar(64)
+  expiresAt DateTime  @map("expires_at")
+  usedAt    DateTime? @map("used_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId], map: "idx_password_reset_tokens_user")
+  @@index([tokenHash], map: "idx_password_reset_tokens_hash")
+  @@map("password_reset_tokens")
+}
+
+model FeeStructure {
+  id          String              @id @default(uuid()) @db.Uuid
+  title       String              @db.VarChar(255)
+  amount      Decimal             @db.Decimal(12, 2)
+  currency    String              @default("SLE") @db.VarChar(10)
+  programId   String?             @map("program_id") @db.Uuid
+  level       String?             @db.VarChar(50)
+  semester    String?             @db.VarChar(50)
+  intakeBatch String?             @map("intake_batch") @db.VarChar(50)
+  dueDate     DateTime?           @map("due_date")
+  isActive    Boolean             @default(true) @map("is_active")
+  createdAt   DateTime            @default(now()) @map("created_at")
+  program     Program?            @relation(fields: [programId], references: [id])
+  accounts    StudentFeeAccount[]
+
+  @@index([isActive, dueDate], map: "idx_fee_structures_active_due")
+  @@map("fee_structures")
+}
+
+model StudentFeeAccount {
+  id             String           @id @default(uuid()) @db.Uuid
+  studentId      String           @map("student_id") @db.Uuid
+  feeStructureId String           @map("fee_structure_id") @db.Uuid
+  totalAmount    Decimal          @map("total_amount") @db.Decimal(12, 2)
+  amountPaid     Decimal          @default(0) @map("amount_paid") @db.Decimal(12, 2)
+  status         FeePaymentStatus @default(UNPAID)
+  dueDate        DateTime?        @map("due_date")
+  accessLocked   Boolean          @default(false) @map("access_locked")
+  createdAt      DateTime         @default(now()) @map("created_at")
+  updatedAt      DateTime         @updatedAt @map("updated_at")
+  student        Student          @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  feeStructure   FeeStructure     @relation(fields: [feeStructureId], references: [id], onDelete: Cascade)
+  payments       Payment[]
+  invoices       FeeInvoice[]
+
+  @@unique([studentId, feeStructureId])
+  @@index([status], map: "idx_student_fee_accounts_status")
+  @@index([studentId], map: "idx_student_fee_accounts_student")
+  @@map("student_fee_accounts")
+}
+
+model Payment {
+  id                  String            @id @default(uuid()) @db.Uuid
+  studentFeeAccountId String            @map("student_fee_account_id") @db.Uuid
+  amount              Decimal           @db.Decimal(12, 2)
+  method              String?           @db.VarChar(50)
+  reference           String?           @db.VarChar(120)
+  receiptNumber       String            @unique @map("receipt_number") @db.VarChar(50)
+  recordedById        String?           @map("recorded_by_id") @db.Uuid
+  notes               String?
+  paidAt              DateTime          @map("paid_at")
+  createdAt           DateTime          @default(now()) @map("created_at")
+  studentFeeAccount   StudentFeeAccount @relation(fields: [studentFeeAccountId], references: [id], onDelete: Cascade)
+  recordedBy          User?             @relation("PaymentRecordedBy", fields: [recordedById], references: [id])
+
+  @@index([studentFeeAccountId, paidAt], map: "idx_payments_account_paid_at")
+  @@map("payments")
+}
+
+model FeeInvoice {
+  id                  String            @id @default(uuid()) @db.Uuid
+  studentFeeAccountId String            @map("student_fee_account_id") @db.Uuid
+  invoiceNumber       String            @unique @map("invoice_number") @db.VarChar(50)
+  issuedAt            DateTime          @default(now()) @map("issued_at")
+  studentFeeAccount   StudentFeeAccount @relation(fields: [studentFeeAccountId], references: [id], onDelete: Cascade)
+
+  @@map("fee_invoices")
+}
+
 enum Role {
   STUDENT
   LECTURER
@@ -602,4 +722,26 @@ enum LiveClassStatus {
   LIVE
   ENDED
   CANCELLED
+}
+
+enum FeePaymentStatus {
+  UNPAID
+  PARTIAL
+  PAID
+}
+
+enum CalendarEventType {
+  ACADEMIC
+  EXAM
+  REGISTRATION
+  HOLIDAY
+  ACTIVITY
+  OTHER
+}
+
+enum CalendarAudience {
+  ALL
+  STUDENTS
+  LECTURERS
+  ADMIN
 }

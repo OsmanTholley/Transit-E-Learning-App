@@ -60,7 +60,7 @@ export function AdmittedEditModal({
       return;
     }
     setSubmitting(true);
-    const result = await requestApi(`/api/students/admitted/${row.id}`, {
+    const result = await requestApi<{ message?: string }>(`/api/students/admitted/${row.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({

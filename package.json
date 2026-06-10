@@ -7,13 +7,17 @@
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate deploy",
     "db:seed": "node prisma/seed.js",
-    "db:migrate-student-ids": "node prisma/scripts/migrate-student-ids.js"
+    "db:check": "node scripts/check-db.mjs",
+    "db:migrate-student-ids": "node prisma/scripts/migrate-student-ids.js",
+    "test:smtp": "npm run test:smtp --prefix frontend"
   },
   "prisma": {
     "seed": "node prisma/seed.js"
   },
   "dependencies": {
-    "bcryptjs": "^3.0.2"
+    "@prisma/client": "^6.9.0",
+    "bcryptjs": "^3.0.2",
+    "better-auth": "^1.6.15"
   },
   "devDependencies": {
     "dotenv": "^17.4.2",

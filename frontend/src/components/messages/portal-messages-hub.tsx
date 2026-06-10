@@ -47,7 +47,7 @@ function NoticeIcon({ read }: { read: boolean }) {
 export function PortalMessagesHub({
   role,
   title = "Messages",
-  subtitle = "Official notices and announcements from administrators and your institution.",
+  subtitle = "Official Message from your institution.",
   onUnreadChange,
 }: Props) {
   const router = useRouter();
@@ -194,7 +194,7 @@ export function PortalMessagesHub({
           <div>
             <p className="text-xs font-bold uppercase tracking-widest text-[#FFC107]">Inbox</p>
             <h1 className="mt-1 text-2xl font-bold">{title}</h1>
-            <p className="mt-2 max-w-2xl text-sm text-blue-100">{subtitle}</p>
+            {/* <p className="mt-2 max-w-2xl text-sm text-blue-100">{subtitle}</p> */}
           </div>
           {unreadCount > 0 ? (
             <button
@@ -216,10 +216,10 @@ export function PortalMessagesHub({
             <p className="text-xs text-blue-200">Unread</p>
             <p className="text-xl font-bold text-[#FFC107]">{unreadCount}</p>
           </div>
-          <div className="rounded-xl bg-white/10 px-4 py-3 ring-1 ring-white/15">
+          {/* <div className="rounded-xl bg-white/10 px-4 py-3 ring-1 ring-white/15">
             <p className="text-xs text-blue-200">Retention</p>
             <p className="text-sm font-medium">Read messages auto-remove after 24h</p>
-          </div>
+          </div> */}
         </div>
       </section>
 
@@ -236,9 +236,9 @@ export function PortalMessagesHub({
             </svg>
           </div>
           <p className="mt-4 text-lg font-semibold text-slate-800">Your inbox is clear</p>
-          <p className="mt-2 text-sm text-slate-500">
+          {/* <p className="mt-2 text-sm text-slate-500">
             When administrators send notices, they will appear here and in your notification bell.
-          </p>
+          </p> */}
         </div>
       ) : (
         <div className="grid gap-4 lg:grid-cols-5">

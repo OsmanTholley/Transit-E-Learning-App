@@ -1,4 +1,5 @@
 import { Prisma } from "@prisma/client";
+import { sendAnnouncementEmails } from "@/lib/announcement-email";
 import { academicYearDbVariants, normalizeAcademicYear } from "@/lib/academic-years";
 import { prisma } from "@/lib/prisma";
 
@@ -173,6 +174,13 @@ export async function sendStudentMessage(input: SendStudentMessageInput) {
     });
 
     return record;
+  });
+
+  void sendAnnouncementEmails({
+    userIds,
+    title,
+    message,
+    portalLabel: "Students",
   });
 
   return {

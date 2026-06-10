@@ -73,6 +73,7 @@ const sectionIcons: Record<string, string> = {
   "System Settings": "settings",
   "Activity Logs": "logs",
   "YouTube Views": "youtube",
+  "Finance & Fees": "finance",
 };
 
 function mapChildren(children?: { label: string; href: string }[]) {

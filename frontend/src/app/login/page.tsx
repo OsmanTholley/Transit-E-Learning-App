@@ -138,7 +138,7 @@ export default function LoginPage() {
           <p className="mt-1 text-sm text-slate-600">
             {isStudent
               ? "Sign in with your student ID and password."
-              : "Sign in with your institutional email and password. Admin and lecturer accounts use this portal."}
+              : "Sign in with your Email and Password."}
           </p>
         </div>
 
@@ -154,7 +154,7 @@ export default function LoginPage() {
                   type="text"
                   required
                   autoComplete="username"
-                  placeholder="TCSL/0001"
+                  placeholder="TCSL/0000"
                   value={studentId}
                   onChange={(event) => {
                     setStudentId(event.target.value);
@@ -202,6 +202,7 @@ export default function LoginPage() {
                 type={showPassword ? "text" : "password"}
                 required
                 autoComplete="current-password"
+                placeholder="•••••••23TK"
                 value={password}
                 onChange={(event) => {
                   setPassword(event.target.value);
@@ -239,6 +240,7 @@ export default function LoginPage() {
               New student? Verify your ID
             </Link>
           ) : null}
+          
           <Link href="/forgot-password" className="text-blue-800 hover:underline">
             Forgot password?
           </Link>

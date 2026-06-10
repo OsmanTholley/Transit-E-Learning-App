@@ -3,6 +3,7 @@ import bcrypt from "bcryptjs";
 import { Role } from "@prisma/client";
 import { requireAdminUser, unauthorized } from "@/lib/auth";
 import { handleRouteDatabaseError } from "@/lib/db-errors";
+import { sendLecturerInviteEmail } from "@/lib/email";
 import { prisma } from "@/lib/prisma";
 import { mapLecturerToRecord } from "@/lib/lecturer-mapper";
 
@@ -93,9 +94,22 @@ export async function POST(request: NextRequest) {
       });
     });
 
+    const emailResult = await sendLecturerInviteEmail({
+      to: normalizedEmail,
+      fullName: fullName.trim(),
+      temporaryPassword: password,
+    });
+
+    const emailSent = emailResult.ok;
+    const message = emailSent
+      ? "Lecturer account created. An invitation email with the temporary password was sent."
+      : "Lecturer account created, but the invitation email could not be sent. Share the temporary password manually.";
+
     return NextResponse.json(
       {
-        message: "Lecturer account created. They can sign in with their email and password to complete their profile.",
+        message,
+        emailSent: emailSent,
+        emailError: emailSent ? null : ("error" in emailResult ? emailResult.error : "Email failed"),
         lecturer: mapLecturerToRecord(lecturer),
       },
       { status: 201 },

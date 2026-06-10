@@ -204,7 +204,7 @@ export function LecturerReportsPage() {
   const { lecturers, loading, refetch } = useLecturers();
   const [reports, setReports] = useState<ReportRow[]>(defaultReports);
   const active = lecturers.filter((l) => l.accountStatus === "Active").length;
-  const withCourses = lecturers.filter((l) => l.assignedCourses > 0).length;
+  const withCourses = lecturers.filter((l) => l.assignedCourses !== "—" && l.assignedCourses.trim().length > 0).length;
 
   if (loading) {
     return <LoadingState message="Loading lecturer reports…" panel minHeight={200} />;
