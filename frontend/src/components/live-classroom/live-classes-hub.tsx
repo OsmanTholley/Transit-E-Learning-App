@@ -108,7 +108,7 @@ export function LiveClassesHub({ role }: LiveClassesHubProps) {
       return;
     }
 
-    await showSuccess("Live class scheduled", "Start the session when you are ready — everything stays in this portal.");
+    await showSuccess("Virtual Room scheduled", "Start the session when you are ready — up to 100 participants.");
     setTitle("");
     setEndTime("");
     void load();
@@ -167,7 +167,7 @@ export function LiveClassesHub({ role }: LiveClassesHubProps) {
           <div className="flex items-center gap-4">
             <TransitLogo size="md" variant="light" showText={false} />
             <div>
-              <h1 className="text-2xl font-semibold">Transit Virtual Classroom</h1>
+              <h1 className="text-2xl font-semibold">Transit Virtual Room</h1>
               <p className="mt-1 max-w-xl text-sm text-white/80">
                 Teams-style live video, chat, and screen sharing — built into your portal. No external apps, no
                 teams.live.com links, no leaving the site.
@@ -185,8 +185,8 @@ export function LiveClassesHub({ role }: LiveClassesHubProps) {
 
       {role === "lecturer" ? (
         <form onSubmit={scheduleClass} className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-          <h2 className="text-lg font-medium text-slate-900">Schedule a live class</h2>
-          <p className="mt-1 text-sm text-slate-500">Students join from their Live Classes page inside the portal.</p>
+          <h2 className="text-lg font-medium text-slate-900">Schedule a Virtual Room</h2>
+          <p className="mt-1 text-sm text-slate-500">Students join from their Virtual Room page inside the portal.</p>
           <div className="mt-4 grid gap-3 md:grid-cols-2 lg:grid-cols-5">
             <input
               value={title}
@@ -238,7 +238,7 @@ export function LiveClassesHub({ role }: LiveClassesHubProps) {
         <section className="overflow-hidden rounded-xl border-2 border-red-200 bg-gradient-to-r from-red-50 to-white shadow-sm">
           <div className="border-b border-red-100 bg-red-600 px-5 py-3">
             <h2 className="text-lg font-semibold text-white">
-              {role === "student" ? "Join live class now" : "Live sessions in progress"}
+              {role === "student" ? "Join Virtual Room now" : "Virtual Rooms in progress"}
             </h2>
             <p className="text-sm text-red-100">
               {role === "student"
@@ -293,7 +293,7 @@ export function LiveClassesHub({ role }: LiveClassesHubProps) {
                 : "Schedule your first class above."
               : liveNow.length > 0
                 ? "No upcoming classes — check the live section above."
-                : "No live classes scheduled for your courses yet."}
+                : "No Virtual Rooms scheduled for your courses yet."}
           </p>
         ) : (
           <div className="divide-y divide-slate-100">

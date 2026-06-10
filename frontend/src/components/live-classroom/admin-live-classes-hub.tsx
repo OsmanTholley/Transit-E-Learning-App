@@ -116,7 +116,7 @@ export function AdminLiveClassesHub() {
       await showError("Could not schedule class", result.offline ? "You are offline." : result.message);
       return;
     }
-    await showSuccess("Live class scheduled", "Conduct as host or preview the student experience.");
+    await showSuccess("Virtual Room scheduled", "Supervise the session when it goes live.");
     setTitle("");
     setEndTime("");
     void load();
@@ -141,17 +141,17 @@ export function AdminLiveClassesHub() {
         <div className="flex flex-wrap items-center gap-4">
           <TransitLogo size="md" variant="light" showText={false} />
           <div>
-            <h1 className="text-2xl font-semibold">Admin Virtual Classroom</h1>
+            <h1 className="text-2xl font-semibold">Admin Virtual Room</h1>
             <p className="mt-1 max-w-2xl text-sm text-white/80">
-              Schedule meetings, assign a lecturer and course, then conduct as host or join in student view to test
-              what learners see.
+              Schedule sessions, assign a lecturer and course, then supervise live classes — monitor attendance and
+              end sessions without joining as a student.
             </p>
           </div>
         </div>
       </div>
 
       <form onSubmit={scheduleClass} className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-        <h2 className="text-lg font-medium text-slate-900">Schedule a live class</h2>
+        <h2 className="text-lg font-medium text-slate-900">Schedule a Virtual Room</h2>
         <p className="mt-1 text-sm text-slate-500">Enrolled students in the selected course can join when the class is live.</p>
         <div className="mt-4 grid gap-3 md:grid-cols-2 lg:grid-cols-3">
           <input
@@ -227,7 +227,7 @@ export function AdminLiveClassesHub() {
       {liveNow.length > 0 ? (
         <section className="overflow-hidden rounded-xl border-2 border-red-200 bg-gradient-to-r from-red-50 to-white shadow-sm">
           <div className="border-b border-red-100 bg-red-600 px-5 py-3">
-            <h2 className="text-lg font-semibold text-white">Live sessions</h2>
+            <h2 className="text-lg font-semibold text-white">Live Virtual Rooms</h2>
           </div>
           <div className="divide-y divide-red-100">
             {liveNow.map((item) => (
@@ -241,20 +241,12 @@ export function AdminLiveClassesHub() {
                     {item.course?.courseCode} · Lecturer: {item.lecturerName ?? "—"}
                   </p>
                 </div>
-                <div className="flex flex-wrap gap-2">
-                  <Link
-                    href={`/admin/live-classes/${item.id}?as=lecturer`}
-                    className="rounded-lg bg-[#003B8E] px-4 py-2 text-sm font-semibold text-white hover:bg-[#002f70]"
-                  >
-                    Conduct as host
-                  </Link>
-                  <Link
-                    href={`/admin/live-classes/${item.id}?as=student`}
-                    className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
-                  >
-                    Join as student
-                  </Link>
-                </div>
+                <Link
+                  href={`/admin/live-classes/${item.id}`}
+                  className="rounded-lg bg-[#003B8E] px-4 py-2 text-sm font-semibold text-white hover:bg-[#002f70]"
+                >
+                  Supervise session
+                </Link>
               </div>
             ))}
           </div>
@@ -285,10 +277,10 @@ export function AdminLiveClassesHub() {
                 </div>
                 <div className="flex flex-wrap gap-2">
                   <Link
-                    href={`/admin/live-classes/${item.id}?as=lecturer`}
+                    href={`/admin/live-classes/${item.id}`}
                     className="rounded-md bg-[#003B8E] px-3 py-2 text-sm font-medium text-white hover:bg-[#002f70]"
                   >
-                    Conduct as host
+                    Supervise
                   </Link>
                   <button
                     type="button"

@@ -6,7 +6,6 @@ import {
   endLiveClassAsAdmin,
   getLiveClassAccess,
   logLiveClassExit,
-  type LiveClassSessionAs,
 } from "@/lib/live-class-service";
 
 type RouteContext = { params: Promise<{ id: string }> };
@@ -14,20 +13,13 @@ type RouteContext = { params: Promise<{ id: string }> };
 export async function POST(request: NextRequest, context: RouteContext) {
   const { id } = await context.params;
   const body = await request.json().catch(() => ({}));
-  const sessionAs: LiveClassSessionAs | undefined =
-    body.sessionAs === "student" ? "student" : body.sessionAs === "lecturer" ? "lecturer" : undefined;
 
   const user = await getValidatedUser(["student", "lecturer", "admin"]);
   if (!user) {
     return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
   }
 
-  const access = await getLiveClassAccess(
-    id,
-    user.id,
-    user.role,
-    user.role === Role.ADMIN ? { sessionAs: sessionAs ?? "lecturer" } : undefined,
-  );
+  const access = await getLiveClassAccess(id, user.id, user.role);
   if (!access.ok) {
     return NextResponse.json({ error: access.error }, { status: access.status });
   }

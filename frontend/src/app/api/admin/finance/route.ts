@@ -56,10 +56,24 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    const students = await prisma.student.findMany({
-      include: { user: { select: { fullName: true, email: true } } },
-      orderBy: { createdAt: "desc" },
-    });
+    const [students, programs, departments] = await Promise.all([
+      prisma.student.findMany({
+        include: {
+          user: { select: { fullName: true, email: true } },
+          program: { select: { programName: true } },
+          department: { select: { departmentName: true } },
+        },
+        orderBy: { createdAt: "desc" },
+      }),
+      prisma.program.findMany({
+        orderBy: { programName: "asc" },
+        include: { _count: { select: { students: true } } },
+      }),
+      prisma.department.findMany({
+        orderBy: { departmentName: "asc" },
+        include: { _count: { select: { students: true } } },
+      }),
+    ]);
 
     const rows = accounts.map((account) => {
       const total = decimalToNumber(account.totalAmount);
@@ -144,6 +158,8 @@ export async function GET(request: NextRequest) {
         intakeBatch: fee.intakeBatch,
         semester: fee.semester,
         level: fee.level,
+        programId: fee.programId,
+        departmentId: fee.departmentId,
         assignedCount: fee._count.accounts,
       })),
       students: students.map((student) => ({
@@ -151,6 +167,20 @@ export async function GET(request: NextRequest) {
         studentId: student.studentId,
         fullName: student.user.fullName,
         email: student.user.email,
+        programId: student.programId,
+        departmentId: student.departmentId,
+        programName: student.program?.programName ?? null,
+        departmentName: student.department?.departmentName ?? null,
+      })),
+      programs: programs.map((program) => ({
+        id: program.id,
+        name: program.programName,
+        studentCount: program._count.students,
+      })),
+      departments: departments.map((department) => ({
+        id: department.id,
+        name: department.departmentName,
+        studentCount: department._count.students,
       })),
     });
   } catch (error) {
@@ -183,6 +213,7 @@ export async function POST(request: NextRequest) {
           amount,
           currency: body.currency?.trim() || DEFAULT_CURRENCY,
           programId: body.programId || null,
+          departmentId: body.departmentId || null,
           level: body.level?.trim() || null,
           semester: body.semester?.trim() || null,
           intakeBatch: body.intakeBatch?.trim() || null,
@@ -191,6 +222,48 @@ export async function POST(request: NextRequest) {
       });
 
       return NextResponse.json({ ok: true, feeStructure });
+    }
+
+    if (action === "update_fee_structure") {
+      const feeStructureId = body.feeStructureId as string;
+      if (!feeStructureId) {
+        return NextResponse.json({ error: "Fee structure id is required." }, { status: 400 });
+      }
+
+      const amount = body.amount !== undefined ? Number(body.amount) : undefined;
+      if (amount !== undefined && (!Number.isFinite(amount) || amount <= 0)) {
+        return NextResponse.json({ error: "Valid amount is required." }, { status: 400 });
+      }
+
+      const feeStructure = await prisma.feeStructure.update({
+        where: { id: feeStructureId },
+        data: {
+          ...(body.title !== undefined ? { title: String(body.title).trim() } : {}),
+          ...(amount !== undefined ? { amount } : {}),
+          ...(body.programId !== undefined ? { programId: body.programId || null } : {}),
+          ...(body.departmentId !== undefined ? { departmentId: body.departmentId || null } : {}),
+          ...(body.level !== undefined ? { level: body.level?.trim() || null } : {}),
+          ...(body.semester !== undefined ? { semester: body.semester?.trim() || null } : {}),
+          ...(body.intakeBatch !== undefined ? { intakeBatch: body.intakeBatch?.trim() || null } : {}),
+          ...(body.dueDate !== undefined ? { dueDate: body.dueDate ? new Date(body.dueDate) : null } : {}),
+        },
+      });
+
+      return NextResponse.json({ ok: true, feeStructure });
+    }
+
+    if (action === "delete_fee_structure") {
+      const feeStructureId = body.feeStructureId as string;
+      if (!feeStructureId) {
+        return NextResponse.json({ error: "Fee structure id is required." }, { status: 400 });
+      }
+
+      await prisma.feeStructure.update({
+        where: { id: feeStructureId },
+        data: { isActive: false },
+      });
+
+      return NextResponse.json({ ok: true });
     }
 
     if (action === "assign_students") {
@@ -213,6 +286,96 @@ export async function POST(request: NextRequest) {
             },
             create: {
               studentId,
+              feeStructureId,
+              totalAmount: feeStructure.amount,
+              dueDate: feeStructure.dueDate,
+              accessLocked: true,
+            },
+            update: {
+              totalAmount: feeStructure.amount,
+              dueDate: feeStructure.dueDate,
+              accessLocked: true,
+            },
+          }),
+        ),
+      );
+
+      return NextResponse.json({ ok: true, count: created.length });
+    }
+
+    if (action === "assign_program") {
+      const feeStructureId = body.feeStructureId as string;
+      const programId = body.programId as string;
+      if (!feeStructureId || !programId) {
+        return NextResponse.json({ error: "Fee structure and program are required." }, { status: 400 });
+      }
+
+      const [feeStructure, studentsInProgram] = await Promise.all([
+        prisma.feeStructure.findUnique({ where: { id: feeStructureId } }),
+        prisma.student.findMany({
+          where: { programId, user: { isActive: true } },
+          select: { id: true },
+        }),
+      ]);
+
+      if (!feeStructure || !feeStructure.isActive) {
+        return NextResponse.json({ error: "Fee structure not found." }, { status: 404 });
+      }
+      if (studentsInProgram.length === 0) {
+        return NextResponse.json({ error: "No active students in this program." }, { status: 400 });
+      }
+
+      const created = await prisma.$transaction(
+        studentsInProgram.map((student) =>
+          prisma.studentFeeAccount.upsert({
+            where: { studentId_feeStructureId: { studentId: student.id, feeStructureId } },
+            create: {
+              studentId: student.id,
+              feeStructureId,
+              totalAmount: feeStructure.amount,
+              dueDate: feeStructure.dueDate,
+              accessLocked: true,
+            },
+            update: {
+              totalAmount: feeStructure.amount,
+              dueDate: feeStructure.dueDate,
+              accessLocked: true,
+            },
+          }),
+        ),
+      );
+
+      return NextResponse.json({ ok: true, count: created.length });
+    }
+
+    if (action === "assign_department") {
+      const feeStructureId = body.feeStructureId as string;
+      const departmentId = body.departmentId as string;
+      if (!feeStructureId || !departmentId) {
+        return NextResponse.json({ error: "Fee structure and department are required." }, { status: 400 });
+      }
+
+      const [feeStructure, studentsInDepartment] = await Promise.all([
+        prisma.feeStructure.findUnique({ where: { id: feeStructureId } }),
+        prisma.student.findMany({
+          where: { departmentId, user: { isActive: true } },
+          select: { id: true },
+        }),
+      ]);
+
+      if (!feeStructure || !feeStructure.isActive) {
+        return NextResponse.json({ error: "Fee structure not found." }, { status: 404 });
+      }
+      if (studentsInDepartment.length === 0) {
+        return NextResponse.json({ error: "No active students in this department." }, { status: 400 });
+      }
+
+      const created = await prisma.$transaction(
+        studentsInDepartment.map((student) =>
+          prisma.studentFeeAccount.upsert({
+            where: { studentId_feeStructureId: { studentId: student.id, feeStructureId } },
+            create: {
+              studentId: student.id,
               feeStructureId,
               totalAmount: feeStructure.amount,
               dueDate: feeStructure.dueDate,

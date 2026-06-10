@@ -104,8 +104,9 @@ export function LiveClassroomRoom({ liveClassId, role, sessionAs = "lecturer" }:
   const [connecting, setConnecting] = useState(false);
 
   const isAdmin = role === "admin";
-  const isHost = role === "lecturer" || (isAdmin && sessionAs === "lecturer");
-  const isStudentView = role === "student" || (isAdmin && sessionAs === "student");
+  const isAdminObserver = isAdmin;
+  const isHost = role === "lecturer" || isAdminObserver;
+  const isStudentView = role === "student";
   const controlRole: "student" | "lecturer" = isHost ? "lecturer" : "student";
   const isLecturer = isHost;
 
@@ -145,7 +146,7 @@ export function LiveClassroomRoom({ liveClassId, role, sessionAs = "lecturer" }:
       const result = await requestApi<JoinPayload>(`/api/live-classes/${liveClassId}/join`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(isAdmin ? { sessionAs } : {}),
+        body: JSON.stringify({}),
         silent: true,
       });
       if (cancelled) return;
@@ -161,7 +162,7 @@ export function LiveClassroomRoom({ liveClassId, role, sessionAs = "lecturer" }:
     return () => {
       cancelled = true;
     };
-  }, [liveClassId, isAdmin, sessionAs]);
+  }, [liveClassId]);
 
   const enterCall = useCallback(async () => {
     if (!joinData || !jitsiContainerRef.current || jitsiApiRef.current) return;
@@ -171,7 +172,11 @@ export function LiveClassroomRoom({ liveClassId, role, sessionAs = "lecturer" }:
       await loadJitsiScript(joinData.jitsiDomain);
       if (!window.JitsiMeetExternalAPI || !jitsiContainerRef.current) return;
 
-      const jitsiOptions = buildJitsiConfig(joinData.displayName, joinData.isModerator);
+      const jitsiOptions = buildJitsiConfig(joinData.displayName, joinData.isModerator, {
+        observer: isAdminObserver,
+      });
+      const startMic = isAdminObserver ? false : joinWithMic;
+      const startCamera = isAdminObserver ? false : joinWithCamera;
       const api = new window.JitsiMeetExternalAPI(joinData.jitsiDomain, {
         roomName: joinData.roomName,
         parentNode: jitsiContainerRef.current,
@@ -180,8 +185,8 @@ export function LiveClassroomRoom({ liveClassId, role, sessionAs = "lecturer" }:
         ...jitsiOptions,
         configOverwrite: {
           ...jitsiOptions.configOverwrite,
-          startWithAudioMuted: !joinWithMic,
-          startWithVideoMuted: !joinWithCamera,
+          startWithAudioMuted: !startMic,
+          startWithVideoMuted: !startCamera,
         },
       });
 
@@ -193,10 +198,10 @@ export function LiveClassroomRoom({ liveClassId, role, sessionAs = "lecturer" }:
         syncMediaState();
         syncParticipants();
 
-        if (joinWithMic && api.isAudioMuted?.()) {
+        if (startMic && api.isAudioMuted?.()) {
           api.executeCommand("toggleAudio");
         }
-        if (joinWithCamera && api.isVideoMuted?.()) {
+        if (startCamera && api.isVideoMuted?.()) {
           api.executeCommand("toggleVideo");
         }
         syncMediaState();
@@ -232,7 +237,7 @@ export function LiveClassroomRoom({ liveClassId, role, sessionAs = "lecturer" }:
       setConnecting(false);
       setError(mountError instanceof Error ? mountError.message : "Could not start the classroom.");
     }
-  }, [joinData, joinWithMic, joinWithCamera, syncMediaState, syncParticipants, exitToHub]);
+  }, [joinData, joinWithMic, joinWithCamera, isAdminObserver, syncMediaState, syncParticipants, exitToHub]);
 
   useEffect(() => {
     if (!joinData || inCall || jitsiApiRef.current) return;
@@ -343,11 +348,10 @@ export function LiveClassroomRoom({ liveClassId, role, sessionAs = "lecturer" }:
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         ...(action ? { action } : {}),
-        ...(isAdmin ? { sessionAs } : {}),
       }),
       silent: true,
     });
-  }, [liveClassId, isAdmin, sessionAs]);
+  }, [liveClassId]);
 
   const leaveClass = () => {
     void notifyLeave().finally(() => {
@@ -390,7 +394,7 @@ export function LiveClassroomRoom({ liveClassId, role, sessionAs = "lecturer" }:
   if (loading) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-3 bg-[#252423] text-white">
-        <TransitLogo size="md" variant="light" subtitle="Virtual Classroom" />
+        <TransitLogo size="md" variant="light" subtitle="Virtual Room" />
         <p className="text-sm text-white/70">Preparing classroom…</p>
       </div>
     );
@@ -418,7 +422,7 @@ export function LiveClassroomRoom({ liveClassId, role, sessionAs = "lecturer" }:
       <div className="flex min-h-screen items-center justify-center bg-[#252423] px-4 text-white">
         <div className="w-full max-w-lg rounded-2xl border border-white/10 bg-[#292828] p-6 shadow-xl sm:p-8">
           <div className="flex justify-center">
-            <TransitLogo size="md" variant="light" subtitle="Virtual Classroom" />
+            <TransitLogo size="md" variant="light" subtitle="Virtual Room" />
           </div>
           <h1 className="mt-5 text-center text-lg font-semibold sm:text-xl">
             {joinData.liveClass.title ?? "Live session"}
@@ -465,7 +469,7 @@ export function LiveClassroomRoom({ liveClassId, role, sessionAs = "lecturer" }:
           <TransitLogo size="sm" variant="light" showText={false} />
           <div className="min-w-0">
             <p className="text-[10px] font-semibold uppercase tracking-widest text-[#FFC107]">
-              {isAdmin ? (sessionAs === "lecturer" ? "Admin host" : "Admin student view") : "Transit Classroom"}
+              {isAdmin ? "Administrator — supervising" : "Transit Virtual Room"}
             </p>
             <h1 className="truncate text-sm font-semibold">{joinData.liveClass.title ?? "Live session"}</h1>
           </div>

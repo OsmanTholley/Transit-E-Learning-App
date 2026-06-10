@@ -13,10 +13,10 @@ function LecturerMessagesContent({ title, subtitle }: Props) {
   return (
     <PortalMessagesHub
       role="lecturer"
-      title={title ?? "Messages & Notices"}
+      title={title ?? "Notifications"}
       subtitle={
         subtitle ??
-        "Administrative announcements and institutional updates. Read a message before removing it from your inbox."
+        "Administrative announcements and institutional updates. Open a notice from the bell icon anytime."
       }
     />
   );

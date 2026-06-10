@@ -222,7 +222,7 @@ export function StudentDashboard() {
           <h1 className="text-2xl font-bold text-white md:text-3xl">Welcome back, {profile.fullName}</h1>
           <p className="mt-1 text-sm font-semibold" style={{ color: "#FFC107" }}>{profile.studentId}</p>
           <p className="mt-2 text-sm text-white/80 md:text-base">
-            Continue your learning journey — access courses, notes, quizzes, and live classroom resources.
+            Continue your learning journey — access courses, notes, quizzes, and Virtual Room sessions.
           </p>
         </div>
 

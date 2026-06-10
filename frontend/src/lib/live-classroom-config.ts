@@ -1,3 +1,6 @@
+/** Maximum participants per Virtual Room session. */
+export const VIRTUAL_ROOM_MAX_PARTICIPANTS = 100;
+
 /** Portal-only Jitsi settings — lightweight defaults, full classroom features. */
 export const TRANSIT_CLASSROOM_BRAND = {
   primary: "#0B3D91",
@@ -12,7 +15,13 @@ export const CHAT_POLL_MS = 6000;
 /** Poll raised hands only for lecturers on that tab (seconds). */
 export const HAND_POLL_MS = 8000;
 
-export function buildJitsiConfig(displayName: string, isModerator: boolean) {
+export function buildJitsiConfig(
+  displayName: string,
+  isModerator: boolean,
+  options?: { observer?: boolean },
+) {
+  const observer = options?.observer ?? false;
+
   return {
     configOverwrite: {
       prejoinPageEnabled: false,
@@ -29,8 +38,8 @@ export function buildJitsiConfig(displayName: string, isModerator: boolean) {
       requireDisplayName: false,
       enableInsecureRoomNameWarning: false,
       disableJoinLeaveSounds: true,
-      startWithAudioMuted: !isModerator,
-      startWithVideoMuted: !isModerator,
+      startWithAudioMuted: observer || !isModerator,
+      startWithVideoMuted: observer || !isModerator,
       startAudioOnly: false,
       readOnlyName: true,
       defaultLanguage: "en",
@@ -38,23 +47,23 @@ export function buildJitsiConfig(displayName: string, isModerator: boolean) {
       notifications: [] as string[],
       gravatar: { disabled: true },
       disableRemoteMute: !isModerator,
-      subject: "Transit Virtual Classroom",
+      subject: "Transit Virtual Room",
 
       // Voice — echo cancel, noise suppression, talk detection
       enableNoisyMicDetection: true,
       enableTalkWhileMuted: true,
       disableAudioLevels: false,
 
-      // Show all participants — lecturer + students see each other
-      channelLastN: -1,
-      maxFullResolutionParticipants: 4,
+      // Optimized for up to 100 participants — stage shows active speakers, filmstrip for others
+      channelLastN: isModerator ? 25 : 12,
+      maxFullResolutionParticipants: isModerator ? 4 : 2,
       disableTileView: false,
       filmstrip: { disableStageFilmstrip: false },
-      resolution: 480,
+      resolution: isModerator ? 480 : 360,
       constraints: {
         video: {
-          height: { ideal: 480, max: 720, min: 240 },
-          frameRate: { ideal: 24, max: 30 },
+          height: { ideal: isModerator ? 480 : 360, max: 720, min: 180 },
+          frameRate: { ideal: 20, max: 24 },
         },
       },
       enableLayerSuspension: true,
@@ -62,7 +71,7 @@ export function buildJitsiConfig(displayName: string, isModerator: boolean) {
 
       // Screen share (lecturer) — capped frame rate saves CPU
       desktopSharingFrameRate: { min: 5, max: 15 },
-      desktopSharingSources: isModerator ? ["screen", "window"] : [],
+      desktopSharingSources: isModerator && !observer ? ["screen", "window"] : [],
 
       // Disable heavy unused features
       fileRecordingsEnabled: false,
@@ -86,8 +95,8 @@ export function buildJitsiConfig(displayName: string, isModerator: boolean) {
       SHOW_CHROME_EXTENSION_BANNER: false,
       DISABLE_JOIN_LEAVE_NOTIFICATIONS: true,
       DEFAULT_BACKGROUND: TRANSIT_CLASSROOM_BRAND.surface,
-      APP_NAME: "Transit Classroom",
-      NATIVE_APP_NAME: "Transit Classroom",
+      APP_NAME: "Transit Virtual Room",
+      NATIVE_APP_NAME: "Transit Virtual Room",
       PROVIDER_NAME: "Transit E-Learning",
       VERTICAL_FILMSTRIP: true,
       FILM_STRIP_MAX_HEIGHT: 96,

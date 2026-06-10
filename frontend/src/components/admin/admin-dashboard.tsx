@@ -272,12 +272,12 @@ export function AdminDashboard({ adminName }: AdminDashboardProps) {
             <p className="text-sm text-slate-500">No recent activity yet.</p>
           ) : (
             <ul className="space-y-4">
-              {data.activities.map((a) => {
+              {data.activities.map((a, index) => {
                 const activityTone =
                   a.tone === "emerald" ? "amber" : (a.tone as StatCard["tone"] | undefined);
                 const t = toneStyles[activityTone ?? "amber"] ?? toneStyles.amber;
                 return (
-                  <li key={`${a.title}-${a.subtitle}-${a.when}`} className="flex items-start justify-between gap-3">
+                  <li key={`activity-${index}-${a.title}`} className="flex items-start justify-between gap-3">
                     <div className="flex gap-3">
                       <span className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${t.dot}`} />
                       <div>

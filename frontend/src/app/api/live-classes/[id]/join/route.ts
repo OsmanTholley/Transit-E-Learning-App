@@ -5,28 +5,18 @@ import {
   getLiveClassAccess,
   JITSI_DOMAIN,
   logLiveClassJoin,
-  type LiveClassSessionAs,
 } from "@/lib/live-class-service";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
 export async function POST(request: NextRequest, context: RouteContext) {
   const { id } = await context.params;
-  const body = await request.json().catch(() => ({}));
-  const sessionAs: LiveClassSessionAs | undefined =
-    body.sessionAs === "student" ? "student" : body.sessionAs === "lecturer" ? "lecturer" : undefined;
-
   const user = await getValidatedUser(["student", "lecturer", "admin"]);
   if (!user) {
     return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
   }
 
-  const access = await getLiveClassAccess(
-    id,
-    user.id,
-    user.role,
-    user.role === Role.ADMIN ? { sessionAs: sessionAs ?? "lecturer" } : undefined,
-  );
+  const access = await getLiveClassAccess(id, user.id, user.role);
   if (!access.ok) {
     return NextResponse.json({ error: access.error }, { status: access.status });
   }
@@ -44,7 +34,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
       jitsiDomain: JITSI_DOMAIN,
       displayName: access.displayName,
       isModerator: true,
-      sessionAs: user.role === Role.ADMIN ? (sessionAs ?? "lecturer") : "lecturer",
+      sessionAs: user.role === Role.ADMIN ? "observer" : "lecturer",
       liveClass: {
         id: liveClass.id,
         title: liveClass.title,
@@ -73,7 +63,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
     jitsiDomain: JITSI_DOMAIN,
     displayName: access.displayName,
     isModerator: false,
-    sessionAs: user.role === Role.ADMIN ? "student" : "student",
+    sessionAs: "student",
     liveClass: {
       id: liveClass.id,
       title: liveClass.title,

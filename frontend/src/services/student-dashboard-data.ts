@@ -42,10 +42,9 @@ export const studentNavItems = [
   { label: "Assignments", href: "/student/assignments", icon: "assignments" },
   { label: "Quizzes", href: "/student/quizzes", icon: "quizzes" },
   { label: "Discussions", href: "/student/discussions", icon: "discussions" },
-  { label: "Live Classes", href: "/student/live-classes", icon: "live" },
-  { label: "Calendar", href: "/student/dashboard#academic-calendar", icon: "calendar" },
+  { label: "Virtual Room", href: "/student/live-classes", icon: "live" },
   { label: "Billing", href: "/student/billing", icon: "billing" },
-  { label: "Messages", href: "/student/notifications", icon: "notifications" },
+  { label: "Chat", href: "/student/chat", icon: "chat" },
   { label: "AI Tutor", href: "/student/ai-tutor", icon: "ai" },
   { label: "Profile", href: "/student/profile", icon: "profile" },
 ] as const;

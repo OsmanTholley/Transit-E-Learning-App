@@ -40,6 +40,9 @@ type StudentOption = {
   email: string | null;
 };
 
+type ProgramOption = { id: string; name: string; studentCount: number };
+type DepartmentOption = { id: string; name: string; studentCount: number };
+
 type FinanceResponse = {
   summary: {
     collected: number;
@@ -52,6 +55,8 @@ type FinanceResponse = {
   accounts: FinanceAccount[];
   feeStructures: FeeStructure[];
   students: StudentOption[];
+  programs: ProgramOption[];
+  departments: DepartmentOption[];
 };
 
 function formatLeones(amount: number): string {
@@ -104,8 +109,14 @@ export function AdminFinanceDashboard() {
   const [feeSemester, setFeeSemester] = useState("");
 
   const [assignFeeId, setAssignFeeId] = useState("");
+  const [assignMode, setAssignMode] = useState<"students" | "program" | "department">("students");
+  const [assignProgramId, setAssignProgramId] = useState("");
+  const [assignDepartmentId, setAssignDepartmentId] = useState("");
   const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
   const [studentSearch, setStudentSearch] = useState("");
+  const [editingFeeId, setEditingFeeId] = useState<string | null>(null);
+  const [editFeeTitle, setEditFeeTitle] = useState("");
+  const [editFeeAmount, setEditFeeAmount] = useState("");
 
   const load = async (status = statusFilter) => {
     setLoading(true);
@@ -183,19 +194,43 @@ export function AdminFinanceDashboard() {
 
   const handleAssignFees = async (event: FormEvent) => {
     event.preventDefault();
-    if (!assignFeeId || selectedStudentIds.length === 0) {
-      await showError("Select students", "Choose a fee and at least one student.");
+    if (!assignFeeId) {
+      await showError("Select a fee", "Choose which fee to assign.");
       return;
+    }
+
+    let action = "assign_students";
+    let body: Record<string, unknown> = {
+      action,
+      feeStructureId: assignFeeId,
+    };
+
+    if (assignMode === "students") {
+      if (selectedStudentIds.length === 0) {
+        await showError("Select students", "Choose at least one student.");
+        return;
+      }
+      body = { ...body, studentIds: selectedStudentIds };
+    } else if (assignMode === "program") {
+      if (!assignProgramId) {
+        await showError("Select a program", "Choose a program to assign this fee.");
+        return;
+      }
+      action = "assign_program";
+      body = { action, feeStructureId: assignFeeId, programId: assignProgramId };
+    } else {
+      if (!assignDepartmentId) {
+        await showError("Select a department", "Choose a department to assign this fee.");
+        return;
+      }
+      action = "assign_department";
+      body = { action, feeStructureId: assignFeeId, departmentId: assignDepartmentId };
     }
 
     const result = await requestApi("/api/admin/finance", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        action: "assign_students",
-        feeStructureId: assignFeeId,
-        studentIds: selectedStudentIds,
-      }),
+      body: JSON.stringify(body),
       silent: true,
     });
 
@@ -204,8 +239,65 @@ export function AdminFinanceDashboard() {
       return;
     }
 
-    await showSuccess("Fees assigned", `Fee sent to ${selectedStudentIds.length} student(s).`);
+    const count =
+      assignMode === "students"
+        ? selectedStudentIds.length
+        : ((result.data as { count?: number })?.count ?? 0);
+
+    await showSuccess("Fees assigned", `Fee assigned to ${count} student(s).`);
     setSelectedStudentIds([]);
+    void load();
+  };
+
+  const startEditFee = (fee: FeeStructure) => {
+    setEditingFeeId(fee.id);
+    setEditFeeTitle(fee.title);
+    setEditFeeAmount(String(fee.amount));
+  };
+
+  const handleUpdateFee = async (feeId: string) => {
+    const amount = Number(editFeeAmount);
+    if (!editFeeTitle.trim() || !Number.isFinite(amount) || amount <= 0) {
+      await showError("Invalid fee", "Enter a title and valid amount.");
+      return;
+    }
+
+    const result = await requestApi("/api/admin/finance", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "update_fee_structure",
+        feeStructureId: feeId,
+        title: editFeeTitle.trim(),
+        amount,
+      }),
+      silent: true,
+    });
+
+    if (!result.ok) {
+      await showError("Update failed", result.offline ? "You are offline." : result.message);
+      return;
+    }
+
+    await showSuccess("Fee updated");
+    setEditingFeeId(null);
+    void load();
+  };
+
+  const handleDeleteFee = async (feeId: string, title: string) => {
+    const result = await requestApi("/api/admin/finance", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "delete_fee_structure", feeStructureId: feeId }),
+      silent: true,
+    });
+
+    if (!result.ok) {
+      await showError("Delete failed", result.offline ? "You are offline." : result.message);
+      return;
+    }
+
+    await showSuccess("Fee removed", `"${title}" is no longer available for new assignments.`);
     void load();
   };
 
@@ -330,67 +422,193 @@ export function AdminFinanceDashboard() {
       </form>
 
       {data && data.feeStructures.length > 0 ? (
-        <form onSubmit={handleAssignFees} className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-          <h2 className="text-lg font-medium text-slate-900">Assign fee to students</h2>
-          <p className="mt-1 text-sm text-slate-600">
-            Selected students receive the fee on their billing page. Course access can be locked until payment.
-          </p>
-          <div className="mt-4 flex flex-wrap items-center gap-3">
-            <select
-              value={assignFeeId}
-              onChange={(event) => setAssignFeeId(event.target.value)}
-              required
-              className="rounded-md border border-slate-300 px-3 py-2 text-sm"
-            >
+        <>
+          <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+            <h2 className="text-lg font-medium text-slate-900">Manage fees</h2>
+            <p className="mt-1 text-sm text-slate-600">
+              Edit or remove fee templates. Students in the same program can have different fees by assigning separate fee amounts.
+            </p>
+            <ul className="mt-4 divide-y divide-slate-100">
               {data.feeStructures.map((fee) => (
-                <option key={fee.id} value={fee.id}>
-                  {fee.title} — {fee.amountLabel} ({fee.assignedCount} assigned)
-                </option>
+                <li key={fee.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
+                  {editingFeeId === fee.id ? (
+                    <div className="flex flex-1 flex-wrap items-center gap-2">
+                      <input
+                        value={editFeeTitle}
+                        onChange={(event) => setEditFeeTitle(event.target.value)}
+                        className="rounded-md border border-slate-300 px-3 py-2 text-sm"
+                      />
+                      <input
+                        type="number"
+                        min="1"
+                        step="0.01"
+                        value={editFeeAmount}
+                        onChange={(event) => setEditFeeAmount(event.target.value)}
+                        className="w-32 rounded-md border border-slate-300 px-3 py-2 text-sm"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => void handleUpdateFee(fee.id)}
+                        className="rounded-md bg-[#0B3D91] px-3 py-2 text-sm text-white"
+                      >
+                        Save
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setEditingFeeId(null)}
+                        className="rounded-md border border-slate-300 px-3 py-2 text-sm"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  ) : (
+                    <>
+                      <div>
+                        <p className="font-medium text-slate-900">{fee.title}</p>
+                        <p className="text-sm text-slate-500">
+                          {fee.amountLabel} · {fee.assignedCount} assigned
+                        </p>
+                      </div>
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={() => startEditFee(fee)}
+                          className="rounded-md border border-slate-300 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => void handleDeleteFee(fee.id, fee.title)}
+                          className="rounded-md border border-rose-200 px-3 py-1.5 text-sm text-rose-700 hover:bg-rose-50"
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </li>
               ))}
-            </select>
-            <input
-              value={studentSearch}
-              onChange={(event) => setStudentSearch(event.target.value)}
-              placeholder="Search students…"
-              className="rounded-md border border-slate-300 px-3 py-2 text-sm"
-            />
-            <button
-              type="button"
-              onClick={() => setSelectedStudentIds(filteredStudents.map((s) => s.id))}
-              className="rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"
-            >
-              Select all shown
-            </button>
-            <button
-              type="submit"
-              disabled={selectedStudentIds.length === 0}
-              className="rounded-md bg-emerald-700 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-600 disabled:opacity-50"
-            >
-              Send fee to {selectedStudentIds.length || "…"} student(s)
-            </button>
+            </ul>
           </div>
-          <div className="mt-4 max-h-64 overflow-y-auto rounded-md border border-slate-200">
-            {filteredStudents.length === 0 ? (
-              <p className="px-4 py-6 text-sm text-slate-500">No students match your search.</p>
-            ) : (
-              <ul className="divide-y divide-slate-100">
-                {filteredStudents.map((student) => (
-                  <li key={student.id} className="flex items-center gap-3 px-4 py-2.5 text-sm">
-                    <input
-                      type="checkbox"
-                      checked={selectedStudentIds.includes(student.id)}
-                      onChange={() => toggleStudent(student.id)}
-                      className="h-4 w-4 rounded accent-[#0B3D91]"
-                    />
-                    <span className="font-medium text-slate-900">{student.fullName}</span>
-                    <span className="text-slate-500">{student.studentId}</span>
-                    {student.email ? <span className="text-slate-400">{student.email}</span> : null}
-                  </li>
+
+          <form onSubmit={handleAssignFees} className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+            <h2 className="text-lg font-medium text-slate-900">Assign fee</h2>
+            <p className="mt-1 text-sm text-slate-600">
+              Assign by individual students, entire program, or department. Each student sees only their assigned fees on billing.
+            </p>
+            <div className="mt-4 flex flex-wrap gap-2">
+              {(["students", "program", "department"] as const).map((mode) => (
+                <button
+                  key={mode}
+                  type="button"
+                  onClick={() => setAssignMode(mode)}
+                  className={[
+                    "rounded-lg px-3 py-1.5 text-sm font-medium capitalize",
+                    assignMode === mode ? "bg-[#0B3D91] text-white" : "bg-slate-100 text-slate-700",
+                  ].join(" ")}
+                >
+                  {mode}
+                </button>
+              ))}
+            </div>
+            <div className="mt-4 flex flex-wrap items-center gap-3">
+              <select
+                value={assignFeeId}
+                onChange={(event) => setAssignFeeId(event.target.value)}
+                required
+                className="rounded-md border border-slate-300 px-3 py-2 text-sm"
+              >
+                {data.feeStructures.map((fee) => (
+                  <option key={fee.id} value={fee.id}>
+                    {fee.title} — {fee.amountLabel} ({fee.assignedCount} assigned)
+                  </option>
                 ))}
-              </ul>
-            )}
-          </div>
-        </form>
+              </select>
+
+              {assignMode === "program" ? (
+                <select
+                  value={assignProgramId}
+                  onChange={(event) => setAssignProgramId(event.target.value)}
+                  required
+                  className="rounded-md border border-slate-300 px-3 py-2 text-sm"
+                >
+                  <option value="">Select program</option>
+                  {(data.programs ?? []).map((program) => (
+                    <option key={program.id} value={program.id}>
+                      {program.name} ({program.studentCount} students)
+                    </option>
+                  ))}
+                </select>
+              ) : null}
+
+              {assignMode === "department" ? (
+                <select
+                  value={assignDepartmentId}
+                  onChange={(event) => setAssignDepartmentId(event.target.value)}
+                  required
+                  className="rounded-md border border-slate-300 px-3 py-2 text-sm"
+                >
+                  <option value="">Select department</option>
+                  {(data.departments ?? []).map((department) => (
+                    <option key={department.id} value={department.id}>
+                      {department.name} ({department.studentCount} students)
+                    </option>
+                  ))}
+                </select>
+              ) : null}
+
+              {assignMode === "students" ? (
+                <>
+                  <input
+                    value={studentSearch}
+                    onChange={(event) => setStudentSearch(event.target.value)}
+                    placeholder="Search students…"
+                    className="rounded-md border border-slate-300 px-3 py-2 text-sm"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setSelectedStudentIds(filteredStudents.map((s) => s.id))}
+                    className="rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"
+                  >
+                    Select all shown
+                  </button>
+                </>
+              ) : null}
+
+              <button
+                type="submit"
+                className="rounded-md bg-emerald-700 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-600"
+              >
+                Assign fee
+              </button>
+            </div>
+
+            {assignMode === "students" ? (
+              <div className="mt-4 max-h-64 overflow-y-auto rounded-md border border-slate-200">
+                {filteredStudents.length === 0 ? (
+                  <p className="px-4 py-6 text-sm text-slate-500">No students match your search.</p>
+                ) : (
+                  <ul className="divide-y divide-slate-100">
+                    {filteredStudents.map((student) => (
+                      <li key={student.id} className="flex items-center gap-3 px-4 py-2.5 text-sm">
+                        <input
+                          type="checkbox"
+                          checked={selectedStudentIds.includes(student.id)}
+                          onChange={() => toggleStudent(student.id)}
+                          className="h-4 w-4 rounded accent-[#0B3D91]"
+                        />
+                        <span className="font-medium text-slate-900">{student.fullName}</span>
+                        <span className="text-slate-500">{student.studentId}</span>
+                        {student.email ? <span className="text-slate-400">{student.email}</span> : null}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            ) : null}
+          </form>
+        </>
       ) : (
         <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-5 text-sm text-slate-600">
           Create a fee above, then assign it to students here.

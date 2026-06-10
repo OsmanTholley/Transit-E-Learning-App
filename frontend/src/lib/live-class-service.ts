@@ -1,8 +1,11 @@
-import { LiveClassStatus, Role } from "@prisma/client";
+import { AttendanceStatus, LiveClassStatus, Role } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 
 export const JITSI_DOMAIN = process.env.JITSI_DOMAIN?.trim() || "meet.jit.si";
 export const LIVE_CLASS_LATE_JOIN_MINUTES = 10;
+export const VIRTUAL_ROOM_MAX_PARTICIPANTS = 100;
+export const ATTENDANCE_PRESENT_THRESHOLD = 75;
+export const ATTENDANCE_PARTIAL_THRESHOLD = 40;
 
 async function canStudentJoinLiveClass(liveClassId: string, studentId: string, actualStart: Date | null) {
   if (!actualStart) {
@@ -121,34 +124,15 @@ export async function getLiveClassAccess(
       select: { fullName: true },
     });
     const adminName = adminUser?.fullName ?? "Admin";
-    const sessionAs = options?.sessionAs ?? "lecturer";
-
-    if (sessionAs === "lecturer") {
-      return {
-        ok: true as const,
-        liveClass,
-        isLecturer: true,
-        isModerator: true,
-        isAdmin: true,
-        displayName: `${adminName} (Admin host)`,
-      };
-    }
-
-    if (liveClass.status !== LiveClassStatus.LIVE) {
-      return {
-        ok: false as const,
-        error: "Join as student view only works after the class is live.",
-        status: 403,
-      };
-    }
 
     return {
       ok: true as const,
       liveClass,
-      isLecturer: false,
-      isModerator: false,
+      isLecturer: true,
+      isModerator: true,
       isAdmin: true,
-      displayName: `${adminName} (Student view)`,
+      isObserver: true,
+      displayName: `${adminName} (Administrator)`,
     };
   }
 
@@ -315,13 +299,15 @@ export async function endLiveClassAsAdmin(liveClassId: string) {
     throw new Error("Live class not found.");
   }
 
-  return prisma.liveClass.update({
+  const ended = await prisma.liveClass.update({
     where: { id: liveClassId },
     data: {
       status: LiveClassStatus.ENDED,
       actualEnd: new Date(),
     },
   });
+  await finalizeLiveClassAttendance(liveClassId);
+  return ended;
 }
 
 export async function updateLiveClassAsAdmin(
@@ -544,13 +530,25 @@ export async function endLiveClass(liveClassId: string, lecturerId: string) {
     throw new Error("Live class not found.");
   }
 
-  return prisma.liveClass.update({
+  const ended = await prisma.liveClass.update({
     where: { id: liveClassId },
     data: {
       status: LiveClassStatus.ENDED,
       actualEnd: new Date(),
     },
   });
+  await finalizeLiveClassAttendance(liveClassId);
+  return ended;
+}
+
+function resolveAttendanceStatus(attendancePercent: number, joinedLate: boolean): AttendanceStatus {
+  if (attendancePercent >= ATTENDANCE_PRESENT_THRESHOLD) {
+    return joinedLate ? AttendanceStatus.LATE : AttendanceStatus.PRESENT;
+  }
+  if (attendancePercent >= ATTENDANCE_PARTIAL_THRESHOLD) {
+    return AttendanceStatus.PARTIAL;
+  }
+  return attendancePercent > 0 ? AttendanceStatus.LATE : AttendanceStatus.ABSENT;
 }
 
 export async function logLiveClassJoin(params: {
@@ -561,6 +559,15 @@ export async function logLiveClassJoin(params: {
   courseCode: string;
   courseTitle: string;
 }) {
+  const liveClass = await prisma.liveClass.findUnique({
+    where: { id: params.liveClassId },
+    select: { actualStart: true },
+  });
+  const joinTime = new Date();
+  const joinedLate = liveClass?.actualStart
+    ? joinTime.getTime() - liveClass.actualStart.getTime() > LIVE_CLASS_LATE_JOIN_MINUTES * 60 * 1000
+    : false;
+
   return prisma.liveClassAttendanceLog.upsert({
     where: {
       liveClassId_studentId: {
@@ -575,32 +582,82 @@ export async function logLiveClassJoin(params: {
       studentName: params.studentName,
       courseCode: params.courseCode,
       courseTitle: params.courseTitle,
-      joinTime: new Date(),
-      status: "PRESENT",
+      joinTime,
+      status: joinedLate ? AttendanceStatus.LATE : AttendanceStatus.PRESENT,
     },
     update: {
-      status: "PRESENT",
+      joinTime,
+      status: joinedLate ? AttendanceStatus.LATE : AttendanceStatus.PRESENT,
     },
   });
 }
 
 export async function logLiveClassExit(liveClassId: string, studentId: string) {
-  const log = await prisma.liveClassAttendanceLog.findUnique({
-    where: { liveClassId_studentId: { liveClassId, studentId } },
-  });
+  const [log, liveClass] = await Promise.all([
+    prisma.liveClassAttendanceLog.findUnique({
+      where: { liveClassId_studentId: { liveClassId, studentId } },
+    }),
+    prisma.liveClass.findUnique({
+      where: { id: liveClassId },
+      select: { actualStart: true, actualEnd: true, endTime: true },
+    }),
+  ]);
   if (!log || log.exitTime) return null;
 
   const exitTime = new Date();
   const durationSeconds = Math.max(0, Math.floor((exitTime.getTime() - log.joinTime.getTime()) / 1000));
+  const classStart = liveClass?.actualStart ?? log.joinTime;
+  const classEnd = liveClass?.actualEnd ?? liveClass?.endTime ?? exitTime;
+  const totalClassSeconds = Math.max(60, Math.floor((classEnd.getTime() - classStart.getTime()) / 1000));
+  const attendancePercent = Math.min(100, Math.round((durationSeconds / totalClassSeconds) * 100));
+  const joinedLate =
+    liveClass?.actualStart != null &&
+    log.joinTime.getTime() - liveClass.actualStart.getTime() > LIVE_CLASS_LATE_JOIN_MINUTES * 60 * 1000;
 
   return prisma.liveClassAttendanceLog.update({
     where: { id: log.id },
     data: {
       exitTime,
       durationSeconds,
-      attendancePercent: Math.min(100, durationSeconds > 0 ? 100 : 0),
+      attendancePercent,
+      status: resolveAttendanceStatus(attendancePercent, joinedLate),
     },
   });
+}
+
+export async function finalizeLiveClassAttendance(liveClassId: string) {
+  const liveClass = await prisma.liveClass.findUnique({
+    where: { id: liveClassId },
+    select: { actualStart: true, actualEnd: true, endTime: true },
+  });
+  if (!liveClass?.actualStart) return;
+
+  const classEnd = liveClass.actualEnd ?? liveClass.endTime ?? new Date();
+  const totalClassSeconds = Math.max(60, Math.floor((classEnd.getTime() - liveClass.actualStart.getTime()) / 1000));
+
+  const logs = await prisma.liveClassAttendanceLog.findMany({
+    where: { liveClassId, exitTime: null },
+  });
+
+  await Promise.all(
+    logs.map((log) => {
+      const exitTime = classEnd;
+      const durationSeconds = Math.max(0, Math.floor((exitTime.getTime() - log.joinTime.getTime()) / 1000));
+      const attendancePercent = Math.min(100, Math.round((durationSeconds / totalClassSeconds) * 100));
+      const joinedLate =
+        log.joinTime.getTime() - liveClass.actualStart!.getTime() > LIVE_CLASS_LATE_JOIN_MINUTES * 60 * 1000;
+
+      return prisma.liveClassAttendanceLog.update({
+        where: { id: log.id },
+        data: {
+          exitTime,
+          durationSeconds,
+          attendancePercent,
+          status: resolveAttendanceStatus(attendancePercent, joinedLate),
+        },
+      });
+    }),
+  );
 }
 
 export async function postLiveClassMessage(params: {

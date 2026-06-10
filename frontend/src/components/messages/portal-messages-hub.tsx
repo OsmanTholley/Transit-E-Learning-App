@@ -46,8 +46,8 @@ function NoticeIcon({ read }: { read: boolean }) {
 
 export function PortalMessagesHub({
   role,
-  title = "Messages",
-  subtitle = "Official Message from your institution.",
+  title = "Notifications",
+  subtitle = "Official announcements and updates from your institution.",
   onUnreadChange,
 }: Props) {
   const router = useRouter();
