@@ -1,6 +1,6 @@
 "use client";
 
-import { TransitAiPanel } from "@/components/ai/transit-ai-panel";
+import { TransitAiAssistant } from "@/components/ai/transit-ai-assistant";
 
 export function LecturerAiPage() {
   return (
@@ -12,15 +12,15 @@ export function LecturerAiPage() {
           Draft explanations, quiz ideas, and feedback with AI assistance.
         </p>
       </div>
-      <TransitAiPanel
-        apiUrl="/api/lecturer/ai"
-        title="Transit College AI for Lecturers"
-        subtitle="Lesson planning • grading help • content drafting"
+      <TransitAiAssistant
+        roleLabel="Lecturer"
+        feature="teaching assistant"
         suggestions={[
-          "Draft a lecture outline for my next class.",
-          "Create 5 quiz questions with answers.",
-          "Explain a concept at beginner and advanced levels.",
-          "Suggest assignment rubric criteria.",
+          "Generate a 10-question quiz with answers.",
+          "Create a midterm exam outline for my course.",
+          "Draft a lesson plan for next week.",
+          "Summarize today's lecture into student notes.",
+          "Create an assignment with rubric criteria.",
         ]}
       />
     </div>

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireStudent, unauthorized } from "@/lib/auth";
 import { listQuizzesForStudent } from "@/lib/student-quizzes-data";
+import { buildFeeLockResponse } from "@/lib/student-fee-guard";
 
 export async function GET(request: NextRequest) {
   try {
@@ -8,6 +9,9 @@ export async function GET(request: NextRequest) {
     if (!student) {
       return unauthorized();
     }
+
+    const locked = await buildFeeLockResponse(student.id, "general");
+    if (locked) return locked;
 
     const inProgress = request.nextUrl.searchParams.get("inProgress");
     const inProgressIds = inProgress ? inProgress.split(",").filter(Boolean) : [];

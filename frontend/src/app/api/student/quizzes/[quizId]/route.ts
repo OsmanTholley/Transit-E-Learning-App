@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireStudent, unauthorized } from "@/lib/auth";
 import { getQuizDetailForStudent } from "@/lib/student-quizzes-data";
+import { buildFeeLockResponse } from "@/lib/student-fee-guard";
 
 export async function GET(
   _req: Request,
@@ -11,6 +12,9 @@ export async function GET(
     if (!student) {
       return unauthorized();
     }
+
+    const locked = await buildFeeLockResponse(student.id, "general");
+    if (locked) return locked;
 
     const { quizId } = await params;
     const quiz = await getQuizDetailForStudent(student.userId, quizId);

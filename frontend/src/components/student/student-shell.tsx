@@ -18,6 +18,7 @@ import { useOfflineSync } from "@/hooks/use-offline-sync";
 import { requestApi } from "@/lib/fetch-api";
 import { reportStudentError, studentError, studentWarning } from "@/lib/student-ui";
 import { logout } from "@/services/auth";
+import { StudentFeeGate } from "@/components/finance/student-fee-gate";
 import { studentNavItems } from "@/services/student-dashboard-data";
 
 function NavIcon({ name }: { name: string }) {
@@ -272,7 +273,7 @@ export function StudentShell({ children }: { children: ReactNode }) {
 
   const isFullscreenRoom = /^\/student\/live-classes\/[^/]+$/.test(pathname);
   if (isFullscreenRoom) {
-    return <>{children}</>;
+    return <StudentFeeGate>{children}</StudentFeeGate>;
   }
 
   const onLogout = async () => {
@@ -454,7 +455,7 @@ export function StudentShell({ children }: { children: ReactNode }) {
 
         <main className="safe-pb flex-1 px-4 py-4 sm:px-6 sm:py-6">
           <OfflineSyncBanner onReconnect={refresh} />
-          {children}
+          <StudentFeeGate>{children}</StudentFeeGate>
         </main>
       </div>
     </div>

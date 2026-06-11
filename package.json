@@ -2,7 +2,7 @@
   "scripts": {
     "dev": "node scripts/dev.js",
     "build": "prisma generate && npm run build --prefix frontend",
-    "start": "npm run start --prefix frontend",
+    "start": "node server.js",
     "lint": "npm run lint --prefix frontend",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate deploy",

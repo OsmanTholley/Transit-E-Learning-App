@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireStudent, unauthorized } from "@/lib/auth";
 import { createDiscussionForStudent, listDiscussionsForStudent } from "@/lib/student-discussions-data";
+import { buildFeeLockResponse } from "@/lib/student-fee-guard";
 import type { CreateDiscussionInput } from "@/types/student-discussions";
 
 export async function GET(request: NextRequest) {
@@ -9,6 +10,9 @@ export async function GET(request: NextRequest) {
     if (!student) {
       return unauthorized();
     }
+
+    const locked = await buildFeeLockResponse(student.id, "materials");
+    if (locked) return locked;
 
     const view = request.nextUrl.searchParams.get("view") ?? "";
     const courseId = request.nextUrl.searchParams.get("courseId") ?? undefined;
@@ -33,6 +37,9 @@ export async function POST(request: NextRequest) {
     if (!student) {
       return unauthorized();
     }
+
+    const locked = await buildFeeLockResponse(student.id, "materials");
+    if (locked) return locked;
 
     const body = await request.json();
     const input: CreateDiscussionInput = {

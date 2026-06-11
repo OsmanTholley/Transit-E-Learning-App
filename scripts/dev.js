@@ -22,11 +22,12 @@ if (process.env.PRISMA_GENERATE_ON_DEV === "1") {
   }
 }
 
-console.log("Starting Next.js dev server...\n");
-const dev = spawn("npm", ["run", "dev", "--prefix", "frontend"], {
+console.log("Starting Transit dev server (Next.js + Socket.IO)...\n");
+const dev = spawn("node", ["server.js"], {
   cwd: root,
   stdio: "inherit",
   shell: true,
+  env: { ...process.env, NODE_ENV: "development" },
 });
 
 dev.on("exit", (code) => process.exit(code ?? 0));

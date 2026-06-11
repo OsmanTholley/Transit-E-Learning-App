@@ -2,7 +2,7 @@
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { requestApi } from "@/lib/fetch-api";
-import { showError, showSuccess } from "@/lib/swal";
+import { showDeleteConfirm, showError, showSuccess } from "@/lib/swal";
 
 type FinanceAccount = {
   id: string;
@@ -295,6 +295,9 @@ export function AdminFinanceDashboard() {
   };
 
   const handleDeleteFee = async (feeId: string, title: string) => {
+    const confirmed = await showDeleteConfirm(`Archive fee "${title}"? Assigned accounts remain in the ledger.`);
+    if (!confirmed) return;
+
     const result = await requestApi("/api/admin/finance", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -334,6 +337,43 @@ export function AdminFinanceDashboard() {
 
     await showSuccess("Payment recorded", "Receipt email sent to the student.");
     setPaymentAmount("");
+    void load();
+  };
+
+  const handleRemoveRestriction = async (accountId: string, studentName: string) => {
+    const confirmed = await showDeleteConfirm(`Stop payment restriction for ${studentName}?`);
+    if (!confirmed) return;
+    const result = await requestApi("/api/admin/finance", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "remove_restriction", studentFeeAccountId: accountId }),
+      silent: true,
+    });
+    if (!result.ok) {
+      await showError("Could not remove restriction", result.message);
+      return;
+    }
+    await showSuccess("Restriction removed", `${studentName} can access content again.`);
+    void load();
+  };
+
+  const handleExtendDueDate = async (accountId: string, studentName: string, currentDue: string | null) => {
+    const nextDue = window.prompt(
+      `Extend due date for ${studentName}`,
+      currentDue ? new Date(currentDue).toISOString().slice(0, 10) : "",
+    );
+    if (!nextDue) return;
+    const result = await requestApi("/api/admin/finance", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "extend_due_date", studentFeeAccountId: accountId, dueDate: nextDue }),
+      silent: true,
+    });
+    if (!result.ok) {
+      await showError("Could not extend due date", result.message);
+      return;
+    }
+    await showSuccess("Due date updated");
     void load();
   };
 
@@ -689,6 +729,7 @@ export function AdminFinanceDashboard() {
                 <th className="px-3 py-2">Required %</th>
                 <th className="px-3 py-2">Compliance</th>
                 <th className="px-3 py-2">Due</th>
+                <th className="px-3 py-2">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -705,6 +746,26 @@ export function AdminFinanceDashboard() {
                   <td className="px-3 py-3">{account.requiredPercent ?? 100}%</td>
                   <td className="px-3 py-3">{account.complianceStatus ?? account.status}</td>
                   <td className="px-3 py-3">{account.dueDate ? new Date(account.dueDate).toLocaleDateString() : "—"}</td>
+                  <td className="px-3 py-3">
+                    <div className="flex flex-wrap gap-1">
+                      {account.isRestricted ? (
+                        <button
+                          type="button"
+                          onClick={() => void handleRemoveRestriction(account.id, account.studentName)}
+                          className="rounded border border-emerald-200 px-2 py-1 text-xs text-emerald-700 hover:bg-emerald-50"
+                        >
+                          Stop restriction
+                        </button>
+                      ) : null}
+                      <button
+                        type="button"
+                        onClick={() => void handleExtendDueDate(account.id, account.studentName, account.dueDate)}
+                        className="rounded border border-slate-200 px-2 py-1 text-xs text-slate-700 hover:bg-slate-50"
+                      >
+                        Extend due
+                      </button>
+                    </div>
+                  </td>
                 </tr>
               ))}
             </tbody>

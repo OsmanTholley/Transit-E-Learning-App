@@ -1,7 +1,9 @@
 "use client";
 
 import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useSocket } from "@/hooks/use-socket";
 import { requestApi } from "@/lib/fetch-api";
+import { directThreadKey, groupThreadKey, SOCKET_EVENTS, threadRoom } from "@/lib/socket-events";
 import { useVoiceRecorder } from "@/hooks/use-voice-recorder";
 import { showDeleteConfirm, showError, showSuccess } from "@/lib/swal";
 import type { AppRole } from "@/types/app";
@@ -62,7 +64,7 @@ type Props = {
   role: Extract<AppRole, "student" | "lecturer" | "admin">;
 };
 
-const POLL_MS = 5000;
+const POLL_MS = 30_000;
 
 function initials(name: string) {
   return name
@@ -134,6 +136,7 @@ export function PortalChatHub({ role }: Props) {
 
   const bottomRef = useRef<HTMLDivElement>(null);
   const lastMessageIdRef = useRef<string | null>(null);
+  const { joinRooms, leaveRooms, subscribe, emitTyping } = useSocket();
 
   const loadInbox = useCallback(async () => {
     const result = await requestApi<{
@@ -214,11 +217,38 @@ export function PortalChatHub({ role }: Props) {
     void loadInbox();
   }, [loadInbox]);
 
+  const activeThreadKey = useMemo(() => {
+    if (!activeThread || !currentUserId) return null;
+    if (activeThread.kind === "DIRECT") {
+      return directThreadKey(currentUserId, activeThread.peerUserId);
+    }
+    if (activeThread.kind === "GROUP") return groupThreadKey(activeThread.groupId);
+    return `course:${activeThread.courseId}`;
+  }, [activeThread, currentUserId]);
+
   useEffect(() => {
     void loadMessages();
+    if (!activeThreadKey) return undefined;
+    const room = threadRoom(activeThreadKey);
+    joinRooms([room]);
+    const unsubscribe = subscribe(SOCKET_EVENTS.CHAT_MESSAGE, (payload) => {
+      const data = payload as { threadKey?: string; message?: ChatMessage };
+      if (data.threadKey === activeThreadKey && data.message) {
+        setMessages((prev) => {
+          if (prev.some((item) => item.id === data.message!.id)) return prev;
+          return [...prev, data.message!];
+        });
+        lastMessageIdRef.current = data.message.id;
+        bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+      }
+    });
     const timer = window.setInterval(() => void loadMessages(), POLL_MS);
-    return () => window.clearInterval(timer);
-  }, [loadMessages]);
+    return () => {
+      window.clearInterval(timer);
+      leaveRooms([room]);
+      unsubscribe?.();
+    };
+  }, [loadMessages, activeThreadKey, joinRooms, leaveRooms, subscribe]);
 
   const filteredPrograms = useMemo(() => {
     if (!departmentFilter) return programs;

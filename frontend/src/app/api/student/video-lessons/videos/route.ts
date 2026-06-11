@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { unauthorized, validateStudentSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { buildFeeLockResponse } from "@/lib/student-fee-guard";
 
 export async function GET() {
   try {
@@ -18,6 +19,9 @@ export async function GET() {
     if (!student) {
       return NextResponse.json({ error: "Student profile not found." }, { status: 404 });
     }
+
+    const locked = await buildFeeLockResponse(student.id, "videos");
+    if (locked) return locked;
 
     const courseIds = student.courseStudents.map((e) => e.courseId);
     if (courseIds.length === 0) {

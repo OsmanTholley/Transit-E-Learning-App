@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireStudent, unauthorized } from "@/lib/auth";
 import { submitQuizAttempt } from "@/lib/student-quizzes-data";
+import { buildFeeLockResponse } from "@/lib/student-fee-guard";
 import type { QuizSubmitAnswer } from "@/types/student-quizzes";
 
 export async function POST(
@@ -12,6 +13,9 @@ export async function POST(
     if (!student) {
       return unauthorized();
     }
+
+    const locked = await buildFeeLockResponse(student.id, "general");
+    if (locked) return locked;
 
     const { quizId } = await params;
     const body = await request.json();

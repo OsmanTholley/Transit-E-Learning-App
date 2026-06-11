@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireStudent, unauthorized } from "@/lib/auth";
 import { handleRouteDatabaseError } from "@/lib/db-errors";
 import { prisma } from "@/lib/prisma";
+import { buildFeeLockResponse } from "@/lib/student-fee-guard";
 
 export async function POST(
   request: NextRequest,
@@ -10,6 +11,9 @@ export async function POST(
   try {
     const student = await requireStudent();
     if (!student) return unauthorized();
+
+    const locked = await buildFeeLockResponse(student.id, "materials");
+    if (locked) return locked;
 
     const { id: assignmentId } = await params;
     const body = await request.json();

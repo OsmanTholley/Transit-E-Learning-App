@@ -4,6 +4,7 @@ import { requireStudent } from "@/lib/auth";
 import { handleRouteDatabaseError } from "@/lib/db-errors";
 import { expireStaleLiveClasses } from "@/lib/live-class-service";
 import { prisma } from "@/lib/prisma";
+import { buildFeeLockResponse } from "@/lib/student-fee-guard";
 
 export async function GET() {
   try {
@@ -12,6 +13,9 @@ export async function GET() {
     if (!student) {
       return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
     }
+
+    const locked = await buildFeeLockResponse(student.id, "live");
+    if (locked) return locked;
 
     const enrolledCourseIds = await prisma.courseStudent.findMany({
       where: { studentId: student.id },

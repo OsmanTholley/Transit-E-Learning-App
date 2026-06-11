@@ -2,11 +2,15 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireStudent, unauthorized } from "@/lib/auth";
 import { syncEnrollmentsForStudents } from "@/lib/course-enrollment";
 import { buildCoursesPayload, getAccessibleCoursesForStudent } from "@/lib/student-courses-data";
+import { buildFeeLockResponse } from "@/lib/student-fee-guard";
 
 export async function GET(request: NextRequest) {
   try {
     const student = await requireStudent();
     if (!student) return unauthorized();
+
+    const locked = await buildFeeLockResponse(student.id, "materials");
+    if (locked) return locked;
 
     const filter = request.nextUrl.searchParams.get("filter") ?? "all";
     let courses = await getAccessibleCoursesForStudent(student.id, student);

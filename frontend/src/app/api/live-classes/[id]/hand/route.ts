@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Role } from "@prisma/client";
 import { getValidatedUser, requireStudent } from "@/lib/auth";
+import { buildFeeLockResponse } from "@/lib/student-fee-guard";
+import { emitSocketEvent, SOCKET_EVENTS } from "@/lib/socket-emitter";
+import { liveClassRoom } from "@/lib/socket-events";
 import {
   assertLiveClassParticipant,
   getLiveClassAccess,
@@ -50,6 +53,9 @@ export async function POST(request: NextRequest, context: RouteContext) {
       return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
     }
 
+    const locked = await buildFeeLockResponse(student.id, "live");
+    if (locked) return locked;
+
     try {
       await assertLiveClassParticipant(id, student.userId, Role.STUDENT);
     } catch (error) {
@@ -62,6 +68,12 @@ export async function POST(request: NextRequest, context: RouteContext) {
     } else {
       await lowerHand(id, student.id);
     }
+
+    emitSocketEvent(liveClassRoom(id), SOCKET_EVENTS.LIVE_HAND, {
+      liveClassId: id,
+      action: body.action,
+      studentId: student.id,
+    });
 
     return NextResponse.json({ ok: true });
   }

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireStudent, unauthorized } from "@/lib/auth";
 import { addCommentToDiscussion, getDiscussionForStudent } from "@/lib/student-discussions-data";
+import { buildFeeLockResponse } from "@/lib/student-fee-guard";
 
 export async function GET(
   _req: Request,
@@ -11,6 +12,9 @@ export async function GET(
     if (!student) {
       return unauthorized();
     }
+
+    const locked = await buildFeeLockResponse(student.id, "materials");
+    if (locked) return locked;
 
     const { discussionId } = await params;
     const discussion = await getDiscussionForStudent(student.userId, discussionId);
@@ -34,6 +38,9 @@ export async function POST(
     if (!student) {
       return unauthorized();
     }
+
+    const locked = await buildFeeLockResponse(student.id, "materials");
+    if (locked) return locked;
 
     const { discussionId } = await params;
     const body = await request.json();

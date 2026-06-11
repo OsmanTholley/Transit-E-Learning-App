@@ -3,6 +3,7 @@ import type { AiModelProfileId } from "@/lib/ai-models";
 import { generateAiAnswer } from "@/lib/ai-chat-service";
 import { requireStudent, unauthorized } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { buildFeeLockResponse } from "@/lib/student-fee-guard";
 
 export async function GET() {
   try {
@@ -10,6 +11,9 @@ export async function GET() {
     if (!student) {
       return unauthorized();
     }
+
+    const locked = await buildFeeLockResponse(student.id, "general");
+    if (locked) return locked;
 
     const rows = await prisma.aiChatHistory.findMany({
       where: { studentId: student.id },
@@ -37,6 +41,9 @@ export async function POST(request: NextRequest) {
     if (!student) {
       return unauthorized();
     }
+
+    const locked = await buildFeeLockResponse(student.id, "general");
+    if (locked) return locked;
 
     const body = await request.json();
     const question = body.question?.trim();

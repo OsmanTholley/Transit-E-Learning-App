@@ -23,6 +23,8 @@ import {
   updateChatGroup,
   updatePortalChatMessage,
 } from "@/lib/portal-chat-service";
+import { emitSocketEvent, SOCKET_EVENTS } from "@/lib/socket-emitter";
+import { threadRoom } from "@/lib/socket-events";
 
 function parseChatKind(value: string | null | undefined): PortalChatKind {
   if (value === "DIRECT") return PortalChatKind.DIRECT;
@@ -145,6 +147,23 @@ export async function handlePortalChatPost(
       courseId: body.courseId ?? null,
       peerUserId: body.peerUserId ?? null,
       groupId: body.groupId ?? null,
+    });
+
+    emitSocketEvent(threadRoom(message.threadKey), SOCKET_EVENTS.CHAT_MESSAGE, {
+      threadKey: message.threadKey,
+      message: {
+        id: message.id,
+        body: message.body,
+        messageType: message.messageType,
+        audioData: message.audioData,
+        createdAt: message.createdAt.toISOString(),
+        updatedAt: message.updatedAt.toISOString(),
+        senderId: message.senderId,
+        senderName: message.sender.fullName,
+        senderRole: message.sender.role,
+        edited: false,
+        readStatus: "delivered",
+      },
     });
 
     return NextResponse.json({

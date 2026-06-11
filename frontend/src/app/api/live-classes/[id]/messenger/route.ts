@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
+import { Role } from "@prisma/client";
 import { getValidatedUser } from "@/lib/auth";
-import { PortalChatKind, PortalChatMessageType, Role } from "@prisma/client";
+import { PortalChatKind, PortalChatMessageType } from "@prisma/client";
+import { guardStudentUserFeeAccess } from "@/lib/student-fee-guard";
+import { emitSocketEvent, SOCKET_EVENTS } from "@/lib/socket-emitter";
+import { liveClassRoom, threadRoom } from "@/lib/socket-events";
 import { assertLiveClassParticipant } from "@/lib/live-class-service";
 import {
   courseThreadKey,
@@ -31,6 +35,11 @@ export async function GET(_request: NextRequest, context: RouteContext) {
     return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
   }
 
+  if (user.role === Role.STUDENT) {
+    const locked = await guardStudentUserFeeAccess(user.id, "live");
+    if (locked) return locked;
+  }
+
   try {
     const access = await assertLiveClassParticipant(id, user.id, user.role);
     const thread = resolveThread(access);
@@ -59,6 +68,11 @@ export async function POST(request: NextRequest, context: RouteContext) {
     return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
   }
 
+  if (user.role === Role.STUDENT) {
+    const locked = await guardStudentUserFeeAccess(user.id, "live");
+    if (locked) return locked;
+  }
+
   const body = await request.json();
 
   if (body.messageType === "VOICE") {
@@ -81,6 +95,23 @@ export async function POST(request: NextRequest, context: RouteContext) {
       audioData: null,
       courseId: thread.kind === PortalChatKind.COURSE ? thread.courseId : null,
       liveClassId: thread.kind === PortalChatKind.LIVE_CLASS ? thread.liveClassId : null,
+    });
+
+    emitSocketEvent(threadRoom(message.threadKey), SOCKET_EVENTS.LIVE_CHAT, {
+      liveClassId: id,
+      threadKey: message.threadKey,
+      message: {
+        id: message.id,
+        body: message.body,
+        createdAt: message.createdAt.toISOString(),
+        senderId: message.senderId,
+        senderName: message.sender.fullName,
+        senderRole: message.sender.role,
+      },
+    });
+    emitSocketEvent(liveClassRoom(id), SOCKET_EVENTS.LIVE_CHAT, {
+      liveClassId: id,
+      threadKey: message.threadKey,
     });
 
     return NextResponse.json({

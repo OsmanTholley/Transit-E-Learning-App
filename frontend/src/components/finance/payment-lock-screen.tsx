@@ -21,29 +21,29 @@ export function PaymentLockScreen({ lock, message }: Props) {
       <div className="text-4xl">🔒</div>
       <h2 className="mt-4 text-xl font-bold text-slate-900">Access Restricted</h2>
       <p className="mt-2 text-sm text-slate-600">
-        {message ?? "Your account currently does not meet the minimum payment requirement."}
+        {message ?? "Please complete payment to regain access."}
       </p>
       {lock.feeTitle ? <p className="mt-1 text-xs text-slate-500">{lock.feeTitle}</p> : null}
       <dl className="mt-6 w-full space-y-2 rounded-xl bg-white p-4 text-left text-sm">
         <div className="flex justify-between gap-4">
-          <dt className="text-slate-500">Required payment</dt>
+          <dt className="text-slate-500">Required Percentage</dt>
           <dd className="font-medium text-slate-900">{lock.requiredPercent}%</dd>
         </div>
         <div className="flex justify-between gap-4">
-          <dt className="text-slate-500">Amount required</dt>
+          <dt className="text-slate-500">Required Amount</dt>
           <dd className="font-medium text-slate-900">Le{lock.requiredAmount.toLocaleString("en-SL", { minimumFractionDigits: 2 })}</dd>
         </div>
         <div className="flex justify-between gap-4">
-          <dt className="text-slate-500">Amount paid</dt>
+          <dt className="text-slate-500">Amount Paid</dt>
           <dd className="font-medium text-emerald-700">Le{lock.amountPaid.toLocaleString("en-SL", { minimumFractionDigits: 2 })}</dd>
         </div>
         <div className="flex justify-between gap-4">
-          <dt className="text-slate-500">Outstanding</dt>
+          <dt className="text-slate-500">Outstanding Balance</dt>
           <dd className="font-medium text-red-700">Le{lock.outstandingBalance.toLocaleString("en-SL", { minimumFractionDigits: 2 })}</dd>
         </div>
         {lock.dueDate ? (
           <div className="flex justify-between gap-4">
-            <dt className="text-slate-500">Due date</dt>
+            <dt className="text-slate-500">Due Date</dt>
             <dd className="font-medium text-slate-900">
               {new Date(lock.dueDate).toLocaleDateString("en-GB", {
                 day: "numeric",

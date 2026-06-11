@@ -6,6 +6,7 @@ import { motion } from "framer-motion";
 import { useStudentSession } from "@/contexts/student-session-context";
 import { useStudentPreference } from "@/hooks/use-student-preference";
 import { STUDENT_PREF_KEYS } from "@/lib/student-preference-keys";
+import { TransitAiAssistant } from "@/components/ai/transit-ai-assistant";
 import { AiTutorChat } from "@/components/student/ai-tutor/ai-tutor-chat";
 import { getAiTutorViewTitle } from "@/components/student/ai-tutor/ai-tutor-nav-config";
 import type {
@@ -116,24 +117,15 @@ export function AiTutorHub({ segment }: Props) {
 
       {view === "" ? (
         <div className="min-h-0 flex-1">
-          <AiTutorChat
-            key={activeId ?? "new-chat"}
-            subject={subjectParam || undefined}
-            initialMessages={activeConversation?.messages ?? []}
-            showSidebar
-            conversations={conversations.map((c) => ({ id: c.id, title: c.title, updatedAt: c.updatedAt }))}
-            onSelectConversation={setActiveId}
-            onNewChat={() => {
-              const c = newConversation(subjectParam || "general");
-              setConversations((prev) => [c, ...prev]);
-              setActiveId(c.id);
-            }}
-            onClearChat={() => {
-              if (activeId) {
-                setConversations((prev) => prev.map((c) => (c.id === activeId ? { ...c, messages: [] } : c)));
-              }
-            }}
-            onMessagesChange={persistMessages}
+          <TransitAiAssistant
+            roleLabel="Student"
+            feature={subjectParam || "academic tutoring"}
+            suggestions={[
+              "Explain this topic step by step.",
+              "Summarize my lecture notes.",
+              "Create a study guide for my upcoming exam.",
+              "Help me solve this assignment question.",
+            ]}
           />
         </div>
       ) : view === "conversations" ? (

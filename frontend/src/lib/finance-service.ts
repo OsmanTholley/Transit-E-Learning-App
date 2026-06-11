@@ -2,6 +2,8 @@ import { FeePaymentStatus, Prisma } from "@prisma/client";
 import { sendPaymentReceiptEmail } from "@/lib/email";
 import { logActivity } from "@/lib/activity-log";
 import { prisma } from "@/lib/prisma";
+import { emitSocketEvent, SOCKET_EVENTS } from "@/lib/socket-emitter";
+import { userRoom } from "@/lib/socket-events";
 
 export function decimalToNumber(value: Prisma.Decimal | number): number {
   return typeof value === "number" ? value : Number(value);
@@ -111,7 +113,7 @@ export function computePaymentCompliance(account: FeeAccountSnapshot): {
     };
   }
 
-  if (account.accessLocked && pastDue) {
+  if (pastDue && amountPaid < requiredAmount - 0.001) {
     return {
       requiredPercent,
       requiredAmount,
@@ -153,7 +155,7 @@ function invoiceNumber(): string {
 
 export async function studentHasLockedFees(studentId: string): Promise<boolean> {
   const accounts = await prisma.studentFeeAccount.findMany({
-    where: { studentId, accessLocked: true },
+    where: { studentId },
     include: { feeStructure: { select: { requiredPaymentPercent: true } } },
   });
   return accounts.some((account) => shouldLockAccess(account));
@@ -161,7 +163,7 @@ export async function studentHasLockedFees(studentId: string): Promise<boolean> 
 
 export async function getStudentFeeLockDetails(studentId: string) {
   const accounts = await prisma.studentFeeAccount.findMany({
-    where: { studentId, accessLocked: true },
+    where: { studentId },
     include: {
       feeStructure: { select: { title: true, currency: true, requiredPaymentPercent: true } },
     },
@@ -290,6 +292,11 @@ export async function recordPayment(params: {
       metadata: { amountPaid: newPaid, requiredAmount: compliance.requiredAmount },
     });
   }
+
+  emitSocketEvent(userRoom(account.student.userId), SOCKET_EVENTS.FEE_UPDATED, {
+    studentId: account.studentId,
+    isRestricted: compliance.isRestricted,
+  });
 
   return { payment, status, remaining, compliance };
 }

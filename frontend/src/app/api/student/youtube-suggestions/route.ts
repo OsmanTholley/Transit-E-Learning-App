@@ -1,10 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireStudent, unauthorized } from "@/lib/auth";
 import { logActivity } from "@/lib/activity-log";
+import { buildFeeLockResponse } from "@/lib/student-fee-guard";
 
 export async function GET(request: NextRequest) {
   const student = await requireStudent();
   if (!student) return unauthorized();
+
+  const locked = await buildFeeLockResponse(student.id, "videos");
+  if (locked) return locked;
 
   const q = request.nextUrl.searchParams.get("q")?.trim();
   if (!q) {

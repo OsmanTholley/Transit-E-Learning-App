@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { unauthorized, validateStudentSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { buildFeeLockResponse } from "@/lib/student-fee-guard";
 
 async function fetchYouTubeVideoDetails(videoId: string, apiKey: string) {
   try {
@@ -49,6 +50,17 @@ export async function GET(
   try {
     const user = await validateStudentSession();
     if (!user) return unauthorized();
+
+    const studentProfile = await prisma.student.findUnique({
+      where: { userId: user.id },
+      select: { id: true },
+    });
+    if (!studentProfile) {
+      return NextResponse.json({ error: "Student profile not found." }, { status: 404 });
+    }
+
+    const locked = await buildFeeLockResponse(studentProfile.id, "videos");
+    if (locked) return locked;
 
     const { videoId } = await params;
 
