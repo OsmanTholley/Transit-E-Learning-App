@@ -8,6 +8,7 @@ import { NavigationProgress } from "@/components/layout/navigation-progress";
 import { OfflineSyncBanner } from "@/components/layout/offline-sync-banner";
 import { PortalTopbar } from "@/components/layout/portal-topbar";
 import { MobileNavOverlay, MobileTopBar } from "@/components/layout/mobile-top-bar";
+import { TopbarUserMenu } from "@/components/layout/topbar-user-menu";
 import { avatarInitials } from "@/lib/user-profile-helpers";
 import { logout } from "@/services/auth";
 import { adminNavSections } from "@/services/admin-dashboard-data";
@@ -298,7 +299,21 @@ export function AdminShell({ adminName, adminEmail, profileImage, children }: Pr
         </div>
       </aside>
       <div className="flex min-h-screen w-full flex-1 flex-col lg:ml-[17.5rem]">
-        <MobileTopBar onMenuClick={openMobileNav} />
+        <MobileTopBar
+          onMenuClick={openMobileNav}
+          trailing={
+            <TopbarUserMenu
+              role="admin"
+              variant="admin"
+              compact
+              fullName={adminName}
+              subtitle={adminEmail || "Administrator"}
+              profileImage={profileImage}
+              initials={initials}
+              profileHref="/admin/profile"
+            />
+          }
+        />
         <PortalTopbar
           role="admin"
           variant="admin"

@@ -1,12 +1,13 @@
-import { LiveClassStatus } from "@prisma/client";
+import { LiveClassAudience, LiveClassStatus } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdminUser, unauthorized } from "@/lib/auth";
 import { handleRouteDatabaseError } from "@/lib/db-errors";
-import { createLiveClassAsAdmin } from "@/lib/live-class-service";
+import { createLiveClassAsAdmin, expireStaleLiveClasses } from "@/lib/live-class-service";
 import { prisma } from "@/lib/prisma";
 
 export async function GET() {
   try {
+    await expireStaleLiveClasses();
     const admin = await requireAdminUser();
     if (!admin) return unauthorized();
 
@@ -27,6 +28,7 @@ export async function GET() {
         id: item.id,
         title: item.title,
         description: item.description,
+        audience: item.audience,
         status: item.status,
         roomName: item.roomName,
         courseId: item.courseId,
@@ -51,11 +53,13 @@ export async function POST(request: NextRequest) {
     if (!admin) return unauthorized();
 
     const body = await request.json();
-    if (!body.courseId || !body.lecturerId || !body.title?.trim() || !body.startTime) {
-      return NextResponse.json(
-        { error: "Course, lecturer, title, and start time are required." },
-        { status: 400 },
-      );
+    if (!body.title?.trim() || !body.startTime) {
+      return NextResponse.json({ error: "Title and start time are required." }, { status: 400 });
+    }
+
+    const audience = (body.audience as LiveClassAudience) ?? LiveClassAudience.GENERAL;
+    if (!Object.values(LiveClassAudience).includes(audience)) {
+      return NextResponse.json({ error: "Invalid audience." }, { status: 400 });
     }
 
     const start = new Date(body.startTime);
@@ -65,10 +69,9 @@ export async function POST(request: NextRequest) {
     }
 
     const liveClass = await createLiveClassAsAdmin({
-      courseId: body.courseId,
-      lecturerId: body.lecturerId,
       title: body.title,
       description: body.description,
+      audience,
       startTime: start,
       endTime: end,
     });
@@ -78,10 +81,11 @@ export async function POST(request: NextRequest) {
       class: {
         id: liveClass.id,
         title: liveClass.title,
+        description: liveClass.description,
+        audience: liveClass.audience,
         status: liveClass.status,
         startTime: liveClass.startTime?.toISOString() ?? null,
-        course: liveClass.course,
-        lecturerName: liveClass.lecturer?.user.fullName ?? null,
+        endTime: liveClass.endTime?.toISOString() ?? null,
       },
     });
   } catch (error) {

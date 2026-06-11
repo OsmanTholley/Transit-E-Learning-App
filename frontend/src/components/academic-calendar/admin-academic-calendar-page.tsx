@@ -17,8 +17,15 @@ type CalendarEvent = {
   location: string | null;
 };
 
+function toLocalInput(iso: string) {
+  const d = new Date(iso);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
 export function AdminAcademicCalendarPage() {
   const [events, setEvents] = useState<CalendarEvent[]>([]);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [startAt, setStartAt] = useState("");
@@ -26,6 +33,17 @@ export function AdminAcademicCalendarPage() {
   const [eventType, setEventType] = useState("ACTIVITY");
   const [audience, setAudience] = useState("ALL");
   const [location, setLocation] = useState("");
+
+  const resetForm = () => {
+    setEditingId(null);
+    setTitle("");
+    setDescription("");
+    setStartAt("");
+    setEndAt("");
+    setEventType("ACTIVITY");
+    setAudience("ALL");
+    setLocation("");
+  };
 
   const load = async () => {
     const result = await requestApi<{ events: CalendarEvent[] }>("/api/admin/academic-calendar", { silent: true });
@@ -36,27 +54,45 @@ export function AdminAcademicCalendarPage() {
     void load();
   }, []);
 
-  const handleCreate = async (event: FormEvent) => {
+  const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
-    const result = await requestApi("/api/admin/academic-calendar", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ title, description, startAt, endAt: endAt || undefined, eventType, audience, location }),
-      silent: true,
-    });
+
+    const payload = { title, description, startAt, endAt: endAt || undefined, eventType, audience, location };
+
+    const result = editingId
+      ? await requestApi("/api/admin/academic-calendar", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id: editingId, ...payload }),
+          silent: true,
+        })
+      : await requestApi("/api/admin/academic-calendar", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+          silent: true,
+        });
 
     if (!result.ok) {
-      await showError("Could not save event", result.offline ? "You are offline." : result.message);
+      await showError(editingId ? "Could not update event" : "Could not save event", result.offline ? "You are offline." : result.message);
       return;
     }
 
-    await showSuccess("Event added", "The academic schedule has been updated.");
-    setTitle("");
-    setDescription("");
-    setStartAt("");
-    setEndAt("");
-    setLocation("");
+    await showSuccess(editingId ? "Event updated" : "Event added");
+    resetForm();
     void load();
+  };
+
+  const startEdit = (event: CalendarEvent) => {
+    setEditingId(event.id);
+    setTitle(event.title);
+    setDescription(event.description ?? "");
+    setStartAt(toLocalInput(event.startAt));
+    setEndAt(event.endAt ? toLocalInput(event.endAt) : "");
+    setEventType(event.eventType);
+    setAudience(event.audience);
+    setLocation(event.location ?? "");
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   const handleDelete = async (id: string) => {
@@ -65,6 +101,7 @@ export function AdminAcademicCalendarPage() {
       await showError("Delete failed", result.offline ? "You are offline." : result.message);
       return;
     }
+    if (editingId === id) resetForm();
     void load();
   };
 
@@ -79,8 +116,10 @@ export function AdminAcademicCalendarPage() {
 
       <DashboardCalendarWidget role="admin" />
 
-      <form onSubmit={handleCreate} className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-        <h2 className="text-lg font-medium text-slate-900">Add schedule activity</h2>
+      <form onSubmit={handleSubmit} className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+        <h2 className="text-lg font-medium text-slate-900">
+          {editingId ? "Edit schedule activity" : "Add schedule activity"}
+        </h2>
         <div className="mt-4 grid gap-3 md:grid-cols-2">
           <input
             value={title}
@@ -128,9 +167,16 @@ export function AdminAcademicCalendarPage() {
             placeholder="Location (optional)"
             className="rounded-md border border-slate-300 px-3 py-2 text-sm md:col-span-2"
           />
-          <button type="submit" className="rounded-md bg-[#0B3D91] px-4 py-2 text-sm font-medium text-white hover:bg-[#0a3580] md:col-span-2">
-            Publish to calendar
-          </button>
+          <div className="flex gap-2 md:col-span-2">
+            <button type="submit" className="rounded-md bg-[#0B3D91] px-4 py-2 text-sm font-medium text-white hover:bg-[#0a3580]">
+              {editingId ? "Save changes" : "Publish to calendar"}
+            </button>
+            {editingId ? (
+              <button type="button" onClick={resetForm} className="rounded-md border border-slate-300 px-4 py-2 text-sm">
+                Cancel edit
+              </button>
+            ) : null}
+          </div>
         </div>
       </form>
 
@@ -148,13 +194,22 @@ export function AdminAcademicCalendarPage() {
                     {new Date(event.startAt).toLocaleString()} · {eventTypeLabel(event.eventType as never)} · {event.audience}
                   </p>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => void handleDelete(event.id)}
-                  className="rounded-md border border-red-200 px-3 py-1.5 text-xs font-medium text-red-700 hover:bg-red-50"
-                >
-                  Remove
-                </button>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => startEdit(event)}
+                    className="rounded-md border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                  >
+                    Edit
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void handleDelete(event.id)}
+                    className="rounded-md border border-red-200 px-3 py-1.5 text-xs font-medium text-red-700 hover:bg-red-50"
+                  >
+                    Remove
+                  </button>
+                </div>
               </div>
             ))
           )}

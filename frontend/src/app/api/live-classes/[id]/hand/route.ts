@@ -1,22 +1,27 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Role } from "@prisma/client";
-import { requireLecturer, requireStudent } from "@/lib/auth";
-import { assertLiveClassParticipant, lowerHand, raiseHand } from "@/lib/live-class-service";
+import { getValidatedUser, requireStudent } from "@/lib/auth";
+import {
+  assertLiveClassParticipant,
+  getLiveClassAccess,
+  lowerAllHands,
+  lowerHand,
+  raiseHand,
+} from "@/lib/live-class-service";
 import { prisma } from "@/lib/prisma";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
 export async function GET(_request: NextRequest, context: RouteContext) {
-  const lecturer = await requireLecturer();
-  if (!lecturer) {
+  const { id } = await context.params;
+  const user = await getValidatedUser(["lecturer", "admin"]);
+  if (!user) {
     return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
   }
 
-  const { id } = await context.params;
-
-  const liveClass = await prisma.liveClass.findUnique({ where: { id } });
-  if (!liveClass || liveClass.lecturerId !== lecturer.id) {
-    return NextResponse.json({ error: "Live class not found." }, { status: 404 });
+  const access = await getLiveClassAccess(id, user.id, user.role as Role);
+  if (!access.ok || !access.isModerator) {
+    return NextResponse.json({ error: "Only the session host can view raised hands." }, { status: 403 });
   }
 
   const raises = await prisma.liveClassHandRaise.findMany({
@@ -27,9 +32,11 @@ export async function GET(_request: NextRequest, context: RouteContext) {
   return NextResponse.json({
     raises: raises.map((item) => ({
       id: item.id,
+      studentId: item.studentId,
       studentName: item.studentName,
       createdAt: item.createdAt.toISOString(),
     })),
+    count: raises.length,
   });
 }
 
@@ -54,6 +61,28 @@ export async function POST(request: NextRequest, context: RouteContext) {
       await raiseHand(id, student.id, student.user.fullName);
     } else {
       await lowerHand(id, student.id);
+    }
+
+    return NextResponse.json({ ok: true });
+  }
+
+  if (body.action === "dismiss" || body.action === "lower_all") {
+    const user = await getValidatedUser(["lecturer", "admin"]);
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
+    }
+
+    const access = await getLiveClassAccess(id, user.id, user.role as Role);
+    if (!access.ok || !access.isModerator) {
+      return NextResponse.json({ error: "Only the session host can manage raised hands." }, { status: 403 });
+    }
+
+    if (body.action === "lower_all") {
+      await lowerAllHands(id);
+    } else if (body.studentId) {
+      await lowerHand(id, body.studentId);
+    } else {
+      return NextResponse.json({ error: "Student id is required." }, { status: 400 });
     }
 
     return NextResponse.json({ ok: true });

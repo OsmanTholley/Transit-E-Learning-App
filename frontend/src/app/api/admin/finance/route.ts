@@ -3,11 +3,14 @@ import { FeePaymentStatus } from "@prisma/client";
 import { requireAdminUser } from "@/lib/auth";
 import { handleRouteDatabaseError } from "@/lib/db-errors";
 import {
+  computePaymentCompliance,
   decimalToNumber,
   DEFAULT_CURRENCY,
   formatMoney,
   getFinanceDashboardSummary,
+  notifyFeeAssignment,
 } from "@/lib/finance-service";
+import { logActivity } from "@/lib/activity-log";
 import { prisma } from "@/lib/prisma";
 
 export async function GET(request: NextRequest) {
@@ -79,6 +82,7 @@ export async function GET(request: NextRequest) {
       const total = decimalToNumber(account.totalAmount);
       const paid = decimalToNumber(account.amountPaid);
       const balance = Math.max(0, total - paid);
+      const compliance = computePaymentCompliance(account);
       return {
         id: account.id,
         studentId: account.student.studentId,
@@ -95,8 +99,14 @@ export async function GET(request: NextRequest) {
         amountPaid: paid,
         balance,
         status: account.status,
+        complianceStatus: compliance.status,
+        requiredPercent: compliance.requiredPercent,
+        requiredAmount: compliance.requiredAmount,
+        isRestricted: compliance.isRestricted,
         dueDate: account.dueDate?.toISOString() ?? account.feeStructure.dueDate?.toISOString() ?? null,
         accessLocked: account.accessLocked,
+        restrictionOverridden: account.restrictionOverridden,
+        temporaryAccessUntil: account.temporaryAccessUntil?.toISOString() ?? null,
         recentPayments: account.payments.map((payment) => ({
           id: payment.id,
           amount: decimalToNumber(payment.amount),
@@ -146,6 +156,10 @@ export async function GET(request: NextRequest) {
         collectedLabel: formatMoney(summary.collected),
         outstandingLabel: formatMoney(summary.outstanding),
         totalBilledLabel: formatMoney(summary.totalBilled),
+        eligibleStudents: summary.eligibleStudents,
+        restrictedStudents: summary.restrictedStudents,
+        nearDueStudents: summary.nearDueStudents,
+        overdueStudents: summary.overdueStudents,
       },
       accounts: rows,
       feeStructures: feeStructures.map((fee) => ({
@@ -155,6 +169,7 @@ export async function GET(request: NextRequest) {
         currency: fee.currency,
         amountLabel: formatMoney(fee.amount, fee.currency),
         dueDate: fee.dueDate?.toISOString() ?? null,
+        requiredPaymentPercent: fee.requiredPaymentPercent,
         intakeBatch: fee.intakeBatch,
         semester: fee.semester,
         level: fee.level,
@@ -203,8 +218,12 @@ export async function POST(request: NextRequest) {
 
     if (action === "create_fee_structure") {
       const amount = Number(body.amount);
+      const requiredPaymentPercent = Number(body.requiredPaymentPercent ?? 100);
       if (!body.title?.trim() || !Number.isFinite(amount) || amount <= 0) {
         return NextResponse.json({ error: "Valid title and amount are required." }, { status: 400 });
+      }
+      if (!Number.isFinite(requiredPaymentPercent) || requiredPaymentPercent < 0 || requiredPaymentPercent > 100) {
+        return NextResponse.json({ error: "Required payment percentage must be between 0 and 100." }, { status: 400 });
       }
 
       const feeStructure = await prisma.feeStructure.create({
@@ -218,7 +237,17 @@ export async function POST(request: NextRequest) {
           semester: body.semester?.trim() || null,
           intakeBatch: body.intakeBatch?.trim() || null,
           dueDate: body.dueDate ? new Date(body.dueDate) : null,
+          requiredPaymentPercent,
         },
+      });
+
+      await logActivity({
+        actorId: admin.id,
+        action: "PAYMENT_PLAN_CREATED",
+        entityType: "fee_structure",
+        entityId: feeStructure.id,
+        summary: `Payment plan "${feeStructure.title}" created (${requiredPaymentPercent}% required).`,
+        metadata: { amount, requiredPaymentPercent, dueDate: feeStructure.dueDate?.toISOString() ?? null },
       });
 
       return NextResponse.json({ ok: true, feeStructure });
@@ -246,7 +275,18 @@ export async function POST(request: NextRequest) {
           ...(body.semester !== undefined ? { semester: body.semester?.trim() || null } : {}),
           ...(body.intakeBatch !== undefined ? { intakeBatch: body.intakeBatch?.trim() || null } : {}),
           ...(body.dueDate !== undefined ? { dueDate: body.dueDate ? new Date(body.dueDate) : null } : {}),
+          ...(body.requiredPaymentPercent !== undefined
+            ? { requiredPaymentPercent: Number(body.requiredPaymentPercent) }
+            : {}),
         },
+      });
+
+      await logActivity({
+        actorId: admin.id,
+        action: "PAYMENT_PLAN_UPDATED",
+        entityType: "fee_structure",
+        entityId: feeStructure.id,
+        summary: `Payment plan "${feeStructure.title}" updated.`,
       });
 
       return NextResponse.json({ ok: true, feeStructure });
@@ -289,16 +329,42 @@ export async function POST(request: NextRequest) {
               feeStructureId,
               totalAmount: feeStructure.amount,
               dueDate: feeStructure.dueDate,
+              requiredPaymentPercent: feeStructure.requiredPaymentPercent,
               accessLocked: true,
             },
             update: {
               totalAmount: feeStructure.amount,
               dueDate: feeStructure.dueDate,
+              requiredPaymentPercent: feeStructure.requiredPaymentPercent,
               accessLocked: true,
             },
           }),
         ),
       );
+
+      const assignedStudents = await prisma.student.findMany({
+        where: { id: { in: studentIds } },
+        select: { id: true, userId: true },
+      });
+      await Promise.all(
+        assignedStudents.map((student) =>
+          notifyFeeAssignment({
+            studentUserId: student.userId,
+            feeTitle: feeStructure.title,
+            requiredPercent: feeStructure.requiredPaymentPercent,
+            dueDate: feeStructure.dueDate,
+          }),
+        ),
+      );
+
+      await logActivity({
+        actorId: admin.id,
+        action: "PAYMENT_PERCENTAGE_ASSIGNED",
+        entityType: "fee_structure",
+        entityId: feeStructureId,
+        summary: `Payment requirement assigned to ${created.length} student(s).`,
+        metadata: { requiredPaymentPercent: feeStructure.requiredPaymentPercent, count: created.length },
+      });
 
       return NextResponse.json({ ok: true, count: created.length });
     }
@@ -334,11 +400,13 @@ export async function POST(request: NextRequest) {
               feeStructureId,
               totalAmount: feeStructure.amount,
               dueDate: feeStructure.dueDate,
+              requiredPaymentPercent: feeStructure.requiredPaymentPercent,
               accessLocked: true,
             },
             update: {
               totalAmount: feeStructure.amount,
               dueDate: feeStructure.dueDate,
+              requiredPaymentPercent: feeStructure.requiredPaymentPercent,
               accessLocked: true,
             },
           }),
@@ -379,11 +447,13 @@ export async function POST(request: NextRequest) {
               feeStructureId,
               totalAmount: feeStructure.amount,
               dueDate: feeStructure.dueDate,
+              requiredPaymentPercent: feeStructure.requiredPaymentPercent,
               accessLocked: true,
             },
             update: {
               totalAmount: feeStructure.amount,
               dueDate: feeStructure.dueDate,
+              requiredPaymentPercent: feeStructure.requiredPaymentPercent,
               accessLocked: true,
             },
           }),
@@ -391,6 +461,94 @@ export async function POST(request: NextRequest) {
       );
 
       return NextResponse.json({ ok: true, count: created.length });
+    }
+
+    if (action === "remove_restriction") {
+      const accountId = body.studentFeeAccountId as string;
+      if (!accountId) return NextResponse.json({ error: "Account id is required." }, { status: 400 });
+      const account = await prisma.studentFeeAccount.update({
+        where: { id: accountId },
+        data: { restrictionOverridden: true, accessLocked: false },
+      });
+      await logActivity({
+        actorId: admin.id,
+        action: "RESTRICTION_REMOVED",
+        entityType: "student_fee_account",
+        entityId: accountId,
+        summary: "Admin removed payment restriction override.",
+      });
+      return NextResponse.json({ ok: true, account });
+    }
+
+    if (action === "extend_due_date") {
+      const accountId = body.studentFeeAccountId as string;
+      const dueDate = body.dueDate ? new Date(body.dueDate) : null;
+      if (!accountId || !dueDate) {
+        return NextResponse.json({ error: "Account id and due date are required." }, { status: 400 });
+      }
+      const previous = await prisma.studentFeeAccount.findUnique({ where: { id: accountId } });
+      const account = await prisma.studentFeeAccount.update({
+        where: { id: accountId },
+        data: { dueDate },
+      });
+      await logActivity({
+        actorId: admin.id,
+        action: "DUE_DATE_CHANGED",
+        entityType: "student_fee_account",
+        entityId: accountId,
+        summary: "Admin extended payment due date.",
+        metadata: {
+          previousValue: previous?.dueDate?.toISOString() ?? null,
+          newValue: dueDate.toISOString(),
+        },
+      });
+      return NextResponse.json({ ok: true, account });
+    }
+
+    if (action === "update_required_percent") {
+      const accountId = body.studentFeeAccountId as string;
+      const requiredPaymentPercent = Number(body.requiredPaymentPercent);
+      if (!accountId || !Number.isFinite(requiredPaymentPercent)) {
+        return NextResponse.json({ error: "Account id and required percent are required." }, { status: 400 });
+      }
+      const previous = await prisma.studentFeeAccount.findUnique({ where: { id: accountId } });
+      const account = await prisma.studentFeeAccount.update({
+        where: { id: accountId },
+        data: { requiredPaymentPercent },
+      });
+      await logActivity({
+        actorId: admin.id,
+        action: "PAYMENT_PERCENTAGE_ASSIGNED",
+        entityType: "student_fee_account",
+        entityId: accountId,
+        summary: "Admin updated required payment percentage.",
+        metadata: {
+          previousValue: previous?.requiredPaymentPercent ?? null,
+          newValue: requiredPaymentPercent,
+        },
+      });
+      return NextResponse.json({ ok: true, account });
+    }
+
+    if (action === "grant_temporary_access") {
+      const accountId = body.studentFeeAccountId as string;
+      const until = body.temporaryAccessUntil ? new Date(body.temporaryAccessUntil) : null;
+      if (!accountId || !until) {
+        return NextResponse.json({ error: "Account id and access end date are required." }, { status: 400 });
+      }
+      const account = await prisma.studentFeeAccount.update({
+        where: { id: accountId },
+        data: { temporaryAccessUntil: until },
+      });
+      await logActivity({
+        actorId: admin.id,
+        action: "TEMPORARY_ACCESS_GRANTED",
+        entityType: "student_fee_account",
+        entityId: accountId,
+        summary: "Admin granted temporary academic access.",
+        metadata: { temporaryAccessUntil: until.toISOString() },
+      });
+      return NextResponse.json({ ok: true, account });
     }
 
     if (action === "record_payment") {

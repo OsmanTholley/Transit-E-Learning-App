@@ -32,6 +32,9 @@ model User {
   lecturer                  Lecturer?
   liveClassChatMessages     LiveClassChatMessage[]
   portalChatMessages        PortalChatMessage[]    @relation("PortalChatSender")
+  chatGroupsCreated         ChatGroup[]            @relation("ChatGroupCreator")
+  chatGroupMemberships      ChatGroupMember[]      @relation("ChatGroupMemberships")
+  portalChatThreadReads   PortalChatThreadRead[]
   notifications             Notification[]
   studentMessageBroadcasts  StudentMessageBroadcast[]  @relation("StudentMessageBroadcasts")
   student                   Student?
@@ -40,6 +43,7 @@ model User {
   passwordResetTokens       PasswordResetToken[]
   recordedPayments          Payment[]              @relation("PaymentRecordedBy")
   academicCalendarEvents    AcademicCalendarEvent[] @relation("CalendarEventCreator")
+  liveClassesCreated        LiveClass[]             @relation("LiveClassCreator")
 
   @@map("users")
 }
@@ -425,10 +429,17 @@ model AiChatHistory {
   @@map("ai_chat_history")
 }
 
+enum LiveClassAudience {
+  GENERAL
+  STUDENTS
+  LECTURERS
+}
+
 model LiveClass {
   id             String                   @id @default(uuid()) @db.Uuid
   courseId       String?                  @map("course_id") @db.Uuid
   lecturerId     String?                  @map("lecturer_id") @db.Uuid
+  audience       LiveClassAudience        @default(GENERAL)
   meetingLink    String?                  @map("meeting_link")
   startTime      DateTime?                @map("start_time")
   endTime        DateTime?                @map("end_time")
@@ -449,8 +460,12 @@ model LiveClass {
   recordings     LiveClassRecording[]
   course         Course?                  @relation(fields: [courseId], references: [id])
   lecturer       Lecturer?                @relation(fields: [lecturerId], references: [id])
+  portalChatMessages PortalChatMessage[]
+  createdById        String?                  @map("created_by_id") @db.Uuid
+  createdBy          User?                    @relation("LiveClassCreator", fields: [createdById], references: [id])
 
   @@index([status, startTime], map: "idx_live_classes_status_start")
+  @@index([audience, status], map: "idx_live_classes_audience_status")
   @@map("live_classes")
 }
 
@@ -638,6 +653,7 @@ model FeeStructure {
   semester     String?             @db.VarChar(50)
   intakeBatch  String?             @map("intake_batch") @db.VarChar(50)
   dueDate      DateTime?           @map("due_date")
+  requiredPaymentPercent Float     @default(100) @map("required_payment_percent")
   isActive     Boolean             @default(true) @map("is_active")
   createdAt    DateTime            @default(now()) @map("created_at")
   program      Program?            @relation(fields: [programId], references: [id])
@@ -656,6 +672,10 @@ model StudentFeeAccount {
   amountPaid     Decimal          @default(0) @map("amount_paid") @db.Decimal(12, 2)
   status         FeePaymentStatus @default(UNPAID)
   dueDate        DateTime?        @map("due_date")
+  requiredPaymentPercent Float?   @map("required_payment_percent")
+  temporaryAccessUntil DateTime?  @map("temporary_access_until")
+  restrictionOverridden Boolean   @default(false) @map("restriction_overridden")
+  lastReminderAt DateTime?        @map("last_reminder_at")
   accessLocked   Boolean          @default(false) @map("access_locked")
   createdAt      DateTime         @default(now()) @map("created_at")
   updatedAt      DateTime         @updatedAt @map("updated_at")
@@ -701,22 +721,82 @@ model FeeInvoice {
 enum PortalChatKind {
   COURSE
   DIRECT
+  GROUP
+  LIVE_CLASS
+}
+
+enum PortalChatMessageType {
+  TEXT
+  VOICE
+}
+
+model ChatGroup {
+  id          String            @id @default(uuid()) @db.Uuid
+  name        String            @db.VarChar(120)
+  description String?
+  createdById String            @map("created_by_id") @db.Uuid
+  createdAt   DateTime          @default(now()) @map("created_at")
+  updatedAt   DateTime          @updatedAt @map("updated_at")
+  createdBy   User              @relation("ChatGroupCreator", fields: [createdById], references: [id], onDelete: Cascade)
+  members     ChatGroupMember[]
+  messages    PortalChatMessage[]
+
+  @@index([createdById], map: "idx_chat_groups_creator")
+  @@map("chat_groups")
+}
+
+model ChatGroupMember {
+  id       String    @id @default(uuid()) @db.Uuid
+  groupId  String    @map("group_id") @db.Uuid
+  userId   String    @map("user_id") @db.Uuid
+  joinedAt DateTime  @default(now()) @map("joined_at")
+  group    ChatGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user     User      @relation("ChatGroupMemberships", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([groupId, userId])
+  @@index([userId], map: "idx_chat_group_members_user")
+  @@map("chat_group_members")
 }
 
 model PortalChatMessage {
-  id        String         @id @default(uuid()) @db.Uuid
-  kind      PortalChatKind
-  courseId  String?        @map("course_id") @db.Uuid
-  threadKey String         @map("thread_key") @db.VarChar(160)
-  senderId  String         @map("sender_id") @db.Uuid
-  body      String
-  createdAt DateTime       @default(now()) @map("created_at")
+  id          String                @id @default(uuid()) @db.Uuid
+  kind        PortalChatKind
+  messageType PortalChatMessageType @default(TEXT) @map("message_type")
+  courseId    String?               @map("course_id") @db.Uuid
+  groupId     String?               @map("group_id") @db.Uuid
+  liveClassId String?               @map("live_class_id") @db.Uuid
+  threadKey   String                @map("thread_key") @db.VarChar(160)
+  senderId    String                @map("sender_id") @db.Uuid
+  body        String                @default("")
+  audioData   String?               @map("audio_data")
+  isPinned    Boolean               @default(false) @map("is_pinned")
+  isHighlighted Boolean             @default(false) @map("is_highlighted")
+  deletedAt   DateTime?             @map("deleted_at")
+  createdAt   DateTime              @default(now()) @map("created_at")
+  updatedAt   DateTime              @updatedAt @map("updated_at")
   sender    User           @relation("PortalChatSender", fields: [senderId], references: [id], onDelete: Cascade)
   course    Course?        @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  group     ChatGroup?     @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  liveClass LiveClass?     @relation(fields: [liveClassId], references: [id], onDelete: Cascade)
 
   @@index([threadKey, createdAt], map: "idx_portal_chat_thread_time")
   @@index([courseId, createdAt], map: "idx_portal_chat_course_time")
+  @@index([groupId, createdAt], map: "idx_portal_chat_group_time")
+  @@index([liveClassId, createdAt], map: "idx_portal_chat_live_class_time")
   @@map("portal_chat_messages")
+}
+
+model PortalChatThreadRead {
+  id         String   @id @default(uuid()) @db.Uuid
+  userId     String   @map("user_id") @db.Uuid
+  threadKey  String   @map("thread_key") @db.VarChar(160)
+  lastReadAt DateTime @map("last_read_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, threadKey])
+  @@index([userId], map: "idx_portal_chat_reads_user")
+  @@map("portal_chat_thread_reads")
 }
 
 enum Role {

@@ -7,9 +7,9 @@ import { LiveClassroomControls } from "@/components/live-classroom/live-classroo
 import { LiveClassroomLobbyPreview } from "@/components/live-classroom/live-classroom-lobby-preview";
 import { LiveClassroomSidebar } from "@/components/live-classroom/live-classroom-sidebar";
 import { requestApi } from "@/lib/fetch-api";
+import { swal } from "@/lib/swal";
 import {
   buildJitsiConfig,
-  CHAT_POLL_MS,
   HAND_POLL_MS,
   TRANSIT_CLASSROOM_BRAND,
 } from "@/lib/live-classroom-config";
@@ -23,18 +23,11 @@ type JoinPayload = {
   liveClass: {
     id: string;
     title: string | null;
+    description?: string | null;
     status: string;
-    course: { courseCode: string; courseTitle: string } | null;
+    endTime: string | null;
+    course: { id: string; courseCode: string; courseTitle: string } | null;
   };
-};
-
-type ChatMessage = {
-  id: string;
-  senderName: string;
-  senderRole: string;
-  message: string;
-  createdAt: string;
-  isMine: boolean;
 };
 
 type Participant = { id: string; name: string };
@@ -87,10 +80,8 @@ export function LiveClassroomRoom({ liveClassId, role, sessionAs = "lecturer" }:
   const [inLobby, setInLobby] = useState(true);
   const [inCall, setInCall] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [sidebarTab, setSidebarTab] = useState<"chat" | "people" | "raised" | "admit">("chat");
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [chatDraft, setChatDraft] = useState("");
-  const [raisedHands, setRaisedHands] = useState<{ id: string; studentName: string }[]>([]);
+  const [sidebarTab, setSidebarTab] = useState<"chat" | "people" | "raised" | "admit" | "attendance">("chat");
+  const [raisedHands, setRaisedHands] = useState<{ id: string; studentId: string; studentName: string }[]>([]);
   const [admissionCandidates, setAdmissionCandidates] = useState<
     { id: string; studentId: string; fullName: string; admitted: boolean; joined: boolean }[]
   >([]);
@@ -102,6 +93,9 @@ export function LiveClassroomRoom({ liveClassId, role, sessionAs = "lecturer" }:
   const [joinWithMic, setJoinWithMic] = useState(true);
   const [joinWithCamera, setJoinWithCamera] = useState(true);
   const [connecting, setConnecting] = useState(false);
+  const [sessionEndMs, setSessionEndMs] = useState<number | null>(null);
+  const [sessionDurationLabel, setSessionDurationLabel] = useState("00:00:00");
+  const extendPromptOpenRef = useRef(false);
 
   const isAdmin = role === "admin";
   const isAdminObserver = isAdmin;
@@ -156,6 +150,9 @@ export function LiveClassroomRoom({ liveClassId, role, sessionAs = "lecturer" }:
         return;
       }
       setJoinData(result.data);
+      if (result.data.liveClass.endTime) {
+        setSessionEndMs(new Date(result.data.liveClass.endTime).getTime());
+      }
       setLoading(false);
     }
     void join();
@@ -258,30 +255,19 @@ export function LiveClassroomRoom({ liveClassId, role, sessionAs = "lecturer" }:
     };
   }, []);
 
-  // Lightweight polling — only when sidebar tab needs fresh data
+  // Poll raised hands / late admission for hosts
   useEffect(() => {
-    if ((!inCall && !isHost) || !sidebarOpen) return;
+    if ((!inCall && !isHost) || !isLecturer) return;
 
     let cancelled = false;
 
     async function poll() {
-      if (sidebarTab === "chat") {
-        const result = await requestApi<{ messages: ChatMessage[] }>(
-          `/api/live-classes/${liveClassId}/chat`,
-          { silent: true },
-        );
-        if (!cancelled && result.ok) setMessages(result.data.messages);
-      }
+      const handResult = await requestApi<{
+        raises: { id: string; studentId: string; studentName: string }[];
+      }>(`/api/live-classes/${liveClassId}/hand`, { silent: true });
+      if (!cancelled && handResult.ok) setRaisedHands(handResult.data.raises);
 
-      if (sidebarTab === "raised" && isLecturer) {
-        const result = await requestApi<{ raises: { id: string; studentName: string }[] }>(
-          `/api/live-classes/${liveClassId}/hand`,
-          { silent: true },
-        );
-        if (!cancelled && result.ok) setRaisedHands(result.data.raises);
-      }
-
-      if (sidebarTab === "admit" && isLecturer) {
+      if (sidebarTab === "admit") {
         const result = await requestApi<{
           students: { id: string; studentId: string; fullName: string; admitted: boolean; joined: boolean }[];
         }>(`/api/live-classes/${liveClassId}/admit`, { silent: true });
@@ -290,32 +276,150 @@ export function LiveClassroomRoom({ liveClassId, role, sessionAs = "lecturer" }:
     }
 
     void poll();
-    const ms = sidebarTab === "raised" && isLecturer ? HAND_POLL_MS : sidebarTab === "admit" && isLecturer ? HAND_POLL_MS : CHAT_POLL_MS;
-    const timer = window.setInterval(poll, ms);
+    const timer = window.setInterval(poll, HAND_POLL_MS);
     return () => {
       cancelled = true;
       window.clearInterval(timer);
     };
-  }, [inCall, sidebarOpen, sidebarTab, liveClassId, isLecturer]);
+  }, [inCall, sidebarTab, liveClassId, isLecturer, isHost]);
 
-  const sendChat = async () => {
-    const text = chatDraft.trim();
-    if (!text) return;
-    const result = await requestApi(`/api/live-classes/${liveClassId}/chat`, {
+  useEffect(() => {
+    if (!inCall || joinData?.liveClass.status !== "LIVE") return;
+    const startMs = Date.now();
+
+    const tick = () => {
+      const elapsed = Math.max(0, Math.floor((Date.now() - startMs) / 1000));
+      const h = String(Math.floor(elapsed / 3600)).padStart(2, "0");
+      const m = String(Math.floor((elapsed % 3600) / 60)).padStart(2, "0");
+      const s = String(elapsed % 60).padStart(2, "0");
+      setSessionDurationLabel(`${h}:${m}:${s}`);
+    };
+
+    tick();
+    const timer = window.setInterval(tick, 1000);
+    return () => window.clearInterval(timer);
+  }, [joinData?.liveClass.status, inCall]);
+
+  const notifyLeave = useCallback(async (action?: "end") => {
+    await requestApi(`/api/live-classes/${liveClassId}/leave`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ message: text }),
+      body: JSON.stringify({
+        ...(action ? { action } : {}),
+      }),
       silent: true,
     });
-    if (result.ok) {
-      setChatDraft("");
-      const refresh = await requestApi<{ messages: ChatMessage[] }>(
-        `/api/live-classes/${liveClassId}/chat`,
+  }, [liveClassId]);
+
+  const extendSession = useCallback(
+    async (minutes: number) => {
+      const extendEndpoint = isAdmin
+        ? `/api/admin/live-classes/${liveClassId}`
+        : `/api/lecturer/live-classes/${liveClassId}`;
+      const result = await requestApi<{ endTime: string | null }>(extendEndpoint, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "extend", minutes }),
+        silent: true,
+      });
+      if (result.ok && result.data.endTime) {
+        setSessionEndMs(new Date(result.data.endTime).getTime());
+        setJoinData((current) =>
+          current
+            ? {
+                ...current,
+                liveClass: { ...current.liveClass, endTime: result.data.endTime },
+              }
+            : current,
+        );
+        extendPromptOpenRef.current = false;
+        return true;
+      }
+      return false;
+    },
+    [isAdmin, liveClassId],
+  );
+
+  useEffect(() => {
+    if (!sessionEndMs || !inCall) return;
+
+    const checkExpiry = async () => {
+      if (Date.now() < sessionEndMs) return;
+      if (extendPromptOpenRef.current) return;
+      extendPromptOpenRef.current = true;
+
+      if (isHost) {
+        const result = await swal.fire({
+          icon: "warning",
+          title: "Scheduled time ended",
+          text: "Extend the session or end it for everyone?",
+          showDenyButton: true,
+          showCancelButton: true,
+          confirmButtonText: "Extend 30 min",
+          denyButtonText: "Extend 15 min",
+          cancelButtonText: "End session",
+        });
+
+        if (result.isConfirmed) {
+          await extendSession(30);
+        } else if (result.isDenied) {
+          await extendSession(15);
+        } else {
+          await notifyLeave("end");
+          jitsiApiRef.current?.executeCommand("hangup");
+          exitToHub();
+        }
+        extendPromptOpenRef.current = false;
+        return;
+      }
+
+      await swal.fire({
+        icon: "info",
+        title: "Scheduled time ended",
+        text: "Waiting for the host to extend the session…",
+        timer: 4000,
+        showConfirmButton: false,
+      });
+      extendPromptOpenRef.current = false;
+    };
+
+    void checkExpiry();
+    const timer = window.setInterval(() => void checkExpiry(), 10_000);
+    return () => window.clearInterval(timer);
+  }, [sessionEndMs, inCall, isHost, extendSession, notifyLeave, exitToHub]);
+
+  useEffect(() => {
+    if (!inCall || isHost || !sessionEndMs || Date.now() < sessionEndMs) return;
+
+    let cancelled = false;
+    async function pollExtendedEndTime() {
+      const result = await requestApi<{ endTime: string | null }>(
+        `/api/live-classes/${liveClassId}/messenger`,
         { silent: true },
       );
-      if (refresh.ok) setMessages(refresh.data.messages);
+      if (cancelled || !result.ok || !result.data.endTime) return;
+      const currentEndMs = sessionEndMs;
+      if (currentEndMs === null) return;
+      const nextMs = new Date(result.data.endTime).getTime();
+      if (nextMs > currentEndMs) {
+        setSessionEndMs(nextMs);
+        setJoinData((current) =>
+          current
+            ? {
+                ...current,
+                liveClass: { ...current.liveClass, endTime: result.data.endTime },
+              }
+            : current,
+        );
+      }
     }
-  };
+
+    const timer = window.setInterval(() => void pollExtendedEndTime(), 8_000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
+  }, [inCall, isHost, liveClassId, sessionEndMs]);
 
   const admitStudent = async (studentId: string) => {
     const result = await requestApi(`/api/live-classes/${liveClassId}/admit`, {
@@ -342,16 +446,23 @@ export function LiveClassroomRoom({ liveClassId, role, sessionAs = "lecturer" }:
     if (result.ok) setHandRaised(!handRaised);
   };
 
-  const notifyLeave = useCallback(async (action?: "end") => {
-    await requestApi(`/api/live-classes/${liveClassId}/leave`, {
+  const dismissHand = async (studentId: string) => {
+    await requestApi(`/api/live-classes/${liveClassId}/hand`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        ...(action ? { action } : {}),
-      }),
+      body: JSON.stringify({ action: "dismiss", studentId }),
       silent: true,
     });
-  }, [liveClassId]);
+  };
+
+  const lowerAllHands = async () => {
+    await requestApi(`/api/live-classes/${liveClassId}/hand`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "lower_all" }),
+      silent: true,
+    });
+  };
 
   const leaveClass = () => {
     void notifyLeave().finally(() => {
@@ -428,7 +539,9 @@ export function LiveClassroomRoom({ liveClassId, role, sessionAs = "lecturer" }:
             {joinData.liveClass.title ?? "Live session"}
           </h1>
           <p className="mt-1 text-center text-sm text-white/70">
-            {joinData.liveClass.course?.courseCode} · {joinData.liveClass.course?.courseTitle}
+            {joinData.liveClass.course
+              ? `${joinData.liveClass.course.courseCode} · ${joinData.liveClass.course.courseTitle}`
+              : joinData.liveClass.description ?? "Platform virtual room session"}
           </p>
           <p className="mt-3 text-center text-xs text-white/50">
             Joining as <strong className="text-white">{joinData.displayName}</strong>
@@ -472,6 +585,11 @@ export function LiveClassroomRoom({ liveClassId, role, sessionAs = "lecturer" }:
               {isAdmin ? "Administrator — supervising" : "Transit Virtual Room"}
             </p>
             <h1 className="truncate text-sm font-semibold">{joinData.liveClass.title ?? "Live session"}</h1>
+            <p className="truncate text-[10px] text-white/70">
+              {isHost ? `Hosted by: ${joinData.displayName}` : `With ${joinData.displayName}`} · Online:{" "}
+              {participants.length + 1}
+              {inCall && joinData.liveClass.status === "LIVE" ? ` · Duration: ${sessionDurationLabel}` : ""}
+            </p>
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-2">
@@ -530,19 +648,19 @@ export function LiveClassroomRoom({ liveClassId, role, sessionAs = "lecturer" }:
 
         {sidebarOpen ? (
           <LiveClassroomSidebar
+            liveClassId={liveClassId}
             tab={sidebarTab}
             onTabChange={setSidebarTab}
-            messages={messages}
-            chatDraft={chatDraft}
-            onChatDraftChange={setChatDraft}
-            onSendChat={() => void sendChat()}
             displayName={joinData.displayName}
             participants={participants}
             raisedHands={raisedHands}
             showRaisedTab={isLecturer}
             showAdmitTab={isLecturer}
+            showAttendanceTab={isLecturer}
             admissionCandidates={admissionCandidates}
             onAdmitStudent={(studentId) => void admitStudent(studentId)}
+            onDismissHand={(studentId) => void dismissHand(studentId)}
+            onLowerAllHands={() => void lowerAllHands()}
           />
         ) : null}
       </div>

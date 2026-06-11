@@ -1,46 +1,19 @@
-import { PortalChatKind, Role } from "@prisma/client";
+import { Role } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 import { getValidatedUser } from "@/lib/auth";
 import {
-  listLecturerCourseRooms,
-  listLecturerDirectContacts,
-  listThreadMessages,
-  sendPortalChatMessage,
-} from "@/lib/portal-chat-service";
+  handlePortalChatDelete,
+  handlePortalChatGet,
+  handlePortalChatPatch,
+  handlePortalChatPost,
+} from "@/lib/portal-chat-route";
 
 export async function GET(request: NextRequest) {
   const user = await getValidatedUser(["lecturer"]);
   if (!user) {
     return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
   }
-
-  const kind = request.nextUrl.searchParams.get("kind");
-  const courseId = request.nextUrl.searchParams.get("courseId");
-  const peerUserId = request.nextUrl.searchParams.get("peerUserId");
-
-  if (kind === "messages") {
-    const threadKind = request.nextUrl.searchParams.get("threadKind") as PortalChatKind | null;
-    const threadKey =
-      threadKind === PortalChatKind.DIRECT && peerUserId
-        ? `direct:${[user.id, peerUserId].sort().join(":")}`
-        : courseId
-          ? `course:${courseId}`
-          : null;
-
-    if (!threadKey) {
-      return NextResponse.json({ error: "Thread is required." }, { status: 400 });
-    }
-
-    const messages = await listThreadMessages(threadKey);
-    return NextResponse.json({ messages });
-  }
-
-  const [courseRooms, directContacts] = await Promise.all([
-    listLecturerCourseRooms(user.id),
-    listLecturerDirectContacts(user.id),
-  ]);
-
-  return NextResponse.json({ courseRooms, directContacts });
+  return handlePortalChatGet(request, user, Role.LECTURER);
 }
 
 export async function POST(request: NextRequest) {
@@ -48,33 +21,21 @@ export async function POST(request: NextRequest) {
   if (!user) {
     return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
   }
+  return handlePortalChatPost(request, user, Role.LECTURER);
+}
 
-  const body = await request.json();
-  const kind = body.kind === "DIRECT" ? PortalChatKind.DIRECT : PortalChatKind.COURSE;
-
-  try {
-    const message = await sendPortalChatMessage({
-      senderId: user.id,
-      role: Role.LECTURER,
-      kind,
-      body: body.body ?? "",
-      courseId: body.courseId ?? null,
-      peerUserId: body.peerUserId ?? null,
-    });
-
-    return NextResponse.json({
-      ok: true,
-      message: {
-        id: message.id,
-        body: message.body,
-        createdAt: message.createdAt.toISOString(),
-        senderId: message.senderId,
-        senderName: message.sender.fullName,
-        senderRole: message.sender.role,
-      },
-    });
-  } catch (error) {
-    const msg = error instanceof Error ? error.message : "Could not send message.";
-    return NextResponse.json({ error: msg }, { status: 400 });
+export async function PATCH(request: NextRequest) {
+  const user = await getValidatedUser(["lecturer"]);
+  if (!user) {
+    return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
   }
+  return handlePortalChatPatch(request, user, Role.LECTURER);
+}
+
+export async function DELETE(request: NextRequest) {
+  const user = await getValidatedUser(["lecturer"]);
+  if (!user) {
+    return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
+  }
+  return handlePortalChatDelete(request, user, Role.LECTURER);
 }

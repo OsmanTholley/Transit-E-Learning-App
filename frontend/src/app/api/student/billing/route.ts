@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireStudent } from "@/lib/auth";
 import { handleRouteDatabaseError } from "@/lib/db-errors";
-import { decimalToNumber, ensureFeeInvoice, formatMoney } from "@/lib/finance-service";
+import { computePaymentCompliance, decimalToNumber, ensureFeeInvoice, formatMoney } from "@/lib/finance-service";
 import { prisma } from "@/lib/prisma";
 
 export async function GET() {
@@ -34,6 +34,8 @@ export async function GET() {
 
         const invoice = account.invoices[0] ?? (await ensureFeeInvoice(account.id));
 
+        const compliance = computePaymentCompliance(account);
+
         return {
           id: account.id,
           feeTitle: account.feeStructure.title,
@@ -42,6 +44,11 @@ export async function GET() {
           amountPaid: paid,
           balance,
           status: account.status,
+          complianceStatus: compliance.status,
+          requiredPercent: compliance.requiredPercent,
+          requiredAmount: compliance.requiredAmount,
+          isRestricted: compliance.isRestricted,
+          progressPercent: total > 0 ? Math.min(100, Math.round((paid / compliance.requiredAmount) * 100)) : 0,
           dueDate: account.dueDate?.toISOString() ?? account.feeStructure.dueDate?.toISOString() ?? null,
           accessLocked: account.accessLocked,
           invoiceNumber: invoice.invoiceNumber,

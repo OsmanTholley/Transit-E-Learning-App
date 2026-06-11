@@ -24,7 +24,6 @@ export const myCoursesSubmenu = [
     slug: "videos",
   },
   { label: "Quizzes", href: "/student/courses/quizzes", slug: "quizzes" },
-  { label: "Discussions", href: "/student/courses/discussions", slug: "discussions" },
   { label: "Bookmarks", href: "/student/courses/bookmarks", slug: "bookmarks" },
   {
     label: "Course Progress",

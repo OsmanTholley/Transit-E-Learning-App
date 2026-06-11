@@ -11,6 +11,7 @@ import { PortalTopbar } from "@/components/layout/portal-topbar";
 import { NotificationBell } from "@/components/layout/notification-bell";
 import { OfflineSyncBanner } from "@/components/layout/offline-sync-banner";
 import { MobileNavOverlay, MobileTopBar } from "@/components/layout/mobile-top-bar";
+import { TopbarUserMenu } from "@/components/layout/topbar-user-menu";
 import { useStudentSession } from "@/contexts/student-session-context";
 import { useMobileNav } from "@/hooks/use-mobile-nav";
 import { useOfflineSync } from "@/hooks/use-offline-sync";
@@ -356,11 +357,22 @@ export function StudentShell({ children }: { children: ReactNode }) {
         <MobileTopBar
           onMenuClick={openMobileNav}
           trailing={
-            <NotificationBell
-              role="student"
-              variant="admin"
-              onCountChange={setNotificationOverride}
-            />
+            <>
+              <NotificationBell
+                role="student"
+                variant="admin"
+                onCountChange={setNotificationOverride}
+              />
+              <TopbarUserMenu
+                role="student"
+                compact
+                fullName={loading ? "Student" : (profile?.fullName ?? "Student")}
+                subtitle={profile?.email ?? "Student"}
+                profileImage={profile?.profileImage}
+                initials={profile?.avatarInitials ?? "ST"}
+                profileHref="/student/profile"
+              />
+            </>
           }
         />
         <PortalTopbar

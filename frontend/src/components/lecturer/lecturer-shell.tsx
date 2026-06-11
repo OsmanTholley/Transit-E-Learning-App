@@ -9,6 +9,7 @@ import { OfflineSyncBanner } from "@/components/layout/offline-sync-banner";
 import { PortalTopbar } from "@/components/layout/portal-topbar";
 import { NotificationBell } from "@/components/layout/notification-bell";
 import { MobileNavOverlay, MobileTopBar } from "@/components/layout/mobile-top-bar";
+import { TopbarUserMenu } from "@/components/layout/topbar-user-menu";
 import { avatarInitials } from "@/lib/user-profile-helpers";
 import { logout } from "@/services/auth";
 import { lecturerNavItems } from "@/services/lecturer-dashboard-data";
@@ -208,11 +209,23 @@ export function LecturerShell({ lecturerName, lecturerEmail, profileImage, child
         <MobileTopBar
           onMenuClick={openMobileNav}
           trailing={
-            <NotificationBell
-              role="lecturer"
-              variant="admin"
-              onCountChange={setNotificationCount}
-            />
+            <>
+              <NotificationBell
+                role="lecturer"
+                variant="admin"
+                onCountChange={setNotificationCount}
+              />
+              <TopbarUserMenu
+                role="lecturer"
+                variant="lecturer"
+                compact
+                fullName={lecturerName}
+                subtitle={lecturerEmail || "Lecturer"}
+                profileImage={profileImage}
+                initials={initials}
+                profileHref="/lecturer/profile"
+              />
+            </>
           }
         />
         <PortalTopbar

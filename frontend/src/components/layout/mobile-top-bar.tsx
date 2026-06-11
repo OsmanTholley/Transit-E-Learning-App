@@ -31,7 +31,7 @@ export function MobileTopBar({
           <TransitLogo size="sm" variant="dark" subtitle="E-Learning" />
         )}
       </div>
-      <div className="flex w-10 shrink-0 items-center justify-end">{trailing}</div>
+      <div className="flex shrink-0 items-center justify-end gap-1.5">{trailing}</div>
     </header>
   );
 }

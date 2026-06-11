@@ -10,10 +10,10 @@ export const TRANSIT_CLASSROOM_BRAND = {
   live: "#C4314B",
 } as const;
 
-/** Poll chat only when the chat tab is open (seconds). */
-export const CHAT_POLL_MS = 6000;
-/** Poll raised hands only for lecturers on that tab (seconds). */
-export const HAND_POLL_MS = 8000;
+/** Poll chat only when the chat tab is open (milliseconds). */
+export const CHAT_POLL_MS = 8000;
+/** Poll raised hands only for lecturers on that tab (milliseconds). */
+export const HAND_POLL_MS = 10_000;
 
 export function buildJitsiConfig(
   displayName: string,
@@ -54,20 +54,20 @@ export function buildJitsiConfig(
       enableTalkWhileMuted: true,
       disableAudioLevels: false,
 
-      // Optimized for up to 100 participants — stage shows active speakers, filmstrip for others
-      channelLastN: isModerator ? 25 : 12,
-      maxFullResolutionParticipants: isModerator ? 4 : 2,
+      // Lighter video pipeline for smoother sessions on typical connections
+      channelLastN: isModerator ? 12 : 6,
+      maxFullResolutionParticipants: isModerator ? 3 : 1,
       disableTileView: false,
       filmstrip: { disableStageFilmstrip: false },
-      resolution: isModerator ? 480 : 360,
+      resolution: isModerator ? 360 : 240,
       constraints: {
         video: {
-          height: { ideal: isModerator ? 480 : 360, max: 720, min: 180 },
-          frameRate: { ideal: 20, max: 24 },
+          height: { ideal: isModerator ? 360 : 240, max: 480, min: 144 },
+          frameRate: { ideal: 15, max: 20 },
         },
       },
       enableLayerSuspension: true,
-      disableSimulcast: false,
+      disableSimulcast: true,
 
       // Screen share (lecturer) — capped frame rate saves CPU
       desktopSharingFrameRate: { min: 5, max: 15 },

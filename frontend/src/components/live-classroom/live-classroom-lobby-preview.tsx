@@ -57,14 +57,18 @@ export function LiveClassroomLobbyPreview({
         analyserRef.current = analyser;
 
         const data = new Uint8Array(analyser.frequencyBinCount);
-        const tick = () => {
+        let lastTick = 0;
+        const tick = (now: number) => {
           if (!analyserRef.current) return;
-          analyserRef.current.getByteFrequencyData(data);
-          const avg = data.reduce((sum, value) => sum + value, 0) / data.length;
-          setAudioLevel(Math.min(100, Math.round((avg / 128) * 100)));
+          if (now - lastTick >= 100) {
+            analyserRef.current.getByteFrequencyData(data);
+            const avg = data.reduce((sum, value) => sum + value, 0) / data.length;
+            setAudioLevel(Math.min(100, Math.round((avg / 128) * 100)));
+            lastTick = now;
+          }
           rafRef.current = requestAnimationFrame(tick);
         };
-        tick();
+        rafRef.current = requestAnimationFrame(tick);
         setMediaError(null);
       } catch {
         if (!cancelled) {

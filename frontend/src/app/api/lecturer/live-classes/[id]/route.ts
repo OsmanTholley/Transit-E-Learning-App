@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireLecturer } from "@/lib/auth";
-import { cancelLiveClass, endLiveClass, startLiveClass, updateLiveClass } from "@/lib/live-class-service";
+import { cancelLiveClass, endLiveClass, extendLiveClassSession, startLiveClass, updateLiveClass } from "@/lib/live-class-service";
+import { prisma } from "@/lib/prisma";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -22,6 +23,18 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     if (body.action === "end") {
       const liveClass = await endLiveClass(id, lecturer.id);
       return NextResponse.json({ ok: true, status: liveClass.status });
+    }
+
+    if (body.action === "extend") {
+      const owned = await prisma.liveClass.findFirst({ where: { id, lecturerId: lecturer.id } });
+      if (!owned) {
+        return NextResponse.json({ error: "Live class not found." }, { status: 404 });
+      }
+      const liveClass = await extendLiveClassSession(id, Number(body.minutes) || 30);
+      return NextResponse.json({
+        ok: true,
+        endTime: liveClass.endTime?.toISOString() ?? null,
+      });
     }
 
     if (body.action === "update") {

@@ -1,11 +1,13 @@
 import { NextResponse } from "next/server";
-import { LiveClassStatus } from "@prisma/client";
+import { LiveClassAudience, LiveClassStatus } from "@prisma/client";
 import { requireStudent } from "@/lib/auth";
 import { handleRouteDatabaseError } from "@/lib/db-errors";
+import { expireStaleLiveClasses } from "@/lib/live-class-service";
 import { prisma } from "@/lib/prisma";
 
 export async function GET() {
   try {
+    await expireStaleLiveClasses();
     const student = await requireStudent();
     if (!student) {
       return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
@@ -19,8 +21,14 @@ export async function GET() {
 
     const classes = await prisma.liveClass.findMany({
       where: {
-        courseId: { in: courseIds },
         status: { in: [LiveClassStatus.SCHEDULED, LiveClassStatus.LIVE] },
+        OR: [
+          { courseId: { in: courseIds } },
+          {
+            courseId: null,
+            audience: { in: [LiveClassAudience.GENERAL, LiveClassAudience.STUDENTS] },
+          },
+        ],
       },
       include: {
         course: { select: { courseCode: true, courseTitle: true } },
@@ -34,6 +42,7 @@ export async function GET() {
         id: item.id,
         title: item.title,
         description: item.description,
+        audience: item.audience,
         status: item.status,
         roomName: item.roomName,
         startTime: item.startTime?.toISOString() ?? null,

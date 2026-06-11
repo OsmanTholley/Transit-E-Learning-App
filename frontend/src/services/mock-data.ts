@@ -13,7 +13,6 @@ export const navigation: Record<"student" | "lecturer", NavItem[]> = {
     { label: "Video Lessons", href: "/student/videos" },
     { label: "Assignments", href: "/student/assignments" },
     { label: "Quizzes", href: "/student/quizzes" },
-    { label: "Discussions", href: "/student/discussions" },
     { label: "Virtual Room", href: "/student/live-classes" },
     { label: "Billing", href: "/student/billing" },
     { label: "AI Tutor", href: "/student/ai-tutor" },
@@ -79,6 +78,7 @@ export const adminNavigation: AdminNavigation = {
       items: [
         { label: "Academic Calendar", href: "/admin/academic-calendar" },
         { label: "Virtual Room", href: "/admin/live-classes" },
+        { label: "Chat", href: "/admin/chat" },
         { label: "AI Assistant", href: "/admin/ai" },
       ],
     },

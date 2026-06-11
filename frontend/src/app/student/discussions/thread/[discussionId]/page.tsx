@@ -1,10 +1,5 @@
-import { DiscussionThreadPage } from "@/components/student/discussions/discussion-thread-page";
+import { redirect } from "next/navigation";
 
-export default async function DiscussionThreadRoute({
-  params,
-}: {
-  params: Promise<{ discussionId: string }>;
-}) {
-  const { discussionId } = await params;
-  return <DiscussionThreadPage discussionId={discussionId} />;
+export default function StudentDiscussionThreadPage() {
+  redirect("/student/chat");
 }

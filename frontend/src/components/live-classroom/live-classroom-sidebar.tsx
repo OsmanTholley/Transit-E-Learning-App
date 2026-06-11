@@ -1,15 +1,9 @@
 "use client";
 
 import { memo } from "react";
+import { VirtualRoomMessenger } from "@/components/chat/virtual-room-messenger";
+import { LiveClassAttendancePanel } from "@/components/live-classroom/live-class-attendance-panel";
 import { TRANSIT_CLASSROOM_BRAND } from "@/lib/live-classroom-config";
-
-type ChatMessage = {
-  id: string;
-  senderName: string;
-  senderRole: string;
-  message: string;
-  isMine: boolean;
-};
 
 type AdmissionCandidate = {
   id: string;
@@ -20,38 +14,44 @@ type AdmissionCandidate = {
 };
 
 type SidebarProps = {
-  tab: "chat" | "people" | "raised" | "admit";
-  onTabChange: (tab: "chat" | "people" | "raised" | "admit") => void;
-  messages: ChatMessage[];
-  chatDraft: string;
-  onChatDraftChange: (value: string) => void;
-  onSendChat: () => void;
+  liveClassId: string;
+  tab: "chat" | "people" | "raised" | "admit" | "attendance";
+  onTabChange: (tab: "chat" | "people" | "raised" | "admit" | "attendance") => void;
   displayName: string;
   participants: { id: string; name: string }[];
-  raisedHands: { id: string; studentName: string }[];
+  raisedHands: { id: string; studentId?: string; studentName: string }[];
   showRaisedTab: boolean;
   showAdmitTab?: boolean;
+  showAttendanceTab?: boolean;
   admissionCandidates?: AdmissionCandidate[];
   onAdmitStudent?: (studentId: string) => void;
+  onDismissHand?: (studentId: string) => void;
+  onLowerAllHands?: () => void;
 };
 
 export const LiveClassroomSidebar = memo(function LiveClassroomSidebar({
+  liveClassId,
   tab,
   onTabChange,
-  messages,
-  chatDraft,
-  onChatDraftChange,
-  onSendChat,
   displayName,
   participants,
   raisedHands,
   showRaisedTab,
   showAdmitTab,
+  showAttendanceTab,
   admissionCandidates = [],
   onAdmitStudent,
+  onDismissHand,
+  onLowerAllHands,
 }: SidebarProps) {
   const tabs = (
-    ["chat", "people", ...(showRaisedTab ? (["raised"] as const) : []), ...(showAdmitTab ? (["admit"] as const) : [])] as const
+    [
+      "chat",
+      "people",
+      ...(showRaisedTab ? (["raised"] as const) : []),
+      ...(showAdmitTab ? (["admit"] as const) : []),
+      ...(showAttendanceTab ? (["attendance"] as const) : []),
+    ] as const
   );
 
   return (
@@ -65,35 +65,23 @@ export const LiveClassroomSidebar = memo(function LiveClassroomSidebar({
             key={t}
             type="button"
             onClick={() => onTabChange(t)}
-            className={`px-2 py-3 capitalize transition ${
+            className={`relative px-2 py-3 capitalize transition ${
               tab === t ? "border-b-2 text-white" : "text-white/50 hover:text-white/80"
             }`}
             style={tab === t ? { borderColor: TRANSIT_CLASSROOM_BRAND.accent } : undefined}
           >
             {t === "raised" ? "Raised" : t === "admit" ? "Admit" : t}
+            {t === "raised" && raisedHands.length > 0 ? (
+              <span className="absolute right-1 top-1 rounded-full bg-[#FFC107] px-1.5 text-[9px] font-bold text-[#0B3D91]">
+                {raisedHands.length}
+              </span>
+            ) : null}
           </button>
         ))}
       </div>
 
-      <div className="min-h-0 flex-1 overflow-y-auto p-3">
-        {tab === "chat" ? (
-          <div className="space-y-2">
-            {messages.length === 0 ? (
-              <p className="text-xs text-white/40">Class chat — stays in this portal.</p>
-            ) : null}
-            {messages.map((message) => (
-              <div
-                key={message.id}
-                className={`rounded-lg px-3 py-2 text-sm ${message.isMine ? "bg-[#0B3D91]/50" : "bg-white/5"}`}
-              >
-                <p className="text-[10px] font-medium text-[#FFC107]">
-                  {message.senderName} · {message.senderRole.toLowerCase()}
-                </p>
-                <p className="mt-0.5 text-white/90">{message.message}</p>
-              </div>
-            ))}
-          </div>
-        ) : null}
+      <div className={`min-h-0 flex-1 p-3 ${tab === "chat" ? "flex flex-col overflow-hidden" : "overflow-y-auto"}`}>
+        {tab === "chat" ? <VirtualRoomMessenger liveClassId={liveClassId} active={tab === "chat"} /> : null}
 
         {tab === "people" ? (
           <div className="space-y-1.5 text-sm">
@@ -110,18 +98,38 @@ export const LiveClassroomSidebar = memo(function LiveClassroomSidebar({
         ) : null}
 
         {tab === "raised" && showRaisedTab ? (
-          <div className="space-y-1.5">
+          <div className="space-y-2">
+            {raisedHands.length > 0 ? (
+              <button
+                type="button"
+                onClick={onLowerAllHands}
+                className="w-full rounded-md border border-white/10 px-3 py-2 text-xs text-white/80 hover:bg-white/5"
+              >
+                Lower all hands
+              </button>
+            ) : null}
             {raisedHands.length === 0 ? (
               <p className="text-xs text-white/40">No raised hands.</p>
             ) : (
-              raisedHands.map((item) => (
-                <p
+              raisedHands.map((item, index) => (
+                <div
                   key={item.id}
-                  className="rounded-lg px-3 py-2 text-sm text-[#FFC107]"
+                  className="flex items-center justify-between gap-2 rounded-lg px-3 py-2 text-sm text-[#FFC107]"
                   style={{ backgroundColor: "rgba(255,193,7,0.12)" }}
                 >
-                  ✋ {item.studentName}
-                </p>
+                  <span>
+                    ✋ #{index + 1} {item.studentName}
+                  </span>
+                  {item.studentId ? (
+                    <button
+                      type="button"
+                      onClick={() => onDismissHand?.(item.studentId!)}
+                      className="text-[10px] text-white/60 hover:text-white"
+                    >
+                      Lower
+                    </button>
+                  ) : null}
+                </div>
               ))
             )}
           </div>
@@ -160,31 +168,11 @@ export const LiveClassroomSidebar = memo(function LiveClassroomSidebar({
             )}
           </div>
         ) : null}
-      </div>
 
-      {tab === "chat" ? (
-        <div className="border-t border-white/10 p-3">
-          <div className="flex gap-2">
-            <input
-              value={chatDraft}
-              onChange={(event) => onChatDraftChange(event.target.value)}
-              onKeyDown={(event) => {
-                if (event.key === "Enter") onSendChat();
-              }}
-              placeholder="Type a message"
-              className="min-w-0 flex-1 rounded-md border border-white/10 bg-[#252423] px-3 py-2 text-sm outline-none focus:border-[#FFC107]"
-            />
-            <button
-              type="button"
-              onClick={onSendChat}
-              className="rounded-md px-3 py-2 text-sm font-medium text-[#0B3D91]"
-              style={{ backgroundColor: TRANSIT_CLASSROOM_BRAND.accent }}
-            >
-              Send
-            </button>
-          </div>
-        </div>
-      ) : null}
+        {tab === "attendance" && showAttendanceTab ? (
+          <LiveClassAttendancePanel liveClassId={liveClassId} active={tab === "attendance"} />
+        ) : null}
+      </div>
     </aside>
   );
 });

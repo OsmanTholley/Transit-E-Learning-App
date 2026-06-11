@@ -16,6 +16,10 @@ type FinanceAccount = {
   amountPaid: number;
   balance: number;
   status: "UNPAID" | "PARTIAL" | "PAID";
+  complianceStatus?: string;
+  requiredPercent?: number;
+  requiredAmount?: number;
+  isRestricted?: boolean;
   dueDate: string | null;
   accessLocked: boolean;
   currency?: string;
@@ -51,6 +55,10 @@ type FinanceResponse = {
     statusCounts: { PAID: number; PARTIAL: number; UNPAID: number };
     collectedLabel: string;
     outstandingLabel: string;
+    eligibleStudents?: number;
+    restrictedStudents?: number;
+    nearDueStudents?: number;
+    overdueStudents?: number;
   };
   accounts: FinanceAccount[];
   feeStructures: FeeStructure[];
@@ -105,6 +113,7 @@ export function AdminFinanceDashboard() {
   const [feeTitle, setFeeTitle] = useState("");
   const [feeAmount, setFeeAmount] = useState("");
   const [feeDueDate, setFeeDueDate] = useState("");
+  const [feeRequiredPercent, setFeeRequiredPercent] = useState("50");
   const [feeIntake, setFeeIntake] = useState("");
   const [feeSemester, setFeeSemester] = useState("");
 
@@ -166,6 +175,7 @@ export function AdminFinanceDashboard() {
         amount,
         currency: "SLE",
         dueDate: feeDueDate || undefined,
+        requiredPaymentPercent: Number(feeRequiredPercent),
         intakeBatch: feeIntake.trim() || undefined,
         semester: feeSemester.trim() || undefined,
       }),
@@ -365,8 +375,18 @@ export function AdminFinanceDashboard() {
             <p className="mt-2 text-2xl font-semibold text-red-700">{data.summary.outstandingLabel}</p>
           </div>
           <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-            <p className="text-sm text-slate-500">Collection ratio</p>
-            <p className="mt-2 text-2xl font-semibold text-blue-900">{data.summary.collectionRatio}%</p>
+            <p className="text-sm text-slate-500">Eligible students</p>
+            <p className="mt-2 text-2xl font-semibold text-emerald-700">{data.summary.eligibleStudents ?? "—"}</p>
+          </div>
+          <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+            <p className="text-sm text-slate-500">Restricted students</p>
+            <p className="mt-2 text-2xl font-semibold text-red-700">{data.summary.restrictedStudents ?? "—"}</p>
+          </div>
+          <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+            <p className="text-sm text-slate-500">Near due / overdue</p>
+            <p className="mt-2 text-2xl font-semibold text-amber-700">
+              {(data.summary.nearDueStudents ?? 0) + (data.summary.overdueStudents ?? 0)}
+            </p>
           </div>
         </div>
       ) : null}
@@ -396,6 +416,15 @@ export function AdminFinanceDashboard() {
             type="date"
             value={feeDueDate}
             onChange={(event) => setFeeDueDate(event.target.value)}
+            className="rounded-md border border-slate-300 px-3 py-2 text-sm"
+          />
+          <input
+            type="number"
+            min="0"
+            max="100"
+            value={feeRequiredPercent}
+            onChange={(event) => setFeeRequiredPercent(event.target.value)}
+            placeholder="Required %"
             className="rounded-md border border-slate-300 px-3 py-2 text-sm"
           />
           <button
@@ -657,7 +686,8 @@ export function AdminFinanceDashboard() {
                 <th className="px-3 py-2">Total</th>
                 <th className="px-3 py-2">Paid</th>
                 <th className="px-3 py-2">Balance</th>
-                <th className="px-3 py-2">Status</th>
+                <th className="px-3 py-2">Required %</th>
+                <th className="px-3 py-2">Compliance</th>
                 <th className="px-3 py-2">Due</th>
               </tr>
             </thead>
@@ -672,7 +702,8 @@ export function AdminFinanceDashboard() {
                   <td className="px-3 py-3">{formatLeones(account.totalAmount)}</td>
                   <td className="px-3 py-3">{formatLeones(account.amountPaid)}</td>
                   <td className="px-3 py-3">{formatLeones(account.balance)}</td>
-                  <td className="px-3 py-3">{statusBadge(account.status)}</td>
+                  <td className="px-3 py-3">{account.requiredPercent ?? 100}%</td>
+                  <td className="px-3 py-3">{account.complianceStatus ?? account.status}</td>
                   <td className="px-3 py-3">{account.dueDate ? new Date(account.dueDate).toLocaleDateString() : "—"}</td>
                 </tr>
               ))}

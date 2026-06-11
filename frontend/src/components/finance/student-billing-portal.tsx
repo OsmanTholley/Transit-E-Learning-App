@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { PaymentLockScreen } from "@/components/finance/payment-lock-screen";
 import { requestApi } from "@/lib/fetch-api";
 
 type BillingAccount = {
@@ -10,6 +11,11 @@ type BillingAccount = {
   amountPaid: number;
   balance: number;
   status: string;
+  complianceStatus?: string;
+  requiredPercent?: number;
+  requiredAmount?: number;
+  progressPercent?: number;
+  isRestricted?: boolean;
   dueDate: string | null;
   accessLocked: boolean;
   invoiceNumber: string;
@@ -145,12 +151,28 @@ export function StudentBillingPortal() {
         </div>
       ) : (
         data.accounts.map((account) => {
-          const paidPercent = account.totalAmount > 0 ? Math.round((account.amountPaid / account.totalAmount) * 100) : 0;
+          const paidPercent = account.progressPercent ?? (account.totalAmount > 0 ? Math.round((account.amountPaid / account.totalAmount) * 100) : 0);
           const meta = statusMeta(account.status, account.dueDate, account.balance);
           const expanded = expandedId === account.id;
+          const restricted = account.isRestricted || (account.complianceStatus === "ACCESS_RESTRICTED");
 
           return (
             <article key={account.id} className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+              {restricted ? (
+                <div className="p-5">
+                  <PaymentLockScreen
+                    lock={{
+                      feeTitle: account.feeTitle,
+                      requiredPercent: account.requiredPercent ?? 100,
+                      requiredAmount: account.requiredAmount ?? account.totalAmount,
+                      amountPaid: account.amountPaid,
+                      outstandingBalance: account.balance,
+                      dueDate: account.dueDate,
+                      status: account.complianceStatus ?? account.status,
+                    }}
+                  />
+                </div>
+              ) : null}
               <div className="flex">
                 <div className={`w-1.5 shrink-0 ${meta.stripe}`} />
                 <div className="min-w-0 flex-1 p-5">
@@ -161,7 +183,8 @@ export function StudentBillingPortal() {
                         <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${meta.chip}`}>{meta.label}</span>
                       </div>
                       <p className="mt-1 text-sm text-slate-500">
-                        Due {account.dueDate ? new Date(account.dueDate).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }) : "—"}
+                        Required {account.requiredPercent ?? 100}% ({formatLeones(account.requiredAmount ?? account.totalAmount)}) · Due{" "}
+                        {account.dueDate ? new Date(account.dueDate).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }) : "—"}
                         {" · "}Invoice {account.invoiceNumber}
                       </p>
                       {account.accessLocked && account.balance > 0 ? (
@@ -197,8 +220,10 @@ export function StudentBillingPortal() {
 
                   <div className="mt-4">
                     <div className="mb-1 flex items-center justify-between text-xs text-slate-500">
-                      <span>Payment progress</span>
-                      <span>{paidPercent}%</span>
+                      <span>Payment progress toward required amount</span>
+                      <span>
+                        Paid {formatLeones(account.amountPaid)} / Required {formatLeones(account.requiredAmount ?? account.totalAmount)}
+                      </span>
                     </div>
                     <div className="h-2.5 overflow-hidden rounded-full bg-slate-100">
                       <div

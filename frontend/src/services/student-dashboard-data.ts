@@ -41,7 +41,6 @@ export const studentNavItems = [
   { label: "Video Lessons", href: "/student/video-lessons", icon: "videos" },
   { label: "Assignments", href: "/student/assignments", icon: "assignments" },
   { label: "Quizzes", href: "/student/quizzes", icon: "quizzes" },
-  { label: "Discussions", href: "/student/discussions", icon: "discussions" },
   { label: "Virtual Room", href: "/student/live-classes", icon: "live" },
   { label: "Billing", href: "/student/billing", icon: "billing" },
   { label: "Chat", href: "/student/chat", icon: "chat" },

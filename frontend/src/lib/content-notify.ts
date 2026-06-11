@@ -33,7 +33,7 @@ const STUDENT_TARGETS: Record<ContentKind, (courseId: string) => string> = {
   video: (courseId) => `/student/video-lessons`,
   quiz: (courseId) => `/student/quizzes`,
   assignment: (courseId) => `/student/assignments`,
-  discussion: (courseId) => `/student/discussions`,
+  discussion: () => `/student/chat`,
 };
 
 const ADMIN_TARGETS: Record<ContentKind, string> = {

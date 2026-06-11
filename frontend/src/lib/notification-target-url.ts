@@ -42,7 +42,7 @@ const TITLE_ROUTES: {
   },
   {
     match: /^New Discussion:/i,
-    student: "/student/discussions",
+    student: "/student/chat",
     admin: "/admin/content/discussions",
   },
   {

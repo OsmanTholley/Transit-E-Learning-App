@@ -6,6 +6,7 @@ import {
   JITSI_DOMAIN,
   logLiveClassJoin,
 } from "@/lib/live-class-service";
+import { buildFeeLockResponse } from "@/lib/student-fee-guard";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -38,13 +39,20 @@ export async function POST(request: NextRequest, context: RouteContext) {
       liveClass: {
         id: liveClass.id,
         title: liveClass.title,
+        description: liveClass.description,
         status: liveClass.status,
-        course: liveClass.course,
+        endTime: liveClass.endTime?.toISOString() ?? null,
+        course: liveClass.course
+          ? { id: liveClass.courseId!, courseCode: liveClass.course.courseCode, courseTitle: liveClass.course.courseTitle }
+          : null,
       },
     });
   }
 
   if (user.role === Role.STUDENT && access.student) {
+    const locked = await buildFeeLockResponse(access.student.id, "live");
+    if (locked) return locked;
+
     const student = access.student;
 
     await logLiveClassJoin({
@@ -67,8 +75,12 @@ export async function POST(request: NextRequest, context: RouteContext) {
     liveClass: {
       id: liveClass.id,
       title: liveClass.title,
+      description: liveClass.description,
       status: liveClass.status,
-      course: liveClass.course,
+      endTime: liveClass.endTime?.toISOString() ?? null,
+      course: liveClass.course
+        ? { id: liveClass.courseId!, courseCode: liveClass.course.courseCode, courseTitle: liveClass.course.courseTitle }
+        : null,
     },
   });
 }

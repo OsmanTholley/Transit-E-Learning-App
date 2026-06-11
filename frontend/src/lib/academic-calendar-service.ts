@@ -67,6 +67,10 @@ export async function createCalendarEvent(params: {
     throw new Error("Event title is required.");
   }
 
+  if (params.endAt && params.endAt <= params.startAt) {
+    throw new Error("End time must be after start time.");
+  }
+
   return prisma.academicCalendarEvent.create({
     data: {
       title: params.title.trim(),
@@ -77,6 +81,44 @@ export async function createCalendarEvent(params: {
       audience: params.audience ?? CalendarAudience.ALL,
       location: params.location?.trim() || null,
       createdById: params.createdById,
+    },
+  });
+}
+
+export async function updateCalendarEvent(
+  eventId: string,
+  params: {
+    title?: string;
+    description?: string | null;
+    startAt?: Date;
+    endAt?: Date | null;
+    eventType?: CalendarEventType;
+    audience?: CalendarAudience;
+    location?: string | null;
+  },
+) {
+  const existing = await prisma.academicCalendarEvent.findUnique({ where: { id: eventId } });
+  if (!existing) throw new Error("Event not found.");
+
+  const title = params.title?.trim();
+  if (title !== undefined && !title) throw new Error("Event title is required.");
+
+  const startAt = params.startAt ?? existing.startAt;
+  const endAt = params.endAt === undefined ? existing.endAt : params.endAt;
+  if (endAt && endAt <= startAt) {
+    throw new Error("End time must be after start time.");
+  }
+
+  return prisma.academicCalendarEvent.update({
+    where: { id: eventId },
+    data: {
+      ...(title !== undefined ? { title } : {}),
+      ...(params.description !== undefined ? { description: params.description?.trim() || null } : {}),
+      ...(params.startAt !== undefined ? { startAt: params.startAt } : {}),
+      ...(params.endAt !== undefined ? { endAt: params.endAt } : {}),
+      ...(params.eventType !== undefined ? { eventType: params.eventType } : {}),
+      ...(params.audience !== undefined ? { audience: params.audience } : {}),
+      ...(params.location !== undefined ? { location: params.location?.trim() || null } : {}),
     },
   });
 }

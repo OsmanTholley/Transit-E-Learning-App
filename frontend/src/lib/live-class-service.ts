@@ -1,4 +1,4 @@
-import { AttendanceStatus, LiveClassStatus, Role } from "@prisma/client";
+import { AttendanceStatus, LiveClassAudience, LiveClassStatus, Role } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 
 export const JITSI_DOMAIN = process.env.JITSI_DOMAIN?.trim() || "meet.jit.si";
@@ -6,6 +6,58 @@ export const LIVE_CLASS_LATE_JOIN_MINUTES = 10;
 export const VIRTUAL_ROOM_MAX_PARTICIPANTS = 100;
 export const ATTENDANCE_PRESENT_THRESHOLD = 75;
 export const ATTENDANCE_PARTIAL_THRESHOLD = 40;
+
+/** Mark scheduled sessions past end time as ended. Live sessions stay open until the host ends or extends. */
+export async function expireStaleLiveClasses() {
+  const now = new Date();
+  const stale = await prisma.liveClass.findMany({
+    where: {
+      endTime: { lt: now },
+      status: LiveClassStatus.SCHEDULED,
+    },
+    select: { id: true, actualStart: true, startTime: true },
+  });
+
+  if (stale.length === 0) return;
+
+  await prisma.$transaction(
+    stale.map((item) =>
+      prisma.liveClass.update({
+        where: { id: item.id },
+        data: {
+          status: LiveClassStatus.ENDED,
+          actualEnd: now,
+          actualStart: item.actualStart ?? item.startTime,
+        },
+      }),
+    ),
+  );
+}
+
+export function audienceAllowsRole(audience: LiveClassAudience, role: Role): boolean {
+  if (audience === LiveClassAudience.GENERAL) return role === Role.STUDENT || role === Role.LECTURER;
+  if (audience === LiveClassAudience.STUDENTS) return role === Role.STUDENT;
+  if (audience === LiveClassAudience.LECTURERS) return role === Role.LECTURER;
+  return false;
+}
+
+export async function extendLiveClassSession(liveClassId: string, minutes: number) {
+  const liveClass = await prisma.liveClass.findUnique({ where: { id: liveClassId } });
+  if (!liveClass) {
+    throw new Error("Live class not found.");
+  }
+  if (liveClass.status !== LiveClassStatus.LIVE) {
+    throw new Error("Only live sessions can be extended.");
+  }
+
+  const extraMs = Math.max(5, Math.min(240, minutes)) * 60 * 1000;
+  const base = Math.max(Date.now(), liveClass.endTime?.getTime() ?? Date.now());
+
+  return prisma.liveClass.update({
+    where: { id: liveClassId },
+    data: { endTime: new Date(base + extraMs) },
+  });
+}
 
 async function canStudentJoinLiveClass(liveClassId: string, studentId: string, actualStart: Date | null) {
   if (!actualStart) {
@@ -102,11 +154,14 @@ export async function getLiveClassAccess(
   role: Role,
   options?: { sessionAs?: LiveClassSessionAs },
 ) {
+  await expireStaleLiveClasses();
+
   const liveClass = await prisma.liveClass.findUnique({
     where: { id: liveClassId },
     include: {
       course: { select: { courseCode: true, courseTitle: true } },
-      lecturer: { include: { user: { select: { id: true, fullName: true } } } },
+      lecturer: { include: { user: { select: { id: true, fullName: true, role: true } } } },
+      createdBy: { select: { id: true, fullName: true, role: true } },
     },
   });
 
@@ -141,7 +196,11 @@ export async function getLiveClassAccess(
       where: { userId },
       include: { user: { select: { fullName: true } } },
     });
-    if (lecturer && liveClass.lecturerId === lecturer.id) {
+    if (!lecturer) {
+      return { ok: false as const, error: "Unauthorized.", status: 401 };
+    }
+
+    if (liveClass.lecturerId === lecturer.id) {
       return {
         ok: true as const,
         liveClass,
@@ -151,14 +210,37 @@ export async function getLiveClassAccess(
         displayName: lecturer.user.fullName,
       };
     }
-    return { ok: false as const, error: "You are not the lecturer for this class.", status: 403 };
+
+    if (
+      !liveClass.lecturerId &&
+      !liveClass.courseId &&
+      audienceAllowsRole(liveClass.audience, Role.LECTURER)
+    ) {
+      if (liveClass.status !== LiveClassStatus.LIVE) {
+        return {
+          ok: false as const,
+          error: "This session has not started yet.",
+          status: 403,
+        };
+      }
+      return {
+        ok: true as const,
+        liveClass,
+        lecturer,
+        isLecturer: false,
+        isModerator: false,
+        displayName: lecturer.user.fullName,
+      };
+    }
+
+    return { ok: false as const, error: "You are not allowed to join this session.", status: 403 };
   }
 
   if (role === Role.STUDENT) {
     if (liveClass.status !== LiveClassStatus.LIVE) {
       return {
         ok: false as const,
-        error: "This class has not started yet. Check back when the lecturer starts the session.",
+        error: "This class has not started yet. Check back when the session goes live.",
         status: 403,
       };
     }
@@ -171,11 +253,15 @@ export async function getLiveClassAccess(
       return { ok: false as const, error: "Unauthorized.", status: 401 };
     }
 
-    const enrolled = await prisma.courseStudent.findFirst({
-      where: { studentId: student.id, courseId: liveClass.courseId ?? "" },
-    });
-    if (!enrolled) {
-      return { ok: false as const, error: "You are not enrolled in this course.", status: 403 };
+    if (liveClass.courseId) {
+      const enrolled = await prisma.courseStudent.findFirst({
+        where: { studentId: student.id, courseId: liveClass.courseId },
+      });
+      if (!enrolled) {
+        return { ok: false as const, error: "You are not enrolled in this course.", status: 403 };
+      }
+    } else if (!audienceAllowsRole(liveClass.audience, Role.STUDENT)) {
+      return { ok: false as const, error: "This session is not open to students.", status: 403 };
     }
 
     const joinWindow = await canStudentJoinLiveClass(liveClass.id, student.id, liveClass.actualStart);
@@ -215,8 +301,8 @@ export async function assertLiveClassParticipant(
   return access;
 }
 
-export function buildRoomName(courseCode: string | null | undefined, classId: string): string {
-  const prefix = (courseCode || "transit")
+export function buildRoomName(courseCode: string | null | undefined, classId: string, audience?: LiveClassAudience): string {
+  const prefix = (courseCode || (audience === LiveClassAudience.LECTURERS ? "lecturers" : audience === LiveClassAudience.STUDENTS ? "students" : "general"))
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "");
@@ -224,34 +310,19 @@ export function buildRoomName(courseCode: string | null | undefined, classId: st
 }
 
 export async function createLiveClassAsAdmin(params: {
-  courseId: string;
-  lecturerId: string;
   title: string;
   description?: string;
+  audience?: LiveClassAudience;
   startTime: Date;
   endTime?: Date;
 }) {
-  const [course, lecturer] = await Promise.all([
-    prisma.course.findUnique({
-      where: { id: params.courseId },
-      select: { courseCode: true },
-    }),
-    prisma.lecturer.findUnique({ where: { id: params.lecturerId } }),
-  ]);
-
-  if (!course) {
-    throw new Error("Course not found.");
-  }
-  if (!lecturer) {
-    throw new Error("Lecturer not found.");
-  }
+  const audience = params.audience ?? LiveClassAudience.GENERAL;
 
   const liveClass = await prisma.liveClass.create({
     data: {
-      courseId: params.courseId,
-      lecturerId: params.lecturerId,
       title: params.title.trim(),
       description: params.description?.trim() || null,
+      audience,
       startTime: params.startTime,
       endTime: params.endTime ?? null,
       status: LiveClassStatus.SCHEDULED,
@@ -259,7 +330,7 @@ export async function createLiveClassAsAdmin(params: {
     },
   });
 
-  const roomName = buildRoomName(course.courseCode, liveClass.id);
+  const roomName = buildRoomName(null, liveClass.id, audience);
   return prisma.liveClass.update({
     where: { id: liveClass.id },
     data: { roomName },
@@ -315,8 +386,7 @@ export async function updateLiveClassAsAdmin(
   params: {
     title?: string;
     description?: string | null;
-    courseId?: string;
-    lecturerId?: string;
+    audience?: LiveClassAudience;
     startTime?: Date;
     endTime?: Date | null;
   },
@@ -330,30 +400,16 @@ export async function updateLiveClassAsAdmin(
     throw new Error("Only scheduled classes can be edited.");
   }
 
-  if (params.lecturerId) {
-    const lecturer = await prisma.lecturer.findUnique({ where: { id: params.lecturerId } });
-    if (!lecturer) {
-      throw new Error("Lecturer not found.");
-    }
-  }
-
   const nextStart = params.startTime ?? liveClass.startTime;
   const nextEnd = params.endTime !== undefined ? params.endTime : liveClass.endTime;
   if (nextStart && nextEnd && nextEnd <= nextStart) {
     throw new Error("End time must be after start time.");
   }
 
-  const nextCourseId = params.courseId ?? liveClass.courseId;
+  const nextAudience = params.audience ?? liveClass.audience;
   let roomName: string | undefined;
-  if (nextCourseId && nextCourseId !== liveClass.courseId) {
-    const course = await prisma.course.findUnique({
-      where: { id: nextCourseId },
-      select: { courseCode: true },
-    });
-    if (!course) {
-      throw new Error("Course not found.");
-    }
-    roomName = buildRoomName(course.courseCode, liveClassId);
+  if (!liveClass.courseId && nextAudience !== liveClass.audience) {
+    roomName = buildRoomName(null, liveClassId, nextAudience);
   }
 
   return prisma.liveClass.update({
@@ -361,8 +417,7 @@ export async function updateLiveClassAsAdmin(
     data: {
       ...(params.title !== undefined ? { title: params.title.trim() } : {}),
       ...(params.description !== undefined ? { description: params.description?.trim() || null } : {}),
-      ...(params.courseId !== undefined ? { courseId: params.courseId } : {}),
-      ...(params.lecturerId !== undefined ? { lecturerId: params.lecturerId } : {}),
+      ...(params.audience !== undefined ? { audience: params.audience } : {}),
       ...(params.startTime !== undefined ? { startTime: params.startTime } : {}),
       ...(params.endTime !== undefined ? { endTime: params.endTime } : {}),
       ...(roomName ? { roomName } : {}),
@@ -692,6 +747,13 @@ export async function raiseHand(liveClassId: string, studentId: string, studentN
 export async function lowerHand(liveClassId: string, studentId: string) {
   return prisma.liveClassHandRaise.updateMany({
     where: { liveClassId, studentId, isActive: true },
+    data: { isActive: false },
+  });
+}
+
+export async function lowerAllHands(liveClassId: string) {
+  return prisma.liveClassHandRaise.updateMany({
+    where: { liveClassId, isActive: true },
     data: { isActive: false },
   });
 }
