@@ -6,7 +6,7 @@ import {
   type AiModelProfileId,
 } from "@/lib/ai-models";
 import { requestApi } from "@/lib/fetch-api";
-import { showDeleteConfirm } from "@/lib/swal";
+import { showDeleteConfirm, showError } from "@/lib/swal";
 
 type Conversation = {
   id: string;
@@ -97,7 +97,8 @@ export function TransitAiAssistant({
   const startNewChat = async () => {
     const result = await requestApi<{ conversation: Conversation }>("/api/ai/assistant", {
       method: "POST",
-      body: { action: "create_conversation" },
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "create_conversation" }),
     });
     if (result.ok) {
       setConversations((prev) => [result.data.conversation, ...prev]);
@@ -114,7 +115,8 @@ export function TransitAiAssistant({
     if (!conversationId) {
       const created = await requestApi<{ conversation: Conversation }>("/api/ai/assistant", {
         method: "POST",
-        body: { action: "create_conversation" },
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "create_conversation" }),
       });
       if (!created.ok) return;
       conversationId = created.data.conversation.id;
@@ -137,13 +139,14 @@ export function TransitAiAssistant({
       message: ChatMessage;
     }>("/api/ai/assistant", {
       method: "POST",
-      body: {
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
         action: "send_message",
         conversationId,
         question,
         modelProfile,
         feature,
-      },
+      }),
     });
 
     setLoading(false);
@@ -151,6 +154,11 @@ export function TransitAiAssistant({
       setMessages((prev) => [...prev, result.data.message]);
       void loadConversations();
       if (!activeId) setActiveId(result.data.conversationId);
+    } else {
+      setMessages((prev) => prev.filter((m) => m.id !== userMessage.id));
+      if (!result.offline) {
+        await showError("AI Assistant Error", result.message);
+      }
     }
   };
 
@@ -163,7 +171,8 @@ export function TransitAiAssistant({
     if (!renameValue.trim()) return;
     await requestApi("/api/ai/assistant", {
       method: "POST",
-      body: { action: "rename_conversation", conversationId, title: renameValue },
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "rename_conversation", conversationId, title: renameValue }),
     });
     setRenamingId(null);
     void loadConversations();
@@ -174,7 +183,8 @@ export function TransitAiAssistant({
     if (!confirmed) return;
     await requestApi("/api/ai/assistant", {
       method: "POST",
-      body: { action: "delete_conversation", conversationId },
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "delete_conversation", conversationId }),
     });
     if (activeId === conversationId) {
       setActiveId(null);

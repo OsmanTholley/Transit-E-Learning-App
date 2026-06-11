@@ -716,6 +716,7 @@ model StudentFeeAccount {
   requiredPaymentPercent Float?   @map("required_payment_percent")
   temporaryAccessUntil DateTime?  @map("temporary_access_until")
   restrictionOverridden Boolean   @default(false) @map("restriction_overridden")
+  extensionReason String?        @map("extension_reason")
   lastReminderAt DateTime?        @map("last_reminder_at")
   accessLocked   Boolean          @default(false) @map("access_locked")
   createdAt      DateTime         @default(now()) @map("created_at")

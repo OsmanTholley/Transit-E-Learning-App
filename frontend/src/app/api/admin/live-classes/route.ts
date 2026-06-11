@@ -74,6 +74,7 @@ export async function POST(request: NextRequest) {
       audience,
       startTime: start,
       endTime: end,
+      createdById: admin.id,
     });
 
     return NextResponse.json({

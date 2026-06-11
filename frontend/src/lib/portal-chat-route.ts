@@ -82,6 +82,11 @@ export async function handlePortalChatGet(
 
     const messages = await listThreadMessages(threadKey, 80, user.id);
     await markThreadRead(user.id, threadKey);
+    emitSocketEvent(threadRoom(threadKey), SOCKET_EVENTS.CHAT_READ, {
+      threadKey,
+      userId: user.id,
+      readAt: new Date().toISOString(),
+    });
     return NextResponse.json({ messages });
   }
 
@@ -93,9 +98,35 @@ export async function handlePortalChatGet(
   const unreadByThread = await getUnreadCountsByThread(user.id, inbox.threadKeys);
   const totalUnread = Object.values(unreadByThread).reduce((sum, count) => sum + count, 0);
 
+  const contactUserIds = [
+    ...inbox.contacts.map((c) => c.userId),
+    ...inbox.directThreads.map((c) => c.userId),
+  ];
+
+  const dbLastLogins = await prisma.user.findMany({
+    where: { id: { in: contactUserIds } },
+    select: { id: true, lastLoginAt: true },
+  });
+
+  const lastLoginMap = new Map(dbLastLogins.map((u) => [u.id, u.lastLoginAt]));
+  const onlineUsers = (global as any).__transitOnlineUsers as Map<string, Set<string>> | undefined;
+  const lastSeenMap = (global as any).__transitLastSeen as Map<string, string> | undefined;
+
+  const contactsWithPresence = inbox.contacts.map((c) => ({
+    ...c,
+    isOnline: onlineUsers ? onlineUsers.has(c.userId) : false,
+    lastSeen: lastSeenMap?.get(c.userId) || lastLoginMap.get(c.userId)?.toISOString() || null,
+  }));
+
+  const directThreadsWithPresence = inbox.directThreads.map((c) => ({
+    ...c,
+    isOnline: onlineUsers ? onlineUsers.has(c.userId) : false,
+    lastSeen: lastSeenMap?.get(c.userId) || lastLoginMap.get(c.userId)?.toISOString() || null,
+  }));
+
   return NextResponse.json({
-    contacts: inbox.contacts,
-    directThreads: inbox.directThreads,
+    contacts: contactsWithPresence,
+    directThreads: directThreadsWithPresence,
     groups: inbox.groups.map((group) => ({
       ...group,
       unreadCount: unreadByThread[group.threadKey] ?? 0,
@@ -108,6 +139,7 @@ export async function handlePortalChatGet(
     unreadByThread,
     totalUnread,
     currentUserId: user.id,
+    currentUserFullName: (user as any).fullName || "",
   });
 }
 
@@ -201,6 +233,11 @@ export async function handlePortalChatPatch(
       return NextResponse.json({ error: "Thread key is required." }, { status: 400 });
     }
     await markThreadRead(user.id, threadKey);
+    emitSocketEvent(threadRoom(threadKey), SOCKET_EVENTS.CHAT_READ, {
+      threadKey,
+      userId: user.id,
+      readAt: new Date().toISOString(),
+    });
     return NextResponse.json({ ok: true });
   }
 

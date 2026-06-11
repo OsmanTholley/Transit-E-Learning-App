@@ -25,18 +25,26 @@ export async function handleAiChatPost(request: NextRequest, allowedRoles: AppRo
     return NextResponse.json({ error: "Question is required." }, { status: 400 });
   }
 
-  const result = await generateAiAnswer({
-    question,
-    courseTitle: body.courseTitle?.trim(),
-    subject: body.subject?.trim(),
-    mode: body.mode ?? "default",
-    modelProfile: body.modelProfile,
-  });
+  try {
+    const result = await generateAiAnswer({
+      question,
+      courseTitle: body.courseTitle?.trim(),
+      subject: body.subject?.trim(),
+      mode: body.mode ?? "default",
+      modelProfile: body.modelProfile,
+    });
 
-  return NextResponse.json({
-    id: crypto.randomUUID(),
-    answer: result.answer,
-    source: result.source,
-    model: result.model,
-  });
+    return NextResponse.json({
+      id: crypto.randomUUID(),
+      answer: result.answer,
+      source: result.source,
+      model: result.model,
+    });
+  } catch (error: any) {
+    console.error("AI Chat Route error:", error);
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "An unexpected error occurred." },
+      { status: 500 }
+    );
+  }
 }

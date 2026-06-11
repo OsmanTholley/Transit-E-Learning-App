@@ -9,7 +9,8 @@ const { Server } = require("socket.io");
 
 const dev = process.env.NODE_ENV !== "production";
 const frontendDir = path.join(__dirname, "frontend");
-const app = next({ dev, dir: frontendDir });
+// Webpack avoids Turbopack's on-disk compaction DB (needs extra free space).
+const app = next({ dev, dir: frontendDir, webpack: true });
 const handle = app.getRequestHandler();
 
 const SOCKET_PATH = "/api/socket/io";
@@ -31,7 +32,26 @@ app.prepare().then(() => {
 
   global.__transitSocketIO = io;
 
+  // Track online users and last seen times
+  const onlineUsers = new Map(); // userId -> Set of socketIds
+  const lastSeenMap = new Map(); // userId -> ISOString
+  global.__transitOnlineUsers = onlineUsers;
+  global.__transitLastSeen = lastSeenMap;
+
   io.on("connection", (socket) => {
+    socket.on("user:online", (payload) => {
+      const userId = payload?.userId;
+      if (!userId) return;
+
+      socket.userId = userId;
+      if (!onlineUsers.has(userId)) {
+        onlineUsers.set(userId, new Set());
+      }
+      onlineUsers.get(userId).add(socket.id);
+
+      io.emit("user:status", { userId, status: "online" });
+    });
+
     socket.on("join", (rooms) => {
       if (!Array.isArray(rooms)) return;
       for (const room of rooms) {
@@ -58,6 +78,22 @@ app.prepare().then(() => {
         name: payload.name,
         isTyping: Boolean(payload.isTyping),
       });
+    });
+
+    socket.on("disconnect", () => {
+      const userId = socket.userId;
+      if (!userId) return;
+
+      const userSockets = onlineUsers.get(userId);
+      if (userSockets) {
+        userSockets.delete(socket.id);
+        if (userSockets.size === 0) {
+          onlineUsers.delete(userId);
+          const nowStr = new Date().toISOString();
+          lastSeenMap.set(userId, nowStr);
+          io.emit("user:status", { userId, status: "offline", lastSeen: nowStr });
+        }
+      }
     });
   });
 

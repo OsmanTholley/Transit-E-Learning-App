@@ -13,7 +13,7 @@ import {
   feeContextForPath,
   isFeeProtectedStudentPath,
   type FeeLockPayload,
-} from "@/lib/student-fee-guard";
+} from "@/lib/student-fee-guard-shared";
 
 type EligibilityResponse = {
   isRestricted: boolean;
@@ -79,8 +79,9 @@ export function StudentFeeGate({ children }: { children: ReactNode }) {
 
   if (loading) {
     return (
-      <div className="flex min-h-[320px] items-center justify-center">
-        <LoadingSpinner label="Checking payment status…" />
+      <div className="flex min-h-[320px] flex-col items-center justify-center gap-3">
+        <LoadingSpinner />
+        <p className="text-sm font-medium text-slate-500">Checking payment status…</p>
       </div>
     );
   }

@@ -35,6 +35,14 @@ export async function GET() {
         const invoice = account.invoices[0] ?? (await ensureFeeInvoice(account.id));
 
         const compliance = computePaymentCompliance(account);
+        const shouldBeLocked = compliance.isRestricted;
+        if (account.accessLocked !== shouldBeLocked) {
+          await prisma.studentFeeAccount.update({
+            where: { id: account.id },
+            data: { accessLocked: shouldBeLocked },
+          });
+          account.accessLocked = shouldBeLocked;
+        }
 
         return {
           id: account.id,

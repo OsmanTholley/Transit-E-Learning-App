@@ -79,6 +79,7 @@ export async function POST(request: NextRequest) {
       description: body.description,
       startTime: start,
       endTime: end,
+      createdById: lecturer.userId,
     });
 
     return NextResponse.json({

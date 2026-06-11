@@ -1,6 +1,7 @@
 {
   "scripts": {
     "dev": "node scripts/dev.js",
+    "dev:clean": "node scripts/clean-dev-cache.js && node scripts/dev.js",
     "build": "prisma generate && npm run build --prefix frontend",
     "start": "node server.js",
     "lint": "npm run lint --prefix frontend",

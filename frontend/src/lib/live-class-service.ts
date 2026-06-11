@@ -90,17 +90,44 @@ async function canStudentJoinLiveClass(liveClassId: string, studentId: string, a
   };
 }
 
-export async function approveLateAdmission(liveClassId: string, lecturerId: string, studentId: string) {
+export async function approveLateAdmission(liveClassId: string, studentId: string, actorId: string, actorRole: Role) {
   const liveClass = await prisma.liveClass.findUnique({ where: { id: liveClassId } });
-  if (!liveClass || liveClass.lecturerId !== lecturerId) {
+  if (!liveClass) {
     throw new Error("Live class not found.");
   }
 
-  const enrolled = await prisma.courseStudent.findFirst({
-    where: { studentId, courseId: liveClass.courseId ?? "" },
-  });
-  if (!enrolled) {
-    throw new Error("Student is not enrolled in this course.");
+  if (actorRole === Role.LECTURER) {
+    const lecturer = await prisma.lecturer.findFirst({ where: { userId: actorId } });
+    if (!lecturer) {
+      throw new Error("Unauthorized.");
+    }
+    let isAuthorized = liveClass.lecturerId === lecturer.id;
+    if (!isAuthorized && liveClass.courseId) {
+      const course = await prisma.course.findUnique({
+        where: { id: liveClass.courseId },
+        select: { lecturerId: true },
+      });
+      if (course && course.lecturerId === lecturer.id) {
+        isAuthorized = true;
+      }
+    }
+    if (!isAuthorized && !liveClass.lecturerId && !liveClass.courseId) {
+      isAuthorized = true;
+    }
+    if (!isAuthorized) {
+      throw new Error("Unauthorized to admit students to this session.");
+    }
+  } else if (actorRole !== Role.ADMIN) {
+    throw new Error("Unauthorized.");
+  }
+
+  if (liveClass.courseId) {
+    const enrolled = await prisma.courseStudent.findFirst({
+      where: { studentId, courseId: liveClass.courseId },
+    });
+    if (!enrolled) {
+      throw new Error("Student is not enrolled in this course.");
+    }
   }
 
   return prisma.liveClassLateAdmission.upsert({
@@ -110,19 +137,46 @@ export async function approveLateAdmission(liveClassId: string, lecturerId: stri
   });
 }
 
-export async function listLateAdmissionCandidates(liveClassId: string, lecturerId: string) {
+export async function listLateAdmissionCandidates(liveClassId: string, actorId: string, actorRole: Role) {
   const liveClass = await prisma.liveClass.findUnique({ where: { id: liveClassId } });
-  if (!liveClass || liveClass.lecturerId !== lecturerId || !liveClass.courseId) {
+  if (!liveClass) {
     throw new Error("Live class not found.");
   }
 
-  const [enrollments, admissions, attendance] = await Promise.all([
-    prisma.courseStudent.findMany({
-      where: { courseId: liveClass.courseId },
-      include: {
-        student: { include: { user: { select: { fullName: true } } } },
-      },
-    }),
+  if (actorRole === Role.LECTURER) {
+    const lecturer = await prisma.lecturer.findFirst({ where: { userId: actorId } });
+    if (!lecturer) {
+      throw new Error("Unauthorized.");
+    }
+    let isAuthorized = liveClass.lecturerId === lecturer.id;
+    if (!isAuthorized && liveClass.courseId) {
+      const course = await prisma.course.findUnique({
+        where: { id: liveClass.courseId },
+        select: { lecturerId: true },
+      });
+      if (course && course.lecturerId === lecturer.id) {
+        isAuthorized = true;
+      }
+    }
+    if (!isAuthorized && !liveClass.lecturerId && !liveClass.courseId) {
+      isAuthorized = true;
+    }
+    if (!isAuthorized) {
+      throw new Error("Unauthorized.");
+    }
+  } else if (actorRole !== Role.ADMIN) {
+    throw new Error("Unauthorized.");
+  }
+
+  const [students, admissions, attendance] = await Promise.all([
+    liveClass.courseId
+      ? prisma.courseStudent.findMany({
+          where: { courseId: liveClass.courseId },
+          include: { student: { include: { user: { select: { fullName: true } } } } },
+        }).then((rows) => rows.map((r) => r.student))
+      : prisma.student.findMany({
+          include: { user: { select: { fullName: true } } },
+        }),
     prisma.liveClassLateAdmission.findMany({ where: { liveClassId } }),
     prisma.liveClassAttendanceLog.findMany({ where: { liveClassId }, select: { studentId: true } }),
   ]);
@@ -130,8 +184,8 @@ export async function listLateAdmissionCandidates(liveClassId: string, lecturerI
   const admittedIds = new Set(admissions.map((row) => row.studentId));
   const joinedIds = new Set(attendance.map((row) => row.studentId));
 
-  return enrollments
-    .map(({ student }) => ({
+  return students
+    .map((student) => ({
       id: student.id,
       studentId: student.studentId,
       fullName: student.user.fullName,
@@ -315,6 +369,7 @@ export async function createLiveClassAsAdmin(params: {
   audience?: LiveClassAudience;
   startTime: Date;
   endTime?: Date;
+  createdById?: string;
 }) {
   const audience = params.audience ?? LiveClassAudience.GENERAL;
 
@@ -327,6 +382,7 @@ export async function createLiveClassAsAdmin(params: {
       endTime: params.endTime ?? null,
       status: LiveClassStatus.SCHEDULED,
       roomName: `pending-${Date.now()}`,
+      createdById: params.createdById,
     },
   });
 
@@ -452,6 +508,7 @@ export async function createLiveClass(params: {
   description?: string;
   startTime: Date;
   endTime?: Date;
+  createdById?: string;
 }) {
   const course = await prisma.course.findUnique({
     where: { id: params.courseId },
@@ -472,6 +529,7 @@ export async function createLiveClass(params: {
       endTime: params.endTime ?? null,
       status: LiveClassStatus.SCHEDULED,
       roomName: `pending-${Date.now()}`,
+      createdById: params.createdById,
     },
   });
 
@@ -487,9 +545,15 @@ export async function createLiveClass(params: {
 }
 
 export async function startLiveClass(liveClassId: string, lecturerId: string) {
-  const liveClass = await prisma.liveClass.findUnique({ where: { id: liveClassId } });
+  const liveClass = await prisma.liveClass.findUnique({
+    where: { id: liveClassId },
+    include: { createdBy: true },
+  });
   if (!liveClass || liveClass.lecturerId !== lecturerId) {
     throw new Error("Live class not found.");
+  }
+  if (liveClass.createdBy?.role === "ADMIN") {
+    throw new Error("You cannot start this class because it was scheduled by an administrator.");
   }
 
   if (liveClass.status === LiveClassStatus.ENDED || liveClass.status === LiveClassStatus.CANCELLED) {
@@ -520,9 +584,15 @@ export async function updateLiveClass(
     endTime?: Date | null;
   },
 ) {
-  const liveClass = await prisma.liveClass.findUnique({ where: { id: liveClassId } });
+  const liveClass = await prisma.liveClass.findUnique({
+    where: { id: liveClassId },
+    include: { createdBy: true },
+  });
   if (!liveClass || liveClass.lecturerId !== lecturerId) {
     throw new Error("Live class not found.");
+  }
+  if (liveClass.createdBy?.role === "ADMIN") {
+    throw new Error("You cannot edit this class because it was scheduled by an administrator.");
   }
 
   if (liveClass.status !== LiveClassStatus.SCHEDULED) {
@@ -564,9 +634,15 @@ export async function updateLiveClass(
 }
 
 export async function cancelLiveClass(liveClassId: string, lecturerId: string) {
-  const liveClass = await prisma.liveClass.findUnique({ where: { id: liveClassId } });
+  const liveClass = await prisma.liveClass.findUnique({
+    where: { id: liveClassId },
+    include: { createdBy: true },
+  });
   if (!liveClass || liveClass.lecturerId !== lecturerId) {
     throw new Error("Live class not found.");
+  }
+  if (liveClass.createdBy?.role === "ADMIN") {
+    throw new Error("You cannot cancel this class because it was scheduled by an administrator.");
   }
 
   if (liveClass.status !== LiveClassStatus.SCHEDULED) {

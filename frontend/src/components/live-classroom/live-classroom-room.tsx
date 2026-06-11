@@ -134,32 +134,30 @@ export function LiveClassroomRoom({ liveClassId, role, sessionAs = "lecturer" }:
     );
   }, []);
 
-  useEffect(() => {
-    let cancelled = false;
-    async function join() {
-      const result = await requestApi<JoinPayload>(`/api/live-classes/${liveClassId}/join`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({}),
-        silent: true,
-      });
-      if (cancelled) return;
-      if (!result.ok) {
-        setError(result.offline ? "You are offline." : result.message);
-        setLoading(false);
-        return;
-      }
-      setJoinData(result.data);
-      if (result.data.liveClass.endTime) {
-        setSessionEndMs(new Date(result.data.liveClass.endTime).getTime());
-      }
+  const handleRetryJoin = useCallback(async () => {
+    setError(null);
+    setLoading(true);
+    const result = await requestApi<JoinPayload>(`/api/live-classes/${liveClassId}/join`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({}),
+      silent: true,
+    });
+    if (!result.ok) {
+      setError(result.offline ? "You are offline." : result.message);
       setLoading(false);
+      return;
     }
-    void join();
-    return () => {
-      cancelled = true;
-    };
+    setJoinData(result.data);
+    if (result.data.liveClass.endTime) {
+      setSessionEndMs(new Date(result.data.liveClass.endTime).getTime());
+    }
+    setLoading(false);
   }, [liveClassId]);
+
+  useEffect(() => {
+    void handleRetryJoin();
+  }, [handleRetryJoin]);
 
   const enterCall = useCallback(async () => {
     if (!joinData || !jitsiContainerRef.current || jitsiApiRef.current) return;
@@ -516,14 +514,23 @@ export function LiveClassroomRoom({ liveClassId, role, sessionAs = "lecturer" }:
       <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-[#252423] px-4 text-white">
         <TransitLogo size="md" variant="light" />
         <p className="text-center text-sm">{error ?? "Unable to join this class."}</p>
-        <button
-          type="button"
-          onClick={() => router.back()}
-          className="rounded-md px-4 py-2 text-sm font-medium text-white"
-          style={{ backgroundColor: TRANSIT_CLASSROOM_BRAND.primary }}
-        >
-          Back to classes
-        </button>
+        <div className="flex flex-wrap justify-center gap-3">
+          <button
+            type="button"
+            onClick={() => void handleRetryJoin()}
+            className="rounded-md px-4 py-2 text-sm font-semibold text-[#0B3D91] transition hover:brightness-110"
+            style={{ backgroundColor: TRANSIT_CLASSROOM_BRAND.accent }}
+          >
+            Retry Join
+          </button>
+          <button
+            type="button"
+            onClick={() => router.back()}
+            className="rounded-md border border-white/20 px-4 py-2 text-sm font-medium text-white hover:bg-white/5"
+          >
+            Back to classes
+          </button>
+        </div>
       </div>
     );
   }

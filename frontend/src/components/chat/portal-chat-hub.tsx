@@ -7,6 +7,7 @@ import { directThreadKey, groupThreadKey, SOCKET_EVENTS, threadRoom } from "@/li
 import { useVoiceRecorder } from "@/hooks/use-voice-recorder";
 import { showDeleteConfirm, showError, showSuccess } from "@/lib/swal";
 import type { AppRole } from "@/types/app";
+import { VoiceMessagePlayer } from "./voice-message-player";
 
 type Contact = {
   userId: string;
@@ -134,6 +135,10 @@ export function PortalChatHub({ role }: Props) {
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
   const [editDraft, setEditDraft] = useState("");
 
+  const [typingUsers, setTypingUsers] = useState<Record<string, { name: string; timestamp: number }[]>>({});
+  const [userStatuses, setUserStatuses] = useState<Record<string, { status: "online" | "offline"; lastSeen?: string }>>({});
+  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
   const bottomRef = useRef<HTMLDivElement>(null);
   const lastMessageIdRef = useRef<string | null>(null);
   const { joinRooms, leaveRooms, subscribe, emitTyping } = useSocket();
@@ -231,7 +236,8 @@ export function PortalChatHub({ role }: Props) {
     if (!activeThreadKey) return undefined;
     const room = threadRoom(activeThreadKey);
     joinRooms([room]);
-    const unsubscribe = subscribe(SOCKET_EVENTS.CHAT_MESSAGE, (payload) => {
+    
+    const unsubscribeChat = subscribe(SOCKET_EVENTS.CHAT_MESSAGE, (payload) => {
       const data = payload as { threadKey?: string; message?: ChatMessage };
       if (data.threadKey === activeThreadKey && data.message) {
         setMessages((prev) => {
@@ -242,13 +248,78 @@ export function PortalChatHub({ role }: Props) {
         bottomRef.current?.scrollIntoView({ behavior: "smooth" });
       }
     });
+
+    const unsubscribeTyping = subscribe(SOCKET_EVENTS.CHAT_TYPING, (payload) => {
+      const data = payload as { room: string; userId: string; name: string; isTyping: boolean };
+      if (data.room === room && data.userId !== currentUserId) {
+        setTypingUsers((prev) => {
+          const roomTyping = prev[room] || [];
+          if (data.isTyping) {
+            if (roomTyping.some((t) => t.name === data.name)) return prev;
+            return { ...prev, [room]: [...roomTyping, { name: data.name, timestamp: Date.now() }] };
+          } else {
+            return { ...prev, [room]: roomTyping.filter((t) => t.name !== data.name) };
+          }
+        });
+      }
+    });
+
     const timer = window.setInterval(() => void loadMessages(), POLL_MS);
     return () => {
       window.clearInterval(timer);
       leaveRooms([room]);
-      unsubscribe?.();
+      unsubscribeChat?.();
+      unsubscribeTyping?.();
     };
-  }, [loadMessages, activeThreadKey, joinRooms, leaveRooms, subscribe]);
+  }, [loadMessages, activeThreadKey, joinRooms, leaveRooms, subscribe, currentUserId]);
+
+  const { socket } = useSocket();
+  useEffect(() => {
+    if (!currentUserId || !socket) return;
+    socket.emit("user:online", { userId: currentUserId });
+    
+    const onUserStatus = (payload: { userId: string; status: "online" | "offline"; lastSeen?: string }) => {
+      setUserStatuses((prev) => ({ ...prev, [payload.userId]: payload }));
+    };
+    socket.on("user:status", onUserStatus);
+    return () => {
+      socket.off("user:status", onUserStatus);
+    };
+  }, [currentUserId, socket]);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setTypingUsers((prev) => {
+        const now = Date.now();
+        let changed = false;
+        const next = { ...prev };
+        for (const room in next) {
+          const filtered = next[room].filter((t) => now - t.timestamp < 5000);
+          if (filtered.length !== next[room].length) {
+            next[room] = filtered;
+            changed = true;
+          }
+        }
+        return changed ? next : prev;
+      });
+    }, 2000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const handleTyping = (text: string) => {
+    setDraft(text);
+    if (!activeThreadKey || !currentUserId) return;
+    const room = threadRoom(activeThreadKey);
+    const myName = contacts.find((c) => c.userId === currentUserId)?.fullName || "Someone";
+    emitTyping(room, currentUserId, myName, text.length > 0);
+
+    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+    if (text.length > 0) {
+      typingTimeoutRef.current = setTimeout(() => {
+        emitTyping(room, currentUserId, myName, false);
+      }, 3000);
+    }
+  };
 
   const filteredPrograms = useMemo(() => {
     if (!departmentFilter) return programs;
@@ -843,6 +914,17 @@ export function PortalChatHub({ role }: Props) {
                   {activeThread.subtitle ? (
                     <p className="truncate text-xs text-slate-500">{activeThread.subtitle}</p>
                   ) : null}
+                  {activeThread.kind === "DIRECT" && userStatuses[activeThread.peerUserId] ? (
+                    <p className="truncate text-[11px] text-slate-400">
+                      {userStatuses[activeThread.peerUserId].status === "online" ? (
+                        <span className="flex items-center gap-1 text-emerald-500">
+                          <span className="h-1.5 w-1.5 rounded-full bg-emerald-500"></span> Online
+                        </span>
+                      ) : (
+                        `Last seen: ${new Date(userStatuses[activeThread.peerUserId].lastSeen || "").toLocaleString([], { hour: "2-digit", minute: "2-digit", month: "short", day: "numeric" })}`
+                      )}
+                    </p>
+                  ) : null}
                 </div>
                 {activeThread.kind === "GROUP" ? (
                   <button
@@ -906,14 +988,22 @@ export function PortalChatHub({ role }: Props) {
                             ) : (
                               <div
                                 className={[
-                                  "rounded-2xl px-3 py-2 text-sm shadow-sm",
+                                  "rounded-2xl shadow-sm overflow-hidden",
                                   isMine
                                     ? "rounded-br-md bg-[#0B3D91] text-white"
                                     : "rounded-bl-md bg-white text-slate-800",
+                                  message.messageType === "VOICE" ? "!bg-transparent !p-0 !shadow-none" : "px-3 py-2 text-sm",
                                 ].join(" ")}
                               >
                                 {message.messageType === "VOICE" && message.audioData ? (
-                                  <audio controls src={message.audioData} className="mt-0.5 w-full max-w-[240px]" preload="metadata" />
+                                  <VoiceMessagePlayer
+                                    src={message.audioData}
+                                    senderName={!isMine ? message.senderName : undefined}
+                                    timestamp={new Date(message.createdAt).toLocaleTimeString([], {
+                                      hour: "2-digit",
+                                      minute: "2-digit",
+                                    })}
+                                  />
                                 ) : (
                                   <>
                                     {message.body}
@@ -969,13 +1059,19 @@ export function PortalChatHub({ role }: Props) {
                 <div ref={bottomRef} />
               </div>
 
+              {activeThreadKey && typingUsers[threadRoom(activeThreadKey)]?.length > 0 ? (
+                <div className="bg-[#f0f2f5] px-4 pb-2 text-xs italic text-slate-500">
+                  {typingUsers[threadRoom(activeThreadKey)].map((t) => t.name).join(", ")} {typingUsers[threadRoom(activeThreadKey)].length > 1 ? "are" : "is"} typing...
+                </div>
+              ) : null}
+
               <form
                 onSubmit={sendMessage}
                 className="flex items-center gap-2 border-t border-slate-200 bg-white p-3 max-[480px]:p-2"
               >
                 <input
                   value={draft}
-                  onChange={(e) => setDraft(e.target.value)}
+                  onChange={(e) => handleTyping(e.target.value)}
                   placeholder="Aa"
                   className="flex-1 rounded-full border border-slate-200 bg-[#f0f2f5] px-4 py-2.5 text-sm outline-none focus:border-[#0B3D91]/40 max-[480px]:py-3"
                 />
