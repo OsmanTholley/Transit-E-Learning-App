@@ -350,7 +350,7 @@ export function AdminFinanceDashboard() {
       silent: true,
     });
     if (!result.ok) {
-      await showError("Could not remove restriction", result.message);
+      await showError("Could not remove restriction", result.offline ? "You are offline." : result.message);
       return;
     }
     await showSuccess("Restriction removed", `${studentName} can access content again.`);
@@ -370,7 +370,7 @@ export function AdminFinanceDashboard() {
       silent: true,
     });
     if (!result.ok) {
-      await showError("Could not extend due date", result.message);
+      await showError("Could not extend due date", result.offline ? "You are offline." : result.message);
       return;
     }
     await showSuccess("Due date updated");

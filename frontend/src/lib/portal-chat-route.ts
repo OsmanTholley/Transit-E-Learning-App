@@ -1,5 +1,6 @@
 import { PortalChatKind, PortalChatMessageType, Role } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
 import {
   addGroupMembers,
   createChatGroup,
