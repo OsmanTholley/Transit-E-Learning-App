@@ -1,6 +1,8 @@
 [build]
-  command = "npm run build"
-  publish = "frontend/.next"
+  # Next.js lives in frontend/ — base + publish must be relative to each other
+  base = "frontend"
+  command = "cd .. && npm ci --include=dev && npm run build"
+  publish = ".next"
 
 [build.environment]
   NODE_VERSION = "20"
