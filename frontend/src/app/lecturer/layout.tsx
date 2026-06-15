@@ -5,25 +5,27 @@ import { DatabaseUnavailable } from "@/components/database-unavailable";
 import { DatabaseUnavailableError, requireLecturerUser } from "@/lib/auth";
 
 export default async function LecturerLayout({ children }: { children: ReactNode }) {
+  let lecturer;
   try {
-    const lecturer = await requireLecturerUser();
-    if (!lecturer) {
-      redirect("/login?role=staff");
-    }
-
-    return (
-      <LecturerShell
-        lecturerName={lecturer.fullName}
-        lecturerEmail={lecturer.email ?? ""}
-        profileImage={lecturer.profileImage}
-      >
-        {children}
-      </LecturerShell>
-    );
+    lecturer = await requireLecturerUser();
   } catch (error) {
     if (error instanceof DatabaseUnavailableError) {
       return <DatabaseUnavailable />;
     }
     throw error;
   }
+
+  if (!lecturer) {
+    redirect("/login?role=staff");
+  }
+
+  return (
+    <LecturerShell
+      lecturerName={lecturer.fullName}
+      lecturerEmail={lecturer.email ?? ""}
+      profileImage={lecturer.profileImage}
+    >
+      {children}
+    </LecturerShell>
+  );
 }

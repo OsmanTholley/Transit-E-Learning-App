@@ -3,6 +3,7 @@
 import { FormEvent, useEffect, useState } from "react";
 import { DashboardCalendarWidget } from "@/components/academic-calendar/dashboard-calendar-widget";
 import { requestApi } from "@/lib/fetch-api";
+import { scheduleEffectWork } from "@/lib/react-effect-utils";
 import { CALENDAR_EVENT_TYPES, eventTypeLabel } from "@/lib/academic-calendar-service";
 import { showError, showSuccess } from "@/lib/swal";
 
@@ -51,7 +52,7 @@ export function AdminAcademicCalendarPage() {
   };
 
   useEffect(() => {
-    void load();
+    scheduleEffectWork(() => load());
   }, []);
 
   const handleSubmit = async (event: FormEvent) => {

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { io, type Socket } from "socket.io-client";
+import { scheduleEffectWork } from "@/lib/react-effect-utils";
 import { SOCKET_PATH } from "@/lib/socket-events";
 
 let sharedSocket: Socket | null = null;
@@ -22,23 +23,27 @@ function getSharedSocket() {
 
 export function useSocket() {
   const [connected, setConnected] = useState(false);
+  const [socket, setSocket] = useState<Socket | null>(null);
   const socketRef = useRef<Socket | null>(null);
 
   useEffect(() => {
-    const socket = getSharedSocket();
-    if (!socket) return;
-    socketRef.current = socket;
+    const shared = getSharedSocket();
+    if (!shared) return;
+    socketRef.current = shared;
+    scheduleEffectWork(() => setSocket(shared));
 
     const onConnect = () => setConnected(true);
     const onDisconnect = () => setConnected(false);
 
-    socket.on("connect", onConnect);
-    socket.on("disconnect", onDisconnect);
-    if (socket.connected) setConnected(true);
+    shared.on("connect", onConnect);
+    shared.on("disconnect", onDisconnect);
+    if (shared.connected) {
+      scheduleEffectWork(() => setConnected(true));
+    }
 
     return () => {
-      socket.off("connect", onConnect);
-      socket.off("disconnect", onDisconnect);
+      shared.off("connect", onConnect);
+      shared.off("disconnect", onDisconnect);
     };
   }, []);
 
@@ -51,11 +56,11 @@ export function useSocket() {
   }, []);
 
   const subscribe = useCallback((event: string, handler: (payload: unknown) => void) => {
-    const socket = socketRef.current;
-    if (!socket) return () => undefined;
-    socket.on(event, handler);
+    const activeSocket = socketRef.current;
+    if (!activeSocket) return () => undefined;
+    activeSocket.on(event, handler);
     return () => {
-      socket.off(event, handler);
+      activeSocket.off(event, handler);
     };
   }, []);
 
@@ -66,5 +71,5 @@ export function useSocket() {
     [],
   );
 
-  return { connected, joinRooms, leaveRooms, subscribe, emitTyping, socket: socketRef.current };
+  return { connected, joinRooms, leaveRooms, subscribe, emitTyping, socket };
 }

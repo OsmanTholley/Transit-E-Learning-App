@@ -6,6 +6,7 @@ import { LoadingSpinner } from "@/components/ui/loading-indicator";
 import { PaymentLockScreen } from "@/components/finance/payment-lock-screen";
 import { useSocket } from "@/hooks/use-socket";
 import { requestApi } from "@/lib/fetch-api";
+import { scheduleEffectWork } from "@/lib/react-effect-utils";
 import { SOCKET_EVENTS, userRoom } from "@/lib/socket-events";
 import { useStudentSession } from "@/contexts/student-session-context";
 import {
@@ -50,7 +51,7 @@ export function StudentFeeGate({ children }: { children: ReactNode }) {
   }, [protectedPath]);
 
   useEffect(() => {
-    void checkEligibility();
+    scheduleEffectWork(() => checkEligibility());
   }, [checkEligibility, pathname]);
 
   useEffect(() => {

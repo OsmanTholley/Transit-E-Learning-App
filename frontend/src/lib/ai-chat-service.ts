@@ -29,10 +29,17 @@ export async function generateAiAnswer(
         model: openai.model,
         tokensUsed: openai.tokensUsed,
       };
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("OpenAI error caught in generateAiAnswer:", error);
-      const isQuota = error?.status === 429 || error?.code === "insufficient_quota" || String(error?.message).includes("quota");
-      const isAuth = error?.status === 401 || error?.code === "invalid_api_key" || String(error?.message).includes("API key");
+      const apiError = error as { status?: number; code?: string; message?: string };
+      const isQuota =
+        apiError.status === 429 ||
+        apiError.code === "insufficient_quota" ||
+        String(apiError.message).includes("quota");
+      const isAuth =
+        apiError.status === 401 ||
+        apiError.code === "invalid_api_key" ||
+        String(apiError.message).includes("API key");
       if (isQuota) {
         throw new Error("OpenAI API Quota Exceeded. Please check billing or plan.");
       }

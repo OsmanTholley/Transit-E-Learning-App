@@ -2,6 +2,7 @@
 import { LoadingState } from "@/components/ui/loading-indicator";
 
 import { useCallback, useEffect, useState } from "react";
+import { scheduleEffectWork } from "@/lib/react-effect-utils";
 
 type ActivityLogRow = {
   id: string;
@@ -70,7 +71,7 @@ export function AdminActivityLogsPage() {
   }, [actionFilter]);
 
   useEffect(() => {
-    void load();
+    scheduleEffectWork(() => load());
   }, [load]);
 
   async function clearLogs() {

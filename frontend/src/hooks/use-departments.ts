@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { requestApi } from "@/lib/fetch-api";
+import { scheduleEffectWork } from "@/lib/react-effect-utils";
 import { DepartmentRecord } from "@/types/department";
 
 export function useDepartments() {
@@ -59,10 +60,12 @@ export function useDepartments() {
     }
   }, [router]);
 
-  loadRef.current = load;
+  useEffect(() => {
+    loadRef.current = load;
+  }, [load]);
 
   useEffect(() => {
-    void load();
+    scheduleEffectWork(() => load());
   }, [load]);
 
   return { departments, loading, error, refetch: load };

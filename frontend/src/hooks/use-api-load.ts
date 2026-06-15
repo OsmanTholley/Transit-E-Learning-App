@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { requestApi, type RequestApiOptions } from "@/lib/fetch-api";
+import { scheduleEffectWork } from "@/lib/react-effect-utils";
 
 type UseApiLoadOptions<T> = Omit<RequestApiOptions, "onRecovered"> & {
   errorTitle?: string;
@@ -77,10 +78,12 @@ export function useApiLoad<T>(url: string, options?: UseApiLoadOptions<T>) {
   // eslint-disable-next-line react-hooks/exhaustive-deps -- request options are stable per call site
   }, [url, errorTitle, silent, router]);
 
-  loadRef.current = load;
+  useEffect(() => {
+    loadRef.current = load;
+  }, [load]);
 
   useEffect(() => {
-    void load();
+    scheduleEffectWork(() => load());
   }, [load]);
 
   useEffect(() => {

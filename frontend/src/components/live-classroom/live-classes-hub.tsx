@@ -4,6 +4,7 @@ import { FormEvent, useEffect, useState } from "react";
 import Link from "next/link";
 import { TransitLogo } from "@/components/brand/transit-logo";
 import { requestApi } from "@/lib/fetch-api";
+import { scheduleEffectWork } from "@/lib/react-effect-utils";
 import { showError, showSuccess } from "@/lib/swal";
 
 type LiveClassItem = {
@@ -73,7 +74,7 @@ export function LiveClassesHub({ role }: LiveClassesHubProps) {
   };
 
   useEffect(() => {
-    void load();
+    scheduleEffectWork(() => load());
     if (role === "lecturer") {
       void requestApi<{ courses: LecturerCourse[] }>("/api/lecturer/courses/options", { silent: true }).then((result) => {
         if (result.ok) {

@@ -9,6 +9,7 @@ import { useStudentSession } from "@/contexts/student-session-context";
 import { getDiscussionsViewTitle } from "@/components/student/discussions/discussions-nav-config";
 import { useStudentPreference } from "@/hooks/use-student-preference";
 import { requestApi } from "@/lib/fetch-api";
+import { scheduleEffectWork } from "@/lib/react-effect-utils";
 import { STUDENT_PREF_KEYS } from "@/lib/student-preference-keys";
 import { reportStudentError, studentMutation } from "@/lib/student-ui";
 import {
@@ -102,10 +103,12 @@ export function DiscussionsHub({ segment }: Props) {
     }
   }, [view, activeCourseId, query]);
 
-  loadRef.current = load;
+  useEffect(() => {
+    loadRef.current = load;
+  }, [load]);
 
   useEffect(() => {
-    void load();
+    scheduleEffectWork(() => load());
   }, [load]);
 
   const courses = useMemo(() => {

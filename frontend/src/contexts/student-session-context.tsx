@@ -3,6 +3,7 @@
 import { createContext, ReactNode, useCallback, useContext, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { requestApi } from "@/lib/fetch-api";
+import { scheduleEffectWork } from "@/lib/react-effect-utils";
 import { showError } from "@/lib/swal";
 import { StudentDashboardData } from "@/types/student-dashboard";
 
@@ -72,10 +73,12 @@ export function StudentSessionProvider({ children }: { children: ReactNode }) {
     }
   }, [router]);
 
-  loadRef.current = load;
+  useEffect(() => {
+    loadRef.current = load;
+  }, [load]);
 
   useEffect(() => {
-    void load();
+    scheduleEffectWork(() => load());
   }, [load]);
 
   return (

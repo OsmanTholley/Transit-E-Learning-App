@@ -40,7 +40,7 @@ export async function handleAiChatPost(request: NextRequest, allowedRoles: AppRo
       source: result.source,
       model: result.model,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("AI Chat Route error:", error);
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "An unexpected error occurred." },

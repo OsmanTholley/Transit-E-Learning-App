@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { requestApi } from "@/lib/fetch-api";
+import { scheduleEffectWork } from "@/lib/react-effect-utils";
 import { StudentRecord } from "@/types/student";
 
 export function useStudents() {
@@ -55,10 +56,12 @@ export function useStudents() {
     }
   }, [router]);
 
-  loadStudentsRef.current = loadStudents;
+  useEffect(() => {
+    loadStudentsRef.current = loadStudents;
+  }, [loadStudents]);
 
   useEffect(() => {
-    void loadStudents();
+    scheduleEffectWork(() => loadStudents());
   }, [loadStudents]);
 
   return { students, loading, error, refetch: loadStudents, setStudents };

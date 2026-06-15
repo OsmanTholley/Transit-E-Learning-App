@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { requestApi } from "@/lib/fetch-api";
+import { scheduleEffectWork } from "@/lib/react-effect-utils";
 import { eventTypeColor, eventTypeLabel } from "@/lib/academic-calendar-service";
 
 type CalendarEvent = {
@@ -39,8 +40,13 @@ export function DashboardCalendarWidget({ role, manageHref }: DashboardCalendarW
   const [cursor, setCursor] = useState(() => new Date());
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [loading, setLoading] = useState(true);
+  const [nowMs, setNowMs] = useState<number | null>(null);
 
   const month = monthKey(cursor);
+
+  useEffect(() => {
+    scheduleEffectWork(() => setNowMs(Date.now()));
+  }, [events]);
 
   useEffect(() => {
     async function load() {
@@ -50,7 +56,7 @@ export function DashboardCalendarWidget({ role, manageHref }: DashboardCalendarW
       setLoading(false);
       if (result.ok) setEvents(result.data.events);
     }
-    void load();
+    scheduleEffectWork(() => load());
   }, [month, role]);
 
   const monthLabel = cursor.toLocaleDateString("en-GB", { month: "long", year: "numeric" });
@@ -82,11 +88,11 @@ export function DashboardCalendarWidget({ role, manageHref }: DashboardCalendarW
   }, [cursor, events]);
 
   const upcoming = useMemo(() => {
-    const now = Date.now();
+    if (nowMs === null) return [];
     return events
-      .filter((event) => new Date(event.endAt ?? event.startAt).getTime() >= now)
+      .filter((event) => new Date(event.endAt ?? event.startAt).getTime() >= nowMs)
       .slice(0, 5);
-  }, [events]);
+  }, [events, nowMs]);
 
   return (
     <section className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm">

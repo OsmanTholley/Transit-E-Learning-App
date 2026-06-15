@@ -7,6 +7,7 @@ import { LiveClassroomControls } from "@/components/live-classroom/live-classroo
 import { LiveClassroomLobbyPreview } from "@/components/live-classroom/live-classroom-lobby-preview";
 import { LiveClassroomSidebar } from "@/components/live-classroom/live-classroom-sidebar";
 import { requestApi } from "@/lib/fetch-api";
+import { scheduleEffectWork } from "@/lib/react-effect-utils";
 import { swal } from "@/lib/swal";
 import {
   buildJitsiConfig,
@@ -79,7 +80,9 @@ export function LiveClassroomRoom({ liveClassId, role, sessionAs = "lecturer" }:
   const [error, setError] = useState<string | null>(null);
   const [inLobby, setInLobby] = useState(true);
   const [inCall, setInCall] = useState(false);
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(
+    () => typeof window !== "undefined" && window.matchMedia("(min-width: 1024px)").matches,
+  );
   const [sidebarTab, setSidebarTab] = useState<"chat" | "people" | "raised" | "admit" | "attendance">("chat");
   const [raisedHands, setRaisedHands] = useState<{ id: string; studentId: string; studentName: string }[]>([]);
   const [admissionCandidates, setAdmissionCandidates] = useState<
@@ -103,10 +106,6 @@ export function LiveClassroomRoom({ liveClassId, role, sessionAs = "lecturer" }:
   const isStudentView = role === "student";
   const controlRole: "student" | "lecturer" = isHost ? "lecturer" : "student";
   const isLecturer = isHost;
-
-  useEffect(() => {
-    setSidebarOpen(window.matchMedia("(min-width: 1024px)").matches);
-  }, []);
 
   const exitToHub = useCallback(() => {
     if (isAdmin) {
@@ -156,7 +155,7 @@ export function LiveClassroomRoom({ liveClassId, role, sessionAs = "lecturer" }:
   }, [liveClassId]);
 
   useEffect(() => {
-    void handleRetryJoin();
+    scheduleEffectWork(() => handleRetryJoin());
   }, [handleRetryJoin]);
 
   const enterCall = useCallback(async () => {

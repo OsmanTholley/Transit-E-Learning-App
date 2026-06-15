@@ -9,6 +9,7 @@ import { getQuizzesViewTitle } from "@/components/student/quizzes/quizzes-nav-co
 import { CircularProgress, DashboardStat, QuizCard, QuizFilters } from "@/components/student/quizzes/quiz-ui";
 import { readStudentPreference } from "@/hooks/use-student-preference";
 import { requestApi } from "@/lib/fetch-api";
+import { scheduleEffectWork } from "@/lib/react-effect-utils";
 import { STUDENT_PREF_KEYS } from "@/lib/student-preference-keys";
 import type { LeaderboardEntry, StudentQuizSummary } from "@/types/student-quizzes";
 
@@ -83,10 +84,12 @@ export function QuizzesHub({ segment }: Props) {
     }
   }, [view]);
 
-  loadRef.current = load;
+  useEffect(() => {
+    loadRef.current = load;
+  }, [load]);
 
   useEffect(() => {
-    void load();
+    scheduleEffectWork(() => load());
   }, [load]);
 
   const courses = useMemo(() => {

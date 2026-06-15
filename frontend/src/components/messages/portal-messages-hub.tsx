@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { LoadingState } from "@/components/ui/loading-indicator";
+import { scheduleEffectWork } from "@/lib/react-effect-utils";
 import {
   isSameAppPath,
   resolveNotificationTargetUrl,
@@ -82,7 +83,7 @@ export function PortalMessagesHub({
   }, [onUnreadChange]);
 
   useEffect(() => {
-    void loadNotices();
+    scheduleEffectWork(() => loadNotices());
   }, [loadNotices]);
 
   const unreadCount = notices.filter((n) => !n.isRead).length;
@@ -131,8 +132,10 @@ export function PortalMessagesHub({
     if (!deepLinkId || notices.length === 0) return;
     const match = notices.find((n) => n.id === deepLinkId);
     if (match) {
-      setSelectedId(match.id);
-      if (!match.isRead) void markRead(match.id, false);
+      scheduleEffectWork(() => {
+        setSelectedId(match.id);
+        if (!match.isRead) void markRead(match.id, false);
+      });
     }
   }, [deepLinkId, notices]);
 

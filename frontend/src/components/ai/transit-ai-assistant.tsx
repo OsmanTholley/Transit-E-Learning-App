@@ -6,6 +6,7 @@ import {
   type AiModelProfileId,
 } from "@/lib/ai-models";
 import { requestApi } from "@/lib/fetch-api";
+import { scheduleEffectWork } from "@/lib/react-effect-utils";
 import { showDeleteConfirm, showError } from "@/lib/swal";
 
 type Conversation = {
@@ -82,12 +83,14 @@ export function TransitAiAssistant({
   }, []);
 
   useEffect(() => {
-    void loadConversations();
+    scheduleEffectWork(() => loadConversations());
   }, [loadConversations]);
 
   useEffect(() => {
-    if (activeId) void loadConversation(activeId);
-    else setMessages([]);
+    scheduleEffectWork(() => {
+      if (activeId) void loadConversation(activeId);
+      else setMessages([]);
+    });
   }, [activeId, loadConversation]);
 
   useEffect(() => {

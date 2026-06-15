@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { requestApi } from "@/lib/fetch-api";
+import { scheduleEffectWork } from "@/lib/react-effect-utils";
 
 type AttendanceDashboard = {
   session: { title: string | null; hostName: string; hostRole: string; status: string };
@@ -41,7 +42,7 @@ export function LiveClassAttendancePanel({ liveClassId, active = true }: Props) 
 
   useEffect(() => {
     if (!active) return;
-    void load();
+    scheduleEffectWork(() => load());
     const timer = window.setInterval(() => void load(), 12_000);
     return () => window.clearInterval(timer);
   }, [active, load]);

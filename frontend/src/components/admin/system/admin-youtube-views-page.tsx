@@ -1,6 +1,7 @@
 "use client";
 import { LoadingState } from "@/components/ui/loading-indicator";
 import { useCallback, useEffect, useState } from "react";
+import { scheduleEffectWork } from "@/lib/react-effect-utils";
 
 type ViewLog = {
   id: string;
@@ -89,7 +90,7 @@ export function AdminYouTubeViewsPage() {
     }
   }, []);
 
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => { scheduleEffectWork(() => load()); }, [load]);
 
   const filtered = logs.filter((log) => {
     if (!search) return true;

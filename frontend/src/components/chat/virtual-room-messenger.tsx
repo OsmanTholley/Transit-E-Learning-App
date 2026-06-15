@@ -2,6 +2,7 @@
 
 import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
 import { requestApi } from "@/lib/fetch-api";
+import { scheduleEffectWork } from "@/lib/react-effect-utils";
 import { CHAT_POLL_MS } from "@/lib/live-classroom-config";
 
 type MessengerMessage = {
@@ -53,7 +54,7 @@ export function VirtualRoomMessenger({ liveClassId, active = true }: Props) {
 
   useEffect(() => {
     if (!active) return;
-    void loadMessages();
+    scheduleEffectWork(() => loadMessages());
     const timer = window.setInterval(() => void loadMessages(), CHAT_POLL_MS);
     return () => window.clearInterval(timer);
   }, [active, loadMessages]);

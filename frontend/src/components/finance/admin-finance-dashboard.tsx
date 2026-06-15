@@ -2,6 +2,7 @@
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { requestApi } from "@/lib/fetch-api";
+import { scheduleEffectWork } from "@/lib/react-effect-utils";
 import { showDeleteConfirm, showError, showSuccess } from "@/lib/swal";
 
 type FinanceAccount = {
@@ -141,7 +142,7 @@ export function AdminFinanceDashboard() {
   };
 
   useEffect(() => {
-    void load();
+    scheduleEffectWork(() => load());
   }, []);
 
   const filteredAccounts = useMemo(() => data?.accounts ?? [], [data]);

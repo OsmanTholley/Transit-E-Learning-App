@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { useOfflineSync } from "@/hooks/use-offline-sync";
+import { useLatestRef } from "@/lib/react-effect-utils";
 import { showSuccess } from "@/lib/swal";
 
 type Props = {
@@ -10,8 +11,7 @@ type Props = {
 
 export function OfflineSyncBanner({ onReconnect }: Props) {
   const { online, syncing, pendingCount, lastSyncedAt, lastError, retrySync } = useOfflineSync();
-  const onReconnectRef = useRef(onReconnect);
-  onReconnectRef.current = onReconnect;
+  const onReconnectRef = useLatestRef(onReconnect);
   const prevPendingRef = useRef(pendingCount);
   const prevOnlineRef = useRef(online);
 

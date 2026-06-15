@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
+import { scheduleEffectWork } from "@/lib/react-effect-utils";
 
 export function NavigationProgress() {
   const pathname = usePathname();
@@ -10,8 +11,10 @@ export function NavigationProgress() {
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
-    setVisible(true);
-    setProgress(15);
+    scheduleEffectWork(() => {
+      setVisible(true);
+      setProgress(15);
+    });
 
     const advance = setTimeout(() => setProgress(55), 80);
     const nearDone = setTimeout(() => setProgress(88), 280);

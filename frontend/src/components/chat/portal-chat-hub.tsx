@@ -3,6 +3,7 @@
 import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSocket } from "@/hooks/use-socket";
 import { requestApi } from "@/lib/fetch-api";
+import { scheduleEffectWork } from "@/lib/react-effect-utils";
 import { directThreadKey, groupThreadKey, SOCKET_EVENTS, threadRoom } from "@/lib/socket-events";
 import { useVoiceRecorder } from "@/hooks/use-voice-recorder";
 import { showDeleteConfirm, showError, showSuccess } from "@/lib/swal";
@@ -219,7 +220,7 @@ export function PortalChatHub({ role }: Props) {
   });
 
   useEffect(() => {
-    void loadInbox();
+    scheduleEffectWork(() => loadInbox());
   }, [loadInbox]);
 
   const activeThreadKey = useMemo(() => {
@@ -232,7 +233,7 @@ export function PortalChatHub({ role }: Props) {
   }, [activeThread, currentUserId]);
 
   useEffect(() => {
-    void loadMessages();
+    scheduleEffectWork(() => loadMessages());
     if (!activeThreadKey) return undefined;
     const room = threadRoom(activeThreadKey);
     joinRooms([room]);

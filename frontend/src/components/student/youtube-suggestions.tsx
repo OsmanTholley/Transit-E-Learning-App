@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { scheduleEffectWork } from "@/lib/react-effect-utils";
 
 export type YTVideo = {
   videoId: string;
@@ -93,15 +94,19 @@ export function YouTubeSuggestions({ courseQueries, courseLabels }: Props) {
 
   useEffect(() => {
     const q = currentQuery;
-    if (!q) {
-      setVideos([]);
-      setLoading(false);
-      return;
-    }
+    scheduleEffectWork(() => {
+      if (!q) {
+        setVideos([]);
+        setLoading(false);
+        return;
+      }
 
-    setLoading(true);
-    setVideos([]);
-    setFetchError(null);
+      setLoading(true);
+      setVideos([]);
+      setFetchError(null);
+    });
+
+    if (!q) return;
 
     fetch(`/api/student/youtube-suggestions?q=${encodeURIComponent(q)}`)
       .then((r) => r.json())

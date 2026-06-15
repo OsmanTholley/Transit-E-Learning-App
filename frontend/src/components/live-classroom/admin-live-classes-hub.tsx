@@ -4,6 +4,7 @@ import { FormEvent, useEffect, useState } from "react";
 import Link from "next/link";
 import { TransitLogo } from "@/components/brand/transit-logo";
 import { requestApi } from "@/lib/fetch-api";
+import { scheduleEffectWork } from "@/lib/react-effect-utils";
 import { showError, showSuccess } from "@/lib/swal";
 
 type LiveClassAudience = "GENERAL" | "STUDENTS" | "LECTURERS";
@@ -74,7 +75,7 @@ export function AdminLiveClassesHub() {
   };
 
   useEffect(() => {
-    void load();
+    scheduleEffectWork(() => load());
     const timer = window.setInterval(() => void load(true), LIST_REFRESH_MS);
     return () => window.clearInterval(timer);
   }, []);

@@ -155,7 +155,7 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json({ error: "Unknown action." }, { status: 400 });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("POST /api/ai/assistant error:", error);
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "An unexpected error occurred." },

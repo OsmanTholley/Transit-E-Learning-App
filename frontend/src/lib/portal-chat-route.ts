@@ -27,6 +27,19 @@ import {
 import { emitSocketEvent, SOCKET_EVENTS } from "@/lib/socket-emitter";
 import { threadRoom } from "@/lib/socket-events";
 
+type TransitSocketGlobal = typeof globalThis & {
+  __transitOnlineUsers?: Map<string, Set<string>>;
+  __transitLastSeen?: Map<string, string>;
+};
+
+function readTransitSocketState() {
+  const runtime = globalThis as TransitSocketGlobal;
+  return {
+    onlineUsers: runtime.__transitOnlineUsers,
+    lastSeenMap: runtime.__transitLastSeen,
+  };
+}
+
 function parseChatKind(value: string | null | undefined): PortalChatKind {
   if (value === "DIRECT") return PortalChatKind.DIRECT;
   if (value === "GROUP") return PortalChatKind.GROUP;
@@ -58,7 +71,7 @@ async function collectInboxThreadKeys(userId: string, role: Role) {
 
 export async function handlePortalChatGet(
   request: NextRequest,
-  user: { id: string },
+  user: { id: string; fullName?: string },
   role: Role
 ) {
   const kind = request.nextUrl.searchParams.get("kind");
@@ -110,8 +123,7 @@ export async function handlePortalChatGet(
   });
 
   const lastLoginMap = new Map(dbLastLogins.map((u) => [u.id, u.lastLoginAt]));
-  const onlineUsers = (global as any).__transitOnlineUsers as Map<string, Set<string>> | undefined;
-  const lastSeenMap = (global as any).__transitLastSeen as Map<string, string> | undefined;
+  const { onlineUsers, lastSeenMap } = readTransitSocketState();
 
   const contactsWithPresence = inbox.contacts.map((c) => ({
     ...c,
@@ -140,7 +152,7 @@ export async function handlePortalChatGet(
     unreadByThread,
     totalUnread,
     currentUserId: user.id,
-    currentUserFullName: (user as any).fullName || "",
+    currentUserFullName: user.fullName ?? "",
   });
 }
 

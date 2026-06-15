@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { FormEvent, ReactNode, Suspense, useEffect, useRef, useState } from "react";
+import { FormEvent, ReactNode, Suspense, useCallback, useEffect, useRef, useState } from "react";
 import type { StudentSearchResult } from "@/lib/student-search";
 import { TransitLogo } from "@/components/brand/transit-logo";
 import { NavigationProgress } from "@/components/layout/navigation-progress";
@@ -16,6 +16,7 @@ import { useStudentSession } from "@/contexts/student-session-context";
 import { useMobileNav } from "@/hooks/use-mobile-nav";
 import { useOfflineSync } from "@/hooks/use-offline-sync";
 import { requestApi } from "@/lib/fetch-api";
+import { scheduleEffectWork } from "@/lib/react-effect-utils";
 import { reportStudentError, studentError, studentWarning } from "@/lib/student-ui";
 import { logout } from "@/services/auth";
 import { StudentFeeGate } from "@/components/finance/student-fee-gate";
@@ -159,7 +160,6 @@ export function StudentShell({ children }: { children: ReactNode }) {
   const profile = data?.profile;
   const sessionNotificationCount = data?.stats.newNotifications ?? 0;
   const [notificationOverride, setNotificationOverride] = useState<number | null>(null);
-  const [notificationSource, setNotificationSource] = useState(sessionNotificationCount);
   const { mobileNavOpen, openMobileNav, closeMobileNav } = useMobileNav(pathname);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<StudentSearchResult[]>([]);
@@ -169,30 +169,54 @@ export function StudentShell({ children }: { children: ReactNode }) {
   const searchRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (notificationSource !== sessionNotificationCount) {
-      setNotificationSource(sessionNotificationCount);
-      setNotificationOverride(null);
+    scheduleEffectWork(() => setNotificationOverride(null));
+  }, [sessionNotificationCount]);
+
+  const loadSearch = useCallback(async (q: string) => {
+    setSearchLoading(true);
+    const result = await requestApi<{ results?: StudentSearchResult[] }>(
+      `/api/student/search?q=${encodeURIComponent(q)}`,
+      { silent: true, errorTitle: "Search unavailable" }
+    );
+
+    if (result.offline) {
+      setSearchResults([]);
+      setSearchOffline(true);
+    } else if (!result.ok) {
+      setSearchResults([]);
+      await studentError("Search failed", result.message);
+    } else {
+      setSearchResults(result.data.results ?? []);
+      setSearchOffline(false);
     }
-  }, [notificationSource, sessionNotificationCount]);
+    setSearchLoading(false);
+  }, []);
 
   useEffect(() => {
     const q = searchQuery.trim();
     if (q.length < 2) {
-      setSearchResults([]);
-      setSearchLoading(false);
-      setSearchOffline(false);
+      scheduleEffectWork(() => {
+        setSearchResults([]);
+        setSearchLoading(false);
+        setSearchOffline(false);
+      });
       return;
     }
 
     if (!online) {
-      setSearchResults([]);
-      setSearchLoading(false);
-      setSearchOffline(true);
+      scheduleEffectWork(() => {
+        setSearchResults([]);
+        setSearchLoading(false);
+        setSearchOffline(true);
+      });
       return;
     }
 
-    setSearchLoading(true);
-    setSearchOffline(false);
+    scheduleEffectWork(() => {
+      setSearchLoading(true);
+      setSearchOffline(false);
+    });
+
     const timer = window.setTimeout(async () => {
       const result = await requestApi<{ results?: StudentSearchResult[] }>(
         `/api/student/search?q=${encodeURIComponent(q)}`,
@@ -224,27 +248,7 @@ export function StudentShell({ children }: { children: ReactNode }) {
     }, 300);
 
     return () => window.clearTimeout(timer);
-  }, [searchQuery, online]);
-
-  async function loadSearch(q: string) {
-    setSearchLoading(true);
-    const result = await requestApi<{ results?: StudentSearchResult[] }>(
-      `/api/student/search?q=${encodeURIComponent(q)}`,
-      { silent: true, errorTitle: "Search unavailable" }
-    );
-
-    if (result.offline) {
-      setSearchResults([]);
-      setSearchOffline(true);
-    } else if (!result.ok) {
-      setSearchResults([]);
-      await studentError("Search failed", result.message);
-    } else {
-      setSearchResults(result.data.results ?? []);
-      setSearchOffline(false);
-    }
-    setSearchLoading(false);
-  }
+  }, [searchQuery, online, loadSearch]);
 
   useEffect(() => {
     function onPointerDown(event: MouseEvent) {
