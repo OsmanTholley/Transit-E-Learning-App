@@ -1,5 +1,6 @@
 {
   "scripts": {
+    "postinstall": "npm ci --prefix frontend --include=dev",
     "dev": "node scripts/dev.js",
     "dev:clean": "node scripts/clean-dev-cache.js && node scripts/dev.js",
     "build": "prisma generate && npm run build --prefix frontend",
