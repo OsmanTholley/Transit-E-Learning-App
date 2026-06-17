@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { CalendarEventType } from "@prisma/client";
+import { CalendarAudience, CalendarEventType } from "@prisma/client";
 import {
   createCalendarEvent,
   deleteCalendarEvent,
