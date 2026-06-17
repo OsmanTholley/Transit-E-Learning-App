@@ -73,10 +73,8 @@ export function PortalMessagesHub({
       setNotices(list);
       const unread = data.unreadCount ?? list.filter((n) => !n.isRead).length;
       onUnreadChange?.(unread);
-      return list;
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not load messages.");
-      return [];
     } finally {
       setLoading(false);
     }
