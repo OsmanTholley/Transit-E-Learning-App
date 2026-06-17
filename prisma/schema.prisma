@@ -88,7 +88,6 @@ model Student {
   liveClassAttendance LiveClassAttendanceLog[]
   liveClassHandRaises LiveClassHandRaise[]
   liveClassLateAdmits LiveClassLateAdmission[]
-  liveClassPollVotes  LiveClassPollVote[]
   feeAccounts         StudentFeeAccount[]
   quizAttempts        QuizAttempt[]
   preferences         StudentPreference[]
@@ -496,8 +495,6 @@ model LiveClass {
   chatMessages   LiveClassChatMessage[]
   handRaises     LiveClassHandRaise[]
   lateAdmissions LiveClassLateAdmission[]
-  polls          LiveClassPoll[]
-  recordings     LiveClassRecording[]
   course         Course?                  @relation(fields: [courseId], references: [id])
   lecturer       Lecturer?                @relation(fields: [lecturerId], references: [id])
   portalChatMessages PortalChatMessage[]
@@ -546,32 +543,6 @@ model LiveClassChatMessage {
   @@map("live_class_chat_messages")
 }
 
-model LiveClassPoll {
-  id          String              @id @default(uuid()) @db.Uuid
-  liveClassId String              @map("live_class_id") @db.Uuid
-  question    String
-  options     String
-  isActive    Boolean             @default(true) @map("is_active")
-  createdAt   DateTime            @default(now()) @map("created_at")
-  votes       LiveClassPollVote[]
-  liveClass   LiveClass           @relation(fields: [liveClassId], references: [id], onDelete: Cascade)
-
-  @@map("live_class_polls")
-}
-
-model LiveClassPollVote {
-  id          String        @id @default(uuid()) @db.Uuid
-  pollId      String        @map("poll_id") @db.Uuid
-  studentId   String        @map("student_id") @db.Uuid
-  optionIndex Int           @map("option_index")
-  createdAt   DateTime      @default(now()) @map("created_at")
-  poll        LiveClassPoll @relation(fields: [pollId], references: [id], onDelete: Cascade)
-  student     Student       @relation(fields: [studentId], references: [id], onDelete: Cascade)
-
-  @@unique([pollId, studentId])
-  @@map("live_class_poll_votes")
-}
-
 model LiveClassHandRaise {
   id          String    @id @default(uuid()) @db.Uuid
   liveClassId String    @map("live_class_id") @db.Uuid
@@ -584,18 +555,6 @@ model LiveClassHandRaise {
 
   @@unique([liveClassId, studentId])
   @@map("live_class_hand_raises")
-}
-
-model LiveClassRecording {
-  id           String    @id @default(uuid()) @db.Uuid
-  liveClassId  String    @map("live_class_id") @db.Uuid
-  title        String    @db.VarChar(255)
-  recordingUrl String    @map("recording_url")
-  durationSec  Int?      @map("duration_sec")
-  createdAt    DateTime  @default(now()) @map("created_at")
-  liveClass    LiveClass @relation(fields: [liveClassId], references: [id], onDelete: Cascade)
-
-  @@map("live_class_recordings")
 }
 
 model LiveClassLateAdmission {

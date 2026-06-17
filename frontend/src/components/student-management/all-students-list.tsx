@@ -5,7 +5,6 @@ import { useMemo, useState } from "react";
 import { useStudents } from "@/hooks/use-students";
 import { StudentRecord } from "@/types/student";
 import { StudentFilters, type StudentFilterValues } from "./student-filters";
-import { StudentCrudPageHero } from "./student-crud-hero";
 import { StudentsTable } from "./students-table";
 import { StatCard, StudentSection } from "./ui";
 
@@ -57,8 +56,6 @@ export function AllStudentsList() {
 
   return (
     <StudentSection>
-      <StudentCrudPageHero section="all" />
-
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard label="Total Students" value={students.length} tone="amber" />
         <StatCard label="Active" value={active} tone="blue" />

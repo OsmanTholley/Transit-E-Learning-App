@@ -109,6 +109,7 @@ export async function DELETE(request: NextRequest) {
     await deleteCalendarEvent(eventId);
     return NextResponse.json({ ok: true });
   } catch (error) {
-    return NextResponse.json({ error: "Failed to delete event." }, { status: 400 });
+    const message = error instanceof Error ? error.message : "Failed to delete event.";
+    return NextResponse.json({ error: message }, { status: 400 });
   }
 }

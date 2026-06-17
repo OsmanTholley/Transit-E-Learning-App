@@ -37,7 +37,7 @@ export function AdminSectionTabs({
   return (
     <nav
       aria-label={ariaLabel}
-      className="subnav-scroll rounded-xl border border-slate-200/80 bg-white shadow-sm"
+      className="subnav-scroll w-full overflow-x-auto rounded-xl border border-slate-200/80 bg-white shadow-sm"
     >
       <div className="flex min-w-max items-stretch">
         {items.map((item) => {
