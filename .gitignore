@@ -35,3 +35,8 @@ npm-debug.log*
 
 # Vercel
 .vercel
+
+# User uploads (never bundle into serverless functions)
+frontend/public/uploads/
+frontend/storage/
+storage/

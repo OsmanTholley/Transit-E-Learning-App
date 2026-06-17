@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { mkdir, writeFile } from "fs/promises";
+import os from "os";
 import path from "path";
 import { getValidatedUser } from "@/lib/auth";
 
@@ -8,6 +9,18 @@ export const maxDuration = 300;
 
 const MAX_DEFAULT_BYTES = 25 * 1024 * 1024;
 const MAX_VIDEO_BYTES = 500 * 1024 * 1024; // 500 MB — about 30 min at typical lecture quality
+
+function uploadRoot() {
+  const configured = process.env.UPLOAD_DIR?.trim();
+  if (configured) {
+    return path.isAbsolute(configured) ? configured : path.join(process.cwd(), configured);
+  }
+  return path.join(os.tmpdir(), "transit-uploads");
+}
+
+function publicUrl(fileName: string) {
+  return `/api/upload/file?name=${encodeURIComponent(fileName)}`;
+}
 
 const ALLOWED = new Set([
   "application/pdf",
@@ -57,13 +70,13 @@ export async function POST(request: NextRequest) {
 
     const ext = path.extname(file.name) || "";
     const safeName = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}${ext}`;
-    const uploadDir = path.join(process.cwd(), "public", "uploads");
+    const uploadDir = uploadRoot();
     await mkdir(uploadDir, { recursive: true });
 
     const buffer = Buffer.from(await file.arrayBuffer());
     await writeFile(path.join(uploadDir, safeName), buffer);
 
-    const url = `/uploads/${safeName}`;
+    const url = publicUrl(safeName);
     return NextResponse.json({
       url,
       fileName: file.name,

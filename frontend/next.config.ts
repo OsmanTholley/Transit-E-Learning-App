@@ -26,12 +26,41 @@ const nextConfig: NextConfig = {
     GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID,
     GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET,
     JITSI_DOMAIN: process.env.JITSI_DOMAIN,
+    UPLOAD_DIR: process.env.UPLOAD_DIR,
   },
   turbopack: {
     root: configDir,
   },
   outputFileTracingRoot: configDir,
-  serverExternalPackages: ["@prisma/client", "bcryptjs"],
+  // Keep uploaded media and unused platform binaries out of serverless bundles.
+  outputFileTracingExcludes: {
+    "*": [
+      "public/uploads/**",
+      "node_modules/@next/swc-darwin-arm64/**",
+      "node_modules/@next/swc-darwin-x64/**",
+      "node_modules/@next/swc-win32-arm64-msvc/**",
+      "node_modules/@next/swc-win32-x64-msvc/**",
+      "node_modules/@next/swc-linux-arm64-gnu/**",
+      "node_modules/@next/swc-linux-arm64-musl/**",
+      "node_modules/@next/swc-linux-x64-musl/**",
+    ],
+    "/api/upload": ["public/**"],
+  },
+  serverExternalPackages: [
+    "@prisma/client",
+    "bcryptjs",
+    "nodemailer",
+    "openai",
+    "resend",
+  ],
+  async rewrites() {
+    return [
+      {
+        source: "/uploads/:file",
+        destination: "/api/upload/file?name=:file",
+      },
+    ];
+  },
   experimental: {
     proxyClientMaxBodySize: 500 * 1024 * 1024,
   },
