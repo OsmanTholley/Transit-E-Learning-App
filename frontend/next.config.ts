@@ -11,11 +11,18 @@ const nextConfig: NextConfig = {
   // Allow Next.js <Image> to serve profile photos from the local upload API.
   // The /api/upload/file route returns user-uploaded images via ?name= query param.
   images: {
+    // --- Local image patterns ---
+    // 1. New uploads: clean path via the /uploads/ rewrite rule (no query string)
+    // 2. Legacy: old query-string URLs already stored in DB (/api/upload/file?name=...)
     localPatterns: [
-      {
-        pathname: "/api/upload/file",
-        search: "**",
-      },
+      { pathname: "/uploads/**", search: "" },
+      { pathname: "/api/upload/file", search: "**" },
+    ],
+    // --- Remote image patterns ---
+    // YouTube thumbnails used in VideoCard (i.ytimg.com)
+    remotePatterns: [
+      { protocol: "https", hostname: "i.ytimg.com" },
+      { protocol: "https", hostname: "img.youtube.com" },
     ],
   },
   // Root .env is canonical — avoids stale overrides in frontend/.env

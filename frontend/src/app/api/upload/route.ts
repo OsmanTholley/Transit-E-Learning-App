@@ -19,7 +19,10 @@ function uploadRoot() {
 }
 
 function publicUrl(fileName: string) {
-  return `/api/upload/file?name=${encodeURIComponent(fileName)}`;
+  // Use the clean /uploads/ path (no query string) — the rewrite in next.config.ts
+  // maps /uploads/:file → /api/upload/file?name=:file transparently.
+  // This path is compatible with Next.js <Image> without any localPatterns config.
+  return `/uploads/${encodeURIComponent(fileName)}`;
 }
 
 const ALLOWED = new Set([

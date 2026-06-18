@@ -1,6 +1,4 @@
-// Use a plain <img> tag for profile photos — the src is a dynamic local API path
-// (/api/upload/file?name=...) which is incompatible with Next.js <Image> query-string
-// restrictions. A plain img tag works identically here with no config overhead.
+import Image from "next/image";
 
 const sizeClasses = {
   sm: "h-9 w-9 text-xs rounded-full",
@@ -34,11 +32,12 @@ export function UserAvatar({
       className={`relative shrink-0 overflow-hidden bg-gradient-to-br from-[#0B3D91] to-blue-700 ${dim} ${ringClass} ${className}`}
     >
       {profileImage ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
+        <Image
           src={profileImage}
           alt={fullName}
-          className="absolute inset-0 h-full w-full object-cover"
+          fill
+          className="object-cover"
+          sizes={size === "xl" ? "208px" : size === "lg" ? "96px" : "40px"}
         />
       ) : (
         <span className="flex h-full w-full items-center justify-center font-bold text-white">
