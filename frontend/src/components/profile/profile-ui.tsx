@@ -1,6 +1,8 @@
 "use client";
 
-import Image from "next/image";
+// next/image is intentionally NOT used here — profile photos are served from
+// a dynamic local API route (/api/upload/file?name=...) which is incompatible
+// with Next.js Image query-string restrictions. A plain img tag is correct.
 import { FormEvent, ReactNode, useRef, useState } from "react";
 import { showError } from "@/lib/swal";
 import {
@@ -63,7 +65,8 @@ export function ProfileAvatar({
     <div className="flex flex-col items-center gap-3 sm:flex-row sm:items-start">
       <div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-2xl bg-gradient-to-br from-[#0B3D91] to-blue-700 shadow-lg ring-4 ring-white">
         {profileImage ? (
-          <Image src={profileImage} alt={fullName} fill className="object-cover" sizes="96px" />
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={profileImage} alt={fullName} className="absolute inset-0 h-full w-full object-cover" />
         ) : (
           <span className="flex h-full w-full items-center justify-center text-2xl font-bold text-white">
             {avatarInitials}
