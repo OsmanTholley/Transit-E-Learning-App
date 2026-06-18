@@ -19,10 +19,11 @@ const nextConfig: NextConfig = {
       { pathname: "/api/upload/file", search: "**" },
     ],
     // --- Remote image patterns ---
-    // YouTube thumbnails used in VideoCard (i.ytimg.com)
+    // YouTube thumbnails (VideoCard) + Supabase Storage (profile photos, course thumbnails)
     remotePatterns: [
       { protocol: "https", hostname: "i.ytimg.com" },
       { protocol: "https", hostname: "img.youtube.com" },
+      { protocol: "https", hostname: "*.supabase.co" },
     ],
   },
   // Root .env is canonical — avoids stale overrides in frontend/.env
@@ -44,6 +45,10 @@ const nextConfig: NextConfig = {
     GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET,
     JITSI_DOMAIN: process.env.JITSI_DOMAIN,
     UPLOAD_DIR: process.env.UPLOAD_DIR,
+    // Supabase Storage (persistent file bucket)
+    SUPABASE_URL: process.env.SUPABASE_URL,
+    SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY,
+    SUPABASE_STORAGE_BUCKET: process.env.SUPABASE_STORAGE_BUCKET,
   },
   turbopack: {
     root: configDir,

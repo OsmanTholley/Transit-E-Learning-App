@@ -1,27 +1,29 @@
 import { NextRequest, NextResponse } from "next/server";
-import { mkdir, writeFile } from "fs/promises";
-import os from "os";
 import path from "path";
 import { getValidatedUser } from "@/lib/auth";
+import { uploadToStorage, isStorageConfigured } from "@/lib/supabase-storage";
+
+// --- Local filesystem fallback (development only) ---
+import { mkdir, writeFile } from "fs/promises";
+import os from "os";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
 
-const MAX_DEFAULT_BYTES = 25 * 1024 * 1024;
-const MAX_VIDEO_BYTES = 500 * 1024 * 1024; // 500 MB — about 30 min at typical lecture quality
+const MAX_DEFAULT_BYTES = 25 * 1024 * 1024;        // 25 MB
+const MAX_VIDEO_BYTES  = 500 * 1024 * 1024;         // 500 MB
 
-function uploadRoot() {
+function localUploadRoot() {
   const configured = process.env.UPLOAD_DIR?.trim();
   if (configured) {
-    return path.isAbsolute(configured) ? configured : path.join(process.cwd(), configured);
+    return path.isAbsolute(configured)
+      ? configured
+      : path.join(process.cwd(), configured);
   }
   return path.join(os.tmpdir(), "transit-uploads");
 }
 
-function publicUrl(fileName: string) {
-  // Use the clean /uploads/ path (no query string) — the rewrite in next.config.ts
-  // maps /uploads/:file → /api/upload/file?name=:file transparently.
-  // This path is compatible with Next.js <Image> without any localPatterns config.
+function localPublicUrl(fileName: string) {
   return `/uploads/${encodeURIComponent(fileName)}`;
 }
 
@@ -71,20 +73,34 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Upload a video file (MP4 or WebM)." }, { status: 400 });
     }
 
-    const ext = path.extname(file.name) || "";
+    const ext      = path.extname(file.name) || "";
     const safeName = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}${ext}`;
-    const uploadDir = uploadRoot();
-    await mkdir(uploadDir, { recursive: true });
+    const buffer   = Buffer.from(await file.arrayBuffer());
 
-    const buffer = Buffer.from(await file.arrayBuffer());
+    // ── Cloud storage (Supabase) ──────────────────────────────────────────────
+    if (isStorageConfigured()) {
+      const result = await uploadToStorage(safeName, buffer, mime);
+      if ("error" in result) {
+        return NextResponse.json({ error: result.error }, { status: 500 });
+      }
+      return NextResponse.json({
+        url:      result.url,   // permanent Supabase public URL
+        fileName: file.name,
+        fileType: mime,
+        size:     file.size,
+      });
+    }
+
+    // ── Local filesystem fallback (development without Supabase env vars) ─────
+    const uploadDir = localUploadRoot();
+    await mkdir(uploadDir, { recursive: true });
     await writeFile(path.join(uploadDir, safeName), buffer);
 
-    const url = publicUrl(safeName);
     return NextResponse.json({
-      url,
+      url:      localPublicUrl(safeName),
       fileName: file.name,
       fileType: mime,
-      size: file.size,
+      size:     file.size,
     });
   } catch (error) {
     console.error("POST /api/upload:", error);
