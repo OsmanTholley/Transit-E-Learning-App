@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { normalizeUploadUrl } from "@/lib/normalize-upload-url";
 import { FormEvent, ReactNode, useRef, useState } from "react";
 import { showError } from "@/lib/swal";
 import {
@@ -59,11 +60,21 @@ export function ProfileAvatar({
     }
   }
 
+  const imgSrc = normalizeUploadUrl(profileImage);
+
   return (
     <div className="flex flex-col items-center gap-3 sm:flex-row sm:items-start">
       <div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-2xl bg-gradient-to-br from-[#0B3D91] to-blue-700 shadow-lg ring-4 ring-white">
-        {profileImage ? (
-          <Image src={profileImage} alt={fullName} fill className="object-cover" sizes="96px" />
+        {/* Convert legacy /api/upload/file?name=... → /uploads/... for Next.js Image */}
+        {imgSrc ? (
+          <Image
+            src={imgSrc}
+            alt={fullName}
+            fill
+            className="object-cover"
+            sizes="96px"
+            unoptimized={imgSrc.startsWith("https://")}
+          />
         ) : (
           <span className="flex h-full w-full items-center justify-center text-2xl font-bold text-white">
             {avatarInitials}
