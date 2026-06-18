@@ -8,6 +8,16 @@ const rootEnvPath = path.resolve(configDir, "../.env");
 dotenv.config({ path: rootEnvPath });
 
 const nextConfig: NextConfig = {
+  // Allow Next.js <Image> to serve profile photos from the local upload API.
+  // The /api/upload/file route returns user-uploaded images via ?name= query param.
+  images: {
+    localPatterns: [
+      {
+        pathname: "/api/upload/file",
+        search: "**",
+      },
+    ],
+  },
   // Root .env is canonical — avoids stale overrides in frontend/.env
   env: {
     DATABASE_URL: process.env.DATABASE_URL,
