@@ -33,8 +33,6 @@ build/
 npm-debug.log*
 .pnpm-debug.log*
 
-# Vercel
-.vercel
 
 # User uploads (never bundle into serverless functions)
 frontend/public/uploads/

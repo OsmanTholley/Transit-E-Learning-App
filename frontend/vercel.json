@@ -1,5 +1,0 @@
-{
-  "$schema": "https://openapi.vercel.sh/vercel.json",
-  "installCommand": "npm ci --include=dev",
-  "buildCommand": "prisma generate --schema=../prisma/schema.prisma && next build --webpack"
-}
