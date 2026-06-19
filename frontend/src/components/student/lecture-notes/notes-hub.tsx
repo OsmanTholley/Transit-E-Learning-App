@@ -14,8 +14,8 @@ import {
   LoadingGrid,
   PageHeader,
   ProgressRing,
-  StatOverviewCard,
 } from "@/components/student/courses/ui/course-ui";
+import { DashboardStatCard, DashboardStatsGrid } from "@/components/ui/dashboard-stat-card";
 import type { LectureNoteRecord, LectureNotesListResponse } from "@/types/student-lecture-notes";
 
 function applyFilters(
@@ -133,17 +133,36 @@ export function NotesHub({ view = "" }: { view?: string }) {
     return (
       <div className="space-y-6">
         <PageHeader title={title} subtitle={subtitles.progress} />
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          <StatOverviewCard label="Notes read" value={stats?.readCount ?? 0} sub="Started reading" tone="blue" />
-          <StatOverviewCard
+        <DashboardStatsGrid columns={4}>
+          <DashboardStatCard
+            label="Notes read"
+            value={stats?.readCount ?? 0}
+            subtitle="Started reading"
+            tone="blue"
+            icon="notes"
+          />
+          <DashboardStatCard
             label="Avg. progress"
             value={`${stats?.averageReadingProgress ?? 0}%`}
-            sub="Across all notes"
-            tone="yellow"
+            subtitle="Across all notes"
+            tone="amber"
+            icon="chart"
           />
-          <StatOverviewCard label="Downloaded" value={stats?.downloadedNotes ?? 0} sub="Offline copies" tone="green" />
-          <StatOverviewCard label="Bookmarked" value={stats?.bookmarkedNotes ?? 0} sub="Saved for study" tone="rose" />
-        </div>
+          <DashboardStatCard
+            label="Downloaded"
+            value={stats?.downloadedNotes ?? 0}
+            subtitle="Offline copies"
+            tone="emerald"
+            icon="book"
+          />
+          <DashboardStatCard
+            label="Bookmarked"
+            value={stats?.bookmarkedNotes ?? 0}
+            subtitle="Saved for study"
+            tone="rose"
+            icon="default"
+          />
+        </DashboardStatsGrid>
         <div className="grid gap-4 md:grid-cols-2">
           {data.notes.map((note) => (
             <motion.div
@@ -334,12 +353,36 @@ export function NotesHub({ view = "" }: { view?: string }) {
       <PageHeader title={title} subtitle={subtitles[view] ?? subtitles[""]} />
 
       {stats ? (
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          <StatOverviewCard label="Total Notes" value={stats.totalNotes} sub="Available" tone="blue" />
-          <StatOverviewCard label="Downloaded" value={stats.downloadedNotes} sub="Offline copies" tone="green" />
-          <StatOverviewCard label="Bookmarked" value={stats.bookmarkedNotes} sub="Saved" tone="yellow" />
-          <StatOverviewCard label="Recently Added" value={stats.recentlyAdded} sub="Last 7 days" tone="rose" />
-        </div>
+        <DashboardStatsGrid columns={4}>
+          <DashboardStatCard
+            label="Total Notes"
+            value={stats.totalNotes}
+            subtitle="Available"
+            tone="blue"
+            icon="notes"
+          />
+          <DashboardStatCard
+            label="Downloaded"
+            value={stats.downloadedNotes}
+            subtitle="Offline copies"
+            tone="emerald"
+            icon="book"
+          />
+          <DashboardStatCard
+            label="Bookmarked"
+            value={stats.bookmarkedNotes}
+            subtitle="Saved"
+            tone="amber"
+            icon="default"
+          />
+          <DashboardStatCard
+            label="Recently Added"
+            value={stats.recentlyAdded}
+            subtitle="Last 7 days"
+            tone="rose"
+            icon="notifications"
+          />
+        </DashboardStatsGrid>
       ) : null}
 
       {view !== "downloaded" ? (

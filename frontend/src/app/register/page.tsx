@@ -1,10 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { normalizeStudentId } from "@/lib/student-id";
 import { showError, showSuccess } from "@/lib/swal";
 import { TransitLogo } from "@/components/brand/transit-logo";
+import { SiteNavbar } from "@/components/site-navbar";
+import "./register.css";
 
 type VerifiedStudent = {
   studentId: string;
@@ -18,6 +20,91 @@ type VerifiedStudent = {
 
 type Step = "verify" | "register";
 
+/* ── Icons ──────────────────────────────────────────────────── */
+function IdIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="reg-input-icon" fill="none" stroke="currentColor" strokeWidth="2">
+      <rect x="3" y="5" width="18" height="14" rx="2" />
+      <path d="M7 10h4M7 14h10" />
+    </svg>
+  );
+}
+
+function MailIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="reg-input-icon" fill="none" stroke="currentColor" strokeWidth="2">
+      <rect x="3" y="5" width="18" height="14" rx="2" />
+      <path d="M3 7l9 6 9-6" />
+    </svg>
+  );
+}
+
+function PhoneIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="reg-input-icon" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M22 16.92v3a2 2 0 01-2.18 2A19.79 19.79 0 013.09 4.18 2 2 0 015.07 2h3a2 2 0 012 1.72c.13 1 .37 1.97.72 2.9a2 2 0 01-.45 2.11L9.09 9.91a16 16 0 006.99 7l1.18-1.18a2 2 0 012.11-.45c.93.35 1.9.59 2.9.72A2 2 0 0122 16.92z" />
+    </svg>
+  );
+}
+
+function LockIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="reg-input-icon" fill="none" stroke="currentColor" strokeWidth="2">
+      <rect x="5" y="11" width="14" height="10" rx="2" />
+      <path d="M8 11V7a4 4 0 018 0v4" />
+    </svg>
+  );
+}
+
+function EyeIcon({ open }: { open: boolean }) {
+  if (open) {
+    return (
+      <svg viewBox="0 0 24 24" className="reg-eye-icon" fill="none" stroke="currentColor" strokeWidth="2">
+        <path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7-10-7-10-7z" />
+        <circle cx="12" cy="12" r="3" />
+      </svg>
+    );
+  }
+  return (
+    <svg viewBox="0 0 24 24" className="reg-eye-icon" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M3 3l18 18" />
+      <path d="M10.6 10.6A3 3 0 0012 15a3 3 0 002.4-4.4" />
+      <path d="M9.9 5.1A10.4 10.4 0 0112 5c6 0 10 7 10 7a18.6 18.6 0 01-4.2 5.1" />
+      <path d="M6.1 6.1C3.7 7.8 2 12 2 12a18.6 18.6 0 004.2 5.1" />
+    </svg>
+  );
+}
+
+/* ── Animated background particles ─────────────────────────── */
+function Particles() {
+  return (
+    <div className="reg-particles" aria-hidden="true">
+      {Array.from({ length: 12 }).map((_, i) => (
+        <span key={i} className={`reg-particle reg-particle-${(i % 6) + 1}`} />
+      ))}
+    </div>
+  );
+}
+
+/* ── Step tab ────────────────────────────────────────────────── */
+function StepTab({ num, label, state }: { num: number; label: string; state: "active" | "done" | "idle" }) {
+  return (
+    <div className={`reg-step-tab reg-step-tab--${state}`}>
+      <span className="reg-step-num">
+        {state === "done" ? (
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" style={{ width: 11, height: 11 }}>
+            <path d="M5 13l4 4L19 7" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        ) : num}
+      </span>
+      {label}
+    </div>
+  );
+}
+
+/* ════════════════════════════════════════════════════════════════
+   PAGE COMPONENT
+════════════════════════════════════════════════════════════════ */
 export default function RegisterPage() {
   const [step, setStep] = useState<Step>("verify");
   const [studentIdInput, setStudentIdInput] = useState("");
@@ -26,12 +113,17 @@ export default function RegisterPage() {
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  // eslint-disable-next-line react-hooks/set-state-in-effect
+  useEffect(() => { setMounted(true); }, []);
 
   async function handleVerify(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setLoading(true);
-
     try {
       const res = await fetch("/api/auth/register/verify-id", {
         method: "POST",
@@ -39,11 +131,7 @@ export default function RegisterPage() {
         body: JSON.stringify({ studentId: studentIdInput }),
       });
       const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.error ?? "Student ID could not be verified.");
-      }
-
+      if (!res.ok) throw new Error(data.error ?? "Student ID could not be verified.");
       setVerified(data);
       setStep("register");
       await showSuccess("ID verified", "Complete your account details below.");
@@ -60,32 +148,20 @@ export default function RegisterPage() {
   async function handleRegister(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!verified) return;
-
     setLoading(true);
-
     try {
       const res = await fetch("/api/auth/register/complete", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({
-          studentId: verified.studentId,
-          email,
-          phone,
-          password,
-          confirmPassword,
-        }),
+        body: JSON.stringify({ studentId: verified.studentId, email, phone, password, confirmPassword }),
       });
       const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.error ?? "Verification failed.");
-      }
-
-      await showSuccess("Welcome!", data.message ?? "Verification successful.");
+      if (!res.ok) throw new Error(data.error ?? "Registration failed.");
+      await showSuccess("Welcome!", data.message ?? "Account created successfully.");
       window.location.href = "/student/dashboard";
     } catch (err) {
-      await showError("Verification failed", err instanceof Error ? err.message : "Please try again.");
+      await showError("Registration failed", err instanceof Error ? err.message : "Please try again.");
     } finally {
       setLoading(false);
     }
@@ -94,152 +170,239 @@ export default function RegisterPage() {
   function resetVerification() {
     setStep("verify");
     setVerified(null);
-    setEmail("");
-    setPhone("");
-    setPassword("");
-    setConfirmPassword("");
+    setEmail(""); setPhone(""); setPassword(""); setConfirmPassword("");
   }
 
+  const isRegister = step === "register";
+
   return (
-    <main className="flex min-h-screen items-center justify-center bg-slate-100 px-4 py-8">
-      <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
-        <div className="mb-6 flex items-center gap-3">
-          <TransitLogo size="md" variant="dark" subtitle="TCSL" />
-          <div>
-            <h1 className="text-xl font-semibold text-slate-900">Student Verification</h1>
-            <p className="text-sm text-slate-600">Transit College S/L E-Learning </p>
+    <main className="reg-root">
+      {/* Animated gradient background */}
+      <div className="reg-bg" aria-hidden="true">
+        <div className="reg-bg-orb reg-bg-orb-1" />
+        <div className="reg-bg-orb reg-bg-orb-2" />
+        <div className="reg-bg-orb reg-bg-orb-3" />
+        <div className="reg-bg-grid" />
+      </div>
+      <Particles />
+
+      {/* Navbar — logo + Home button only */}
+      <SiteNavbar variant="light" homeOnly />
+
+      {/* Card */}
+      <div className={`reg-card ${mounted ? "reg-card--visible" : ""}`}>
+        {/* Accent bar */}
+        <div className="reg-card-accent" />
+
+        {/* Logo */}
+        <div className="reg-logo-row">
+          <TransitLogo size="lg" variant="dark" subtitle="E-Learning" />
+        </div>
+
+        {/* Step tabs */}
+        <div className="reg-steps">
+          <StepTab num={1} label="Verify ID" state={isRegister ? "done" : "active"} />
+          <StepTab num={2} label="Create Account" state={isRegister ? "active" : "idle"} />
+        </div>
+
+        {/* Heading */}
+        <div className="reg-heading-block">
+          <h1 className="reg-heading">
+            {isRegister ? "Create Your Account" : "Student Verification"}
+          </h1>
+          <p className="reg-subheading">
+            {isRegister
+              ? "Fill in your details to complete registration."
+              : "Enter your official Transit College student ID to get started."}
+          </p>
+        </div>
+
+        {/* Verified badge (step 2 only) */}
+        {isRegister && verified && (
+          <div className="reg-verified-badge">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" className="reg-verified-icon">
+              <circle cx="12" cy="12" r="9" />
+              <path d="M8 12l3 3 5-5" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+            <div className="reg-verified-text">
+              <strong>ID verified: {verified.studentId}</strong>
+              <span>
+                {verified.fullName}
+                {(verified.department || verified.program) && (
+                  <> · {[verified.department, verified.program].filter(Boolean).join(" • ")}</>
+                )}
+              </span>
+            </div>
           </div>
-        </div>
+        )}
 
-        <div className="mb-6 flex gap-2">
-          <span
-            className={`flex-1 rounded-lg py-2 text-center text-xs font-semibold ${
-              step === "verify" ? "bg-[#0B3D91] text-white" : "bg-slate-100 text-slate-500"
-            }`}
-          >
-            1. Verify ID
-          </span>
-          <span
-            className={`flex-1 rounded-lg py-2 text-center text-xs font-semibold ${
-              step === "register" ? "bg-[#0B3D91] text-white" : "bg-slate-100 text-slate-500"
-            }`}
-          >
-            2. Create Account
-          </span>
-        </div>
+        {/* ── Step 1: Verify ID ── */}
+        {!isRegister ? (
+          <form className="reg-form" onSubmit={handleVerify} noValidate>
+            <div className="reg-field">
+              <label htmlFor="reg-student-id" className="reg-label">Student ID</label>
+              <div className="reg-input-wrap">
+                <IdIcon />
+                <input
+                  id="reg-student-id"
+                  type="text"
+                  required
+                  autoComplete="username"
+                  placeholder="TCSL/0000"
+                  value={studentIdInput}
+                  onChange={(e) => setStudentIdInput(e.target.value)}
+                  onBlur={(e) => {
+                    const normalized = normalizeStudentId(e.target.value);
+                    if (normalized) setStudentIdInput(normalized);
+                  }}
+                  className="reg-input"
+                />
+              </div>
+              <span className="reg-input-hint">Format: TCSL/0000</span>
+            </div>
 
-        {step === "verify" ? (
-          <form className="space-y-4" onSubmit={handleVerify}>
-            <p className="text-sm text-slate-600">
-              Enter your official Transit College student ID. So you can be verified.
-            </p>
-            <label className="block">
-              <span className="text-sm font-medium text-slate-700">Student ID *</span>
-              <input
-                type="text"
-                required
-                value={studentIdInput}
-                onChange={(e) => setStudentIdInput(e.target.value)}
-                onBlur={(e) => {
-                  const normalized = normalizeStudentId(e.target.value);
-                  if (normalized) setStudentIdInput(normalized);
-                }}
-                placeholder="ID: TCSL/0000"
-                className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#0B3D91] focus:ring-2 focus:ring-[#0B3D91]/20"
-              />
-              <span className="mt-1 block text-xs text-slate-500">Format: TCSL/0000</span>
-            </label>
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full rounded-md bg-[#0B3D91] px-4 py-2.5 text-sm font-medium text-white hover:bg-[#0a357f] disabled:opacity-60"
-            >
-              {loading ? "Verifying..." : "Verify Student ID"}
+            <button id="reg-verify-btn" type="submit" disabled={loading} className="reg-submit-btn">
+              {loading ? (
+                <>
+                  <span className="reg-spinner" aria-hidden="true" />
+                  Verifying…
+                </>
+              ) : (
+                <>
+                  Verify Student ID
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="reg-submit-arrow">
+                    <path d="M5 12h14M13 6l6 6-6 6" />
+                  </svg>
+                </>
+              )}
             </button>
           </form>
         ) : (
-          <form className="space-y-4" onSubmit={handleRegister}>
-            <div className="rounded-xl bg-emerald-50 px-4 py-3 text-sm text-emerald-800 ring-1 ring-emerald-200">
-              <p className="font-semibold">ID verified: {verified?.studentId}</p>
-              <p className="mt-1">{verified?.fullName}</p>
-              {(verified?.department || verified?.program) && (
-                <p className="mt-1 text-xs text-emerald-700">
-                  {[verified?.department, verified?.program].filter(Boolean).join(" • ")}
-                </p>
-              )}
+          /* ── Step 2: Create Account ── */
+          <form className="reg-form" onSubmit={handleRegister} noValidate>
+            {/* Email */}
+            <div className="reg-field">
+              <label htmlFor="reg-email" className="reg-label">Email Address *</label>
+              <div className="reg-input-wrap">
+                <MailIcon />
+                <input
+                  id="reg-email"
+                  type="email"
+                  required
+                  autoComplete="email"
+                  placeholder="you@example.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="reg-input"
+                />
+              </div>
             </div>
 
-            <label className="block">
-              <span className="text-sm font-medium text-slate-700">Email *</span>
-              <input
-                type="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#0B3D91] focus:ring-2 focus:ring-[#0B3D91]/20"
-              />
-            </label>
+            {/* Phone */}
+            <div className="reg-field">
+              <label htmlFor="reg-phone" className="reg-label">Phone Number</label>
+              <div className="reg-input-wrap">
+                <PhoneIcon />
+                <input
+                  id="reg-phone"
+                  type="tel"
+                  autoComplete="tel"
+                  placeholder="+232 ..."
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  className="reg-input"
+                />
+              </div>
+            </div>
 
-            <label className="block">
-              <span className="text-sm font-medium text-slate-700">Phone</span>
-              <input
-                type="tel"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                placeholder="+232 ..."
-                className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#0B3D91] focus:ring-2 focus:ring-[#0B3D91]/20"
-              />
-            </label>
+            {/* Password */}
+            <div className="reg-field">
+              <label htmlFor="reg-password" className="reg-label">Password *</label>
+              <div className="reg-input-wrap">
+                <LockIcon />
+                <input
+                  id="reg-password"
+                  type={showPassword ? "text" : "password"}
+                  required
+                  minLength={6}
+                  autoComplete="new-password"
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="reg-input reg-input--password"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((p) => !p)}
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                  className="reg-eye-btn"
+                >
+                  <EyeIcon open={showPassword} />
+                </button>
+              </div>
+            </div>
 
-            <label className="block">
-              <span className="text-sm font-medium text-slate-700">Password *</span>
-              <input
-                type="password"
-                required
-                minLength={6}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#0B3D91] focus:ring-2 focus:ring-[#0B3D91]/20"
-              />
-            </label>
+            {/* Confirm Password */}
+            <div className="reg-field">
+              <label htmlFor="reg-confirm-password" className="reg-label">Confirm Password *</label>
+              <div className="reg-input-wrap">
+                <LockIcon />
+                <input
+                  id="reg-confirm-password"
+                  type={showConfirm ? "text" : "password"}
+                  required
+                  minLength={6}
+                  autoComplete="new-password"
+                  placeholder="••••••••"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  className="reg-input reg-input--password"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirm((p) => !p)}
+                  aria-label={showConfirm ? "Hide password" : "Show password"}
+                  className="reg-eye-btn"
+                >
+                  <EyeIcon open={showConfirm} />
+                </button>
+              </div>
+            </div>
 
-            <label className="block">
-              <span className="text-sm font-medium text-slate-700">Confirm Password *</span>
-              <input
-                type="password"
-                required
-                minLength={6}
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#0B3D91] focus:ring-2 focus:ring-[#0B3D91]/20"
-              />
-            </label>
-
-            <div className="flex gap-3">
-              <button
-                type="button"
-                onClick={resetVerification}
-                className="flex-1 rounded-md border border-slate-300 px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
-              >
+            {/* Buttons */}
+            <div className="reg-btn-row">
+              <button type="button" onClick={resetVerification} className="reg-back-btn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 15, height: 15, flexShrink: 0 }}>
+                  <path d="M19 12H5M12 19l-7-7 7-7" />
+                </svg>
                 Back
               </button>
-              <button
-                type="submit"
-                disabled={loading}
-                className="flex-1 rounded-md bg-[#0B3D91] px-4 py-2.5 text-sm font-medium text-white hover:bg-[#0a357f] disabled:opacity-60"
-              >
-                {loading ? "Creating account..." : "Complete Registration"}
+              <button id="reg-submit-btn" type="submit" disabled={loading} className="reg-submit-btn">
+                {loading ? (
+                  <>
+                    <span className="reg-spinner" aria-hidden="true" />
+                    Creating…
+                  </>
+                ) : (
+                  <>
+                    Complete
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="reg-submit-arrow">
+                      <path d="M5 12h14M13 6l6 6-6 6" />
+                    </svg>
+                  </>
+                )}
               </button>
             </div>
           </form>
         )}
 
-        <p className="mt-6 text-center text-sm text-slate-600">
-          Already have an account?{" "}
-          <Link href="/login?role=student" className="font-semibold text-[#0B3D91] hover:underline">
-            Sign in
+        {/* Footer */}
+        <div className="reg-footer">
+          <Link href="/login?role=student" className="reg-footer-link">
+            Already have an account?{" "}
+            <span className="reg-footer-link--primary">Sign in</span>
           </Link>
-        </p>
+        </div>
       </div>
     </main>
   );

@@ -1,6 +1,6 @@
 import Image from "next/image";
 
-const LOGO_SRC = "/images/TCSL%20Logo.png";
+const LOGO_SRC = "/images/tcsl-logo.png";
 
 type Props = {
   size?: "sm" | "md" | "lg";

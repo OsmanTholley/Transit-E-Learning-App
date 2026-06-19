@@ -9,8 +9,8 @@ import {
   LoadingGrid,
   PageHeader,
   ProgressRing,
-  StatOverviewCard,
 } from "@/components/student/courses/ui/course-ui";
+import { DashboardStatCard, DashboardStatsGrid } from "@/components/ui/dashboard-stat-card";
 import type { CoursesListResponse } from "@/types/student-courses";
 
 export function CourseProgressPage() {
@@ -27,12 +27,36 @@ export function CourseProgressPage() {
         title="Course Progress"
         subtitle="Track lessons, assignments, and quiz completion across all courses"
       />
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatOverviewCard label="Total Courses" value={data.stats.totalCourses} sub="Enrolled" />
-        <StatOverviewCard label="Completed" value={data.stats.completedCourses} sub="100% progress" tone="green" />
-        <StatOverviewCard label="Pending Work" value={data.stats.pendingAssignments} sub="Assignments" tone="yellow" />
-        <StatOverviewCard label="Quiz Average" value={`${data.stats.averageQuizScore}%`} sub="Semester" tone="rose" />
-      </div>
+      <DashboardStatsGrid columns={4}>
+        <DashboardStatCard
+          label="Total Courses"
+          value={data.stats.totalCourses}
+          subtitle="Enrolled"
+          tone="blue"
+          icon="courses"
+        />
+        <DashboardStatCard
+          label="Completed"
+          value={data.stats.completedCourses}
+          subtitle="100% progress"
+          tone="emerald"
+          icon="default"
+        />
+        <DashboardStatCard
+          label="Pending Work"
+          value={data.stats.pendingAssignments}
+          subtitle="Assignments"
+          tone="amber"
+          icon="assignments"
+        />
+        <DashboardStatCard
+          label="Quiz Average"
+          value={`${data.stats.averageQuizScore}%`}
+          subtitle="Semester"
+          tone="rose"
+          icon="quizzes"
+        />
+      </DashboardStatsGrid>
       <div className="grid gap-4 lg:grid-cols-2">
         {data.courses.map((course, i) => (
           <motion.article

@@ -8,8 +8,8 @@ import {
   LoadingGrid,
   PageHeader,
   SearchFilterBar,
-  StatOverviewCard,
 } from "@/components/student/courses/ui/course-ui";
+import { DashboardStatCard, DashboardStatsGrid } from "@/components/ui/dashboard-stat-card";
 import type { CoursesListResponse } from "@/types/student-courses";
 
 export function AllCoursesPage({ filter = "all" }: { filter?: string }) {
@@ -60,27 +60,36 @@ export function AllCoursesPage({ filter = "all" }: { filter?: string }) {
       <PageHeader title={meta.title} subtitle={meta.subtitle} />
 
       {data ? (
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          <StatOverviewCard label="Total Courses" value={data.stats.totalCourses} sub="Enrolled" tone="blue" />
-          <StatOverviewCard
+        <DashboardStatsGrid columns={4}>
+          <DashboardStatCard
+            label="Total Courses"
+            value={data.stats.totalCourses}
+            subtitle="Enrolled"
+            tone="blue"
+            icon="courses"
+          />
+          <DashboardStatCard
             label="Completed"
             value={data.stats.completedCourses}
-            sub="Finished courses"
-            tone="green"
+            subtitle="Finished courses"
+            tone="emerald"
+            icon="default"
           />
-          <StatOverviewCard
+          <DashboardStatCard
             label="Pending Assignments"
             value={data.stats.pendingAssignments}
-            sub="Due soon"
-            tone="yellow"
+            subtitle="Due soon"
+            tone="amber"
+            icon="assignments"
           />
-          <StatOverviewCard
+          <DashboardStatCard
             label="Quiz Average"
             value={`${data.stats.averageQuizScore}%`}
-            sub="This semester"
+            subtitle="This semester"
             tone="rose"
+            icon="quizzes"
           />
-        </div>
+        </DashboardStatsGrid>
       ) : null}
 
       <SearchFilterBar

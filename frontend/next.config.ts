@@ -15,8 +15,10 @@ const nextConfig: NextConfig = {
     // 1. New uploads: clean path via the /uploads/ rewrite rule (no query string)
     // 2. Legacy: old query-string URLs already stored in DB (/api/upload/file?name=...)
     localPatterns: [
-      { pathname: "/uploads/**", search: "" },
+      { pathname: "/uploads/**" },
       { pathname: "/api/upload/file", search: "**" },
+      { pathname: "/images/**" },
+      { pathname: "/brand/**" },
     ],
     // --- Remote image patterns ---
     // YouTube thumbnails (VideoCard) + Supabase Storage (profile photos, course thumbnails)

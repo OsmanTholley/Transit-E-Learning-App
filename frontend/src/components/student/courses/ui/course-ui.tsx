@@ -15,13 +15,28 @@ export function PageHeader({
   action?: ReactNode;
 }) {
   return (
-    <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-      <div>
-        <h1 className="text-2xl font-bold text-slate-900 md:text-3xl">{title}</h1>
-        {subtitle ? <p className="mt-1 text-sm text-slate-500">{subtitle}</p> : null}
+    <section
+      className="relative overflow-hidden rounded-2xl p-6 sm:p-8"
+      style={{
+        background: "linear-gradient(135deg, #0B3D91 0%, #154ebd 100%)",
+      }}
+    >
+      {/* Yellow accent stripe at top */}
+      <div className="absolute left-0 right-0 top-0 h-1" style={{ background: "#FFC107" }} />
+      {/* Background glass blobs */}
+      <div className="pointer-events-none absolute -right-10 -top-10 h-32 w-32 rounded-full bg-white/10 blur-xl" />
+      <div className="pointer-events-none absolute -left-10 -bottom-10 h-32 w-32 rounded-full bg-[#FFC107]/10 blur-xl" />
+
+      <div className="relative z-10 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-white md:text-3xl">{title}</h1>
+          {subtitle ? (
+            <p className="mt-1.5 text-sm font-medium text-white/85">{subtitle}</p>
+          ) : null}
+        </div>
+        {action ? <div className="shrink-0">{action}</div> : null}
       </div>
-      {action}
-    </div>
+    </section>
   );
 }
 

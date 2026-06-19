@@ -2,16 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { useState, useEffect } from "react";
-
-/* ─── Nav links ─────────────────────────────────────────────── */
-const navLinks = [
-  { label: "Home", href: "#home" },
-  { label: "Features", href: "#features" },
-  { label: "How It Works", href: "#how-it-works" },
-  { label: "Courses", href: "#courses" },
-  { label: "About", href: "#about" },
-];
+import { SiteNavbar } from "@/components/site-navbar";
 
 /* ─── Stats (shown when stats bar section is enabled) ──────── */
 // const stats = [
@@ -120,128 +111,10 @@ const testimonials = [
 
 /* ═══════════════════════════════════════════════════════════════ */
 export default function HomePage() {
-  const [menuOpen, setMenuOpen] = useState(false);
-  const [scrolled, setScrolled] = useState(false);
-
-  useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 20);
-    window.addEventListener("scroll", onScroll);
-    return () => window.removeEventListener("scroll", onScroll);
-  }, []);
-
   return (
     <div className="min-h-screen bg-white font-sans antialiased" id="home">
       {/* ── NAVBAR ──────────────────────────────────────────────── */}
-      <header
-        className={`fixed top-0 inset-x-0 z-50 border-b border-slate-200/80 bg-white transition-shadow duration-300 ${
-          scrolled ? "shadow-md shadow-slate-200/60" : "shadow-sm"
-        }`}
-      >
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="flex h-16 items-center justify-between lg:h-[4.5rem]">
-            {/* Logo */}
-            <Link href="/" className="flex items-center gap-3 group">
-              <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-xl bg-white shadow-md ring-2 ring-amber-400/60 transition group-hover:ring-amber-400 lg:h-11 lg:w-11">
-                <Image
-                  src="/images/TCSL Logo.png"
-                  alt="Transit College S/L"
-                  width={48}
-                  height={48}
-                  className="h-full w-full object-contain p-0.5"
-                  priority
-                />
-              </div>
-              <div className="leading-tight">
-                <p className="text-sm font-bold tracking-tight text-[#0B3D91]">
-                  Transit College S/L
-                </p>
-                <p className="text-[10px] font-semibold uppercase tracking-widest text-amber-500">
-                  E-Learning Portal
-                </p>
-              </div>
-            </Link>
-
-            {/* Desktop Nav */}
-            <nav className="hidden items-center gap-1 lg:flex">
-              {navLinks.map((l) => (
-                <a
-                  key={l.label}
-                  href={l.href}
-                  className="rounded-lg px-3 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-blue-50 hover:text-[#0B3D91] xl:px-4"
-                >
-                  {l.label}
-                </a>
-              ))}
-            </nav>
-
-            {/* Desktop CTA */}
-            <div className="hidden items-center gap-3 lg:flex">
-              <Link
-                href="/login?role=student"
-                id="nav-student-login"
-                className="rounded-lg px-4 py-2 text-sm font-semibold text-[#0B3D91] transition-all hover:bg-blue-50"
-              >
-                Sign In
-              </Link>
-              <Link
-                href="/register"
-                id="nav-register"
-                className="rounded-xl bg-amber-400 px-5 py-2.5 text-sm font-bold text-slate-900 shadow-lg shadow-amber-400/30 transition-all hover:bg-amber-300 hover:shadow-amber-400/50 active:scale-95"
-              >
-                Verify
-              </Link>
-            </div>
-
-            {/* Mobile / tablet burger */}
-            <button
-              id="mobile-menu-toggle"
-              aria-label="Toggle menu"
-              onClick={() => setMenuOpen((v) => !v)}
-              className="rounded-lg p-2 text-slate-700 transition hover:bg-slate-100 lg:hidden"
-            >
-              {menuOpen ? (
-                <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              ) : (
-                <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-                </svg>
-              )}
-            </button>
-          </div>
-        </div>
-
-        {/* Mobile menu */}
-        <div
-          className={`overflow-hidden border-t border-slate-100 bg-white transition-all duration-300 lg:hidden ${
-            menuOpen ? "max-h-screen opacity-100" : "max-h-0 opacity-0"
-          }`}
-        >
-          <div className="px-4 py-4 space-y-1">
-            {navLinks.map((l) => (
-              <a
-                key={l.label}
-                href={l.href}
-                onClick={() => setMenuOpen(false)}
-                className="block px-4 py-3 rounded-lg text-sm font-medium text-slate-700 hover:bg-blue-50 hover:text-[#0B3D91]"
-              >
-                {l.label}
-              </a>
-            ))}
-            <div className="pt-3 pb-1 flex flex-col gap-2 border-t border-slate-100 mt-2">
-              <Link href="/login?role=student" id="mobile-sign-in" onClick={() => setMenuOpen(false)}
-                className="block text-center py-2.5 rounded-lg border border-[#0B3D91]/30 text-[#0B3D91] font-semibold text-sm">
-                Sign In
-              </Link>
-              <Link href="/register" id="mobile-register" onClick={() => setMenuOpen(false)}
-                className="block text-center py-2.5 rounded-xl bg-amber-400 text-slate-900 font-bold text-sm">
-                Verify
-              </Link>
-            </div>
-          </div>
-        </div>
-      </header>
+      <SiteNavbar variant="light" />
 
       {/* ── HERO ─────────────────────────────────────────────────── */}
       <section
@@ -308,20 +181,16 @@ export default function HomePage() {
             <div className="mt-7 flex flex-col sm:flex-row gap-3 w-full max-w-md sm:max-w-none sm:justify-center">
               <Link
                 href="/login?role=student"
-                id="mob-hero-student-cta"
-                className="group inline-flex items-center justify-center gap-2 px-7 py-3.5 rounded-2xl bg-amber-400 text-slate-900 font-bold text-sm shadow-2xl shadow-amber-500/30 hover:bg-amber-300 transition-all active:scale-95"
+                id="mob-hero-login-cta"
+                className="group inline-flex items-center justify-center gap-2 px-8 py-3.5 rounded-2xl bg-amber-400 text-slate-900 font-bold text-sm shadow-2xl shadow-amber-500/30 hover:bg-amber-300 transition-all active:scale-95"
               >
-                Student Portal
+                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
+                </svg>
+                Sign In
                 <svg className="h-4 w-4 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6"/>
                 </svg>
-              </Link>
-              <Link
-                href="/login?role=staff"
-                id="mob-hero-staff-cta"
-                className="inline-flex items-center justify-center gap-2 px-7 py-3.5 rounded-2xl border border-white/30 bg-white/10 backdrop-blur-sm text-white font-semibold text-sm hover:bg-white/20 transition-all active:scale-95"
-              >
-                Staff Portal
               </Link>
             </div>
 
@@ -396,22 +265,15 @@ export default function HomePage() {
               <div className="mt-7 flex items-center gap-3">
                 <Link
                   href="/login?role=student"
-                  id="hero-student-cta"
-                  className="group inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-amber-400 text-slate-900 font-bold text-sm shadow-xl shadow-amber-400/30 hover:bg-amber-300 transition-all active:scale-95"
+                  id="hero-login-cta"
+                  className="group inline-flex items-center gap-2.5 px-7 py-3.5 rounded-2xl bg-amber-400 text-slate-900 font-bold text-sm shadow-xl shadow-amber-400/30 hover:bg-amber-300 transition-all active:scale-95"
                 >
-                  Student Portal
+                  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
+                  </svg>
+                  Sign In
                   <svg className="h-4 w-4 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6"/>
-                  </svg>
-                </Link>
-                <Link
-                  href="/login?role=staff"
-                  id="hero-staff-cta"
-                  className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl border border-white/30 bg-white/10 backdrop-blur-sm text-white font-semibold text-sm hover:bg-white/20 transition-all active:scale-95"
-                >
-                  Staff Portal
-                  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
                   </svg>
                 </Link>
               </div>
@@ -768,7 +630,7 @@ export default function HomePage() {
             <div className="flex-shrink-0">
               <div className="h-40 w-40 md:h-52 md:w-52 rounded-3xl bg-white/10 border border-white/20 shadow-xl flex items-center justify-center overflow-hidden p-4">
                 <Image
-                  src="/images/TCSL Logo.png"
+                  src="/images/tcsl-logo.png"
                   alt="Transit College S/L Logo"
                   width={180}
                   height={180}
@@ -788,7 +650,7 @@ export default function HomePage() {
             <div className="sm:col-span-2 lg:col-span-1">
               <div className="flex items-center gap-3 mb-4">
                 <div className="h-10 w-10 rounded-xl bg-white shadow-lg ring-2 ring-amber-400/50 overflow-hidden">
-                  <Image src="/images/TCSL Logo.png" alt="Transit College" width={40} height={40} className="h-full w-full object-contain p-0.5" />
+                  <Image src="/images/tcsl-logo.png" alt="Transit College" width={40} height={40} className="h-full w-full object-contain p-0.5" />
                 </div>
                 <div>
                   <p className="text-white font-bold text-sm">Transit College S/L</p>
